@@ -1,1 +1,1 @@
-# wayakit git commit --allow-empty -m 'Trigger update'
+# wayakit git commit --allow-empty -m "Commit message"
