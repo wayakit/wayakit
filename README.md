@@ -1,1 +1,1 @@
-# wayakit git commit --allow-empty -m "Commit message"
+git commit --allow-empty -m "Commit message"
