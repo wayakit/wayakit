@@ -1,5 +1,5 @@
 ### Hi there 👋
-
+git commit --allow-empty -m 'Trigger update'; git push
 <!--
 **wayakit/wayakit** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 
@@ -14,4 +14,4 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
-#wayakit git commit --allow-empty -m 'Trigger update'; git push
+
