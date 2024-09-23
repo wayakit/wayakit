@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_wayakit_cutomization_wayakit_cutomization,wayakit_cutomization.wayakit_cutomization,model_wayakit_cutomization_wayakit_cutomization,base.group_user,1,1,1,1
