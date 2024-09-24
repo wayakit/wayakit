@@ -211,32 +211,8 @@ class CommonController(http.Controller):
                     'description': 'Information about the current session.'
                 },
                 'AvailableSlots': {
-                    'type': 'object',
-                    'properties': {
-                        'db': {
-                            'type': 'string',
-                        },
-                        'uid': {
-                            'type': 'integer',
-                        },
-                        'username': {
-                            'type': 'string',
-                        },
-                        'name': {
-                            'type': 'string',
-                        },
-                        'partner_id': {
-                            'type': 'integer',
-                        },
-                        'company_id': {
-                            'type': 'integer',
-                        },
-                        'user_context': {
-                            '$ref': '#/components/schemas/UserContext',
-                        },
-                    },
-                    'additionalProperties': True,
-                    'description': 'Information about the current session.'
+                        "from": "2024-09-27T09:00:00+03:00",
+                        "to": "2024-09-27T10:00:00+03:00"
                 },
             }
         }
@@ -557,7 +533,7 @@ class CommonController(http.Controller):
         return request.make_json_response(request.env['ir.http'].session_info())
 
     @core.http.rest_route(
-        routes=build_route('/api/services/availableslots'),
+        routes=build_route('/services/availableslots'),
         methods=['POST'],
         protected=True,
         docs=dict(
@@ -573,14 +549,12 @@ class CommonController(http.Controller):
                                 '$ref': '#/components/schemas/AvailableSlots'
                             },
                             'example': {
-                                'db': 'mydb',
-                                'user_id': 2,
-                                'company_id': 1,
-                                'user_context': {
-                                    'lang': 'en_US',
-                                    'tz': 'Europe/Vienna',
-                                    'uid': 2
-                                },
+                                "availableslots": [
+                                    {
+                                        "from": "2024-09-27T09:00:00+03:00",
+                                        "to": "2024-09-27T10:00:00+03:00"
+                                    }
+                                ]
                             }
                         }
                     }
@@ -594,51 +568,33 @@ class CommonController(http.Controller):
         extras_ids = kw.get('extrasid')
         date = kw.get('Date')
         if service_id and date:
-            day = date[0:2]
-            month = date[2:4]
-            year = date[4:8]
-            formatted_date = f"{year}-{month}-{day}"
+            date = datetime.strptime(date, '%d%m%Y').date()
+            appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
 
-            appointment_type_id = request.env['appointment.type'].sudo().search([
-                ('id', '=', service_id),
-            ])
-            if appointment_type_id :
-
-                totalduration = appointment_type_id.appointment_duration
-                product_varients_ids = appointment_type_id.product_id.product_variant_ids.search(
-                    [('id', 'in', extras_ids)])
+            if appointment_type_id:
+                total_duration = appointment_type_id.appointment_duration
+                product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
                 if (product_varients_ids):
-                    # mapped
-                    for product in product_varients_ids:
-                        totalduration += product.duration
+                    total_duration += sum(product_varients_ids.mapped('duration'))
                 total = appointment_type_id.appointment_duration
-                appointment_type_id.appointment_duration = totalduration
+                appointment_type_id.appointment_duration = total_duration
                 tinmezone = appointment_type_id.appointment_tz
                 slots = appointment_type_id._get_appointment_slots(
                     tinmezone,
                 )
-                target_date = datetime.strptime(formatted_date, '%Y-%m-%d').date()
 
-                new_slots = []
-                for month in slots:
-                    weeks = month.get('weeks')
-                    for week in weeks:
-                        for day in week:
-                            if day.get('day') == target_date and day.get('slots'):
-                                new_slots = day.get('slots')
-                                break
+                new_slots = next(
+                    (day.get('slots') for month in slots for week in month.get('weeks') for day in week
+                     if day.get('day') == date and day.get('slots')), []
+                )
                 if new_slots:
                     appointment_type_id.appointment_duration = total
                     availableslots = []
                     timezone = pytz.timezone(tinmezone)
 
-                    availableslots = []
-
                     for slot in new_slots:
                         from_time = datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')
-
                         from_time = timezone.localize(from_time)
-
                         slot_duration = float(slot['slot_duration'])
                         to_time = from_time + timedelta(hours=slot_duration)
 
@@ -648,7 +604,9 @@ class CommonController(http.Controller):
                         })
                     return request.make_json_response({
                         "availableslots": availableslots})
+                else:
+                    return "no slots is available"
             else:
-                "no service is available for this id"
+                return "no service is available for this id"
         else:
             return "no service id or date is given"
