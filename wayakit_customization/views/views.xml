@@ -11,5 +11,38 @@
                 </xpath>
             </field>
         </record>
+        <record id="view_company_form_inherit" model="ir.ui.view">
+            <field name="name">Company Form Inherit</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="base.view_company_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='branches']" position="after">
+                    <page string="Company Information" name="company_information">
+                        <group>
+                            <field name="related_fields_ids" widget="many2many_tags"
+                                   string="Select Company Fields"/>
+                            <field name="working_schedule_id"/>
+                            <field name="is_service_provider"/>
+                            <field name="working_schedule_specialdays_id"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+        <record id="view_resource_calendar_form_inherit" model="ir.ui.view">
+            <field name="name">resource.calendar.form.inherit</field>
+            <field name="model">resource.calendar</field>
+            <field name="inherit_id" ref="resource.resource_calendar_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='company_id']" position="after">
+                    <group>
+                        <field name="start_date"/>
+                        <field name="end_date"/>
+                        <field name="open_time" widget="float_time"/>
+                        <field name="close_time" widget="float_time"/>
+                    </group>
+                </xpath>
+            </field>
+        </record>
     </data>
 </odoo>
