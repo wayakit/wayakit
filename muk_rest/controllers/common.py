@@ -727,8 +727,8 @@ class CommonController(http.Controller):
                     "Closetime": close_time
                 })
 
-            if company.working_schedule_id.leave_ids:
-                for leave in company.working_schedule_id.leave_ids:
+            if company.working_schedule_id.global_leave_ids:
+                for leave in company.working_schedule_id.global_leave_ids:
                     start_date = leave.date_from.strftime("%d%m%Y") or ""
                     end_date = leave.date_to.strftime("%d%m%Y") or ""
                     special_hours.append({
