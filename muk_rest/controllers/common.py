@@ -210,10 +210,111 @@ class CommonController(http.Controller):
                     'additionalProperties': True,
                     'description': 'Information about the current session.'
                 },
-                'serviceprovider': {
-                    "from": "2024-09-27T09:00:00+03:00",
-                    "to": "2024-09-27T10:00:00+03:00"
+                "AvailableSlots": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "to": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    "description": "Available time slots for booking."
                 },
+                "ServiceData": {
+                    "type": "object",
+                    "properties": {
+                        "serviceprovider": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string",
+                                        "pattern": "^\\+?[0-9]{10,15}$"
+                                    },
+                                    "Termsandconditions": {
+                                        "type": "string"
+                                    },
+                                    "Paymentoptions": {
+                                        "type": "string",
+                                        "enum": ["Card reader", "Online Payment", "STC Pay"]
+                                    }
+                                },
+                                "required": ["name", "description", "phonenumber", "Termsandconditions",
+                                             "Paymentoptions"]
+                            }
+                        },
+                        "servicehours": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "dayoftheweek": {
+                                        "type": "string",
+                                        "enum": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+                                                 "Saturday"]
+                                    },
+                                    "Opentime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)$"
+                                    },
+                                    "Closetime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)$"
+                                    }
+                                },
+                                "required": ["dayoftheweek", "Opentime", "Closetime"]
+                            }
+                        },
+                        "specialdays": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "startdate": {
+                                        "type": "string",
+                                        "pattern": "^([0-2][0-9]|3[0-1])(0[1-9]|1[0-2])\\d{4}$"
+                                    },
+                                    "enddate": {
+                                        "type": "string",
+                                        "pattern": "^([0-2][0-9]|3[0-1])(0[1-9]|1[0-2])\\d{4}$"
+                                    },
+                                    "isaholiday": {
+                                        "type": "string",
+                                        "enum": ["Yes", "No"]
+                                    },
+                                    "opentime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)?$",
+                                        "nullable": True
+                                    },
+                                    "closetime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)?$",
+                                        "nullable": True
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "nullable": True
+                                    }
+                                },
+                                "required": ["startdate", "enddate", "isaholiday"]
+                            }
+                        }
+                    },
+                    "required": ["serviceprovider", "servicehours", "specialdays"]
+                },
+
             }
         }
 
@@ -626,7 +727,7 @@ class CommonController(http.Controller):
                     'content': {
                         'application/json': {
                             'schema': {
-                                '$ref': '#/components/schemas/serviceprovider'
+                                '$ref': '#/components/schemas/ServiceData'
                             },
                             'example': {
                                 "serviceprovider": [
@@ -767,3 +868,5 @@ class CommonController(http.Controller):
         elif hours > 12:
             hours -= 12
         return f"{hours}:{minutes:02d} {am_pm}"
+
+
