@@ -1,5 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data>
+    <record id="view_service_type_form_view" model="ir.ui.view">
+        <field name="name">service.type.form</field>
+        <field name="model">service.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name" widget="radio"/>
+                            <field name="in_use"/>
+                        </group>
+                        <group>
+                            <field name="vehicle_type" invisible="name != 'vehicle'"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Sub Type">
+                            <field name="sub_type_ids">
+                                <tree editable="bottom">
+                                    <field name="name"/>
+                                    <field name="tax"/>
+                                    <field name="price"/>
+                                    <field name="inclusive_tax_price"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" groups="base.group_user"
+                           options="{'post_refresh': 'recipients'}"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
 
-    </data>
+    <record id="view_service_type_tree" model="ir.ui.view">
+        <field name="name">service.type.tree</field>
+        <field name="model">service.type</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="vehicle_type" />
+                <field name="in_use"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="service_type_aciton" model="ir.actions.act_window">
+        <field name="name">Service Type</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">service.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click to define a new Service Type.
+            </p>
+        </field>
+    </record>
+
+    <menuitem action="wayakit_customization.service_type_aciton" id="menu_service_type" sequence="1" name="Service Type"
+              parent="appointment.appointment_menu_config" />
+
+
 </odoo>
