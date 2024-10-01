@@ -44,5 +44,16 @@
                 </xpath>
             </field>
         </record>
+        <record id="view_partner_form_inherit" model="ir.ui.view">
+            <field name="name">res.partner.form.inherit</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+                <field name="function" position="after">
+                    <field name="customer_kaust_id"/>
+                </field>
+            </field>
+        </record>
+
     </data>
 </odoo>

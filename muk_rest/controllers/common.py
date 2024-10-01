@@ -210,6 +210,62 @@ class CommonController(http.Controller):
                     'additionalProperties': True,
                     'description': 'Information about the current session.'
                 },
+                "BookingData": {
+                    "type": "object",
+                    "properties": {
+                        "bookingid": {
+                            "type": "string",
+                            "description": "The unique identifier for the booking."
+                        },
+                        "customerkaustid": {
+                            "type": "string",
+                            "description": "The unique identifier for the customer (KAUST ID)."
+                        },
+                        "customername": {
+                            "type": "string",
+                            "description": "The name of the customer."
+                        },
+                        "totalcostvatinclusive": {
+                            "type": "number",
+                            "description": "The total cost of the booking, VAT inclusive."
+                        },
+                        "status": {
+                            "type": "string",
+                            "enum": ["confirmed", "pending", "canceled"],
+                            "description": "The status of the booking."
+                        }
+                    },
+                    "required": ["bookingid", "customerkaustid", "customername", "totalcostvatinclusive", "status"],
+                    "description": "Details of the booking including customer information, total cost, and status."
+                },
+                'Services': {
+                    'type': 'object',
+                    'properties': {
+                        'db': {
+                            'type': 'string',
+                        },
+                        'uid': {
+                            'type': 'integer',
+                        },
+                        'username': {
+                            'type': 'string',
+                        },
+                        'name': {
+                            'type': 'string',
+                        },
+                        'partner_id': {
+                            'type': 'integer',
+                        },
+                        'company_id': {
+                            'type': 'integer',
+                        },
+                        'user_context': {
+                            '$ref': '#/components/schemas/UserContext',
+                        },
+                    },
+                    'additionalProperties': True,
+                    'description': 'Information about the current session.'
+                },
                 "AvailableSlots": {
                     "type": "object",
                     "properties": {
@@ -318,14 +374,16 @@ class CommonController(http.Controller):
             }
         }
 
-    # ----------------------------------------------------------
-    # Utility
-    # ----------------------------------------------------------
+        # ----------------------------------------------------------
+        # Utility
+        # ----------------------------------------------------------
 
     @core.http.rest_route(
+
         routes=build_route('/<path:path>'),
         rest_access_hidden=True,
         disable_logging=True,
+
     )
     def catch(self, **kw):
         return request.not_found()
@@ -869,4 +927,175 @@ class CommonController(http.Controller):
             hours -= 12
         return f"{hours}:{minutes:02d} {am_pm}"
 
+    @core.http.rest_route(
+        routes=build_route('/services/<serviceid>/book'),
+        methods=['POST'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Booking Data.',
+            description='Booking Data.',
+            responses={
+                '200': {
+                    'description': 'Booking Data',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/BookingData'
+                            },
+                            'example': {
 
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def book_appoinmnet(self, **kw):
+        customer_kaust_id = kw.get('customerkaustid')
+        customer_name = kw.get('customername')
+        customer_email = kw.get('customeremail')
+        customer_phone = kw.get('customerphone')
+        service_id = kw.get('serviceid')
+        vehicle_type_id = kw.get('vehicletypeid')
+        vehicle_use_id = kw.get('vehicleuseid')
+        vehicle_subtype_id = kw.get('vehiclesubtype')
+        extras_ids = kw.get('extrasid').split(',') if kw.get(
+            'extrasid') else []  # Assuming this is a comma-separated string
+        total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
+        booking_date = kw.get('Date')
+        slot_info = kw.get('slot', [])
+        if slot_info:
+            slot_from = slot_info[0].get('from')
+            slot_to = slot_info[0].get('to')
+        else:
+            slot_from = None
+            slot_to = None
+
+        # appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
+        # partner = request.env['res.partner'].sudo().search([('customer_kaust_id', '=', customer_kaust_id)])
+        # if not partner:
+        #     partner = request.env['res.partner'].create({
+        #         'name': customer_name,
+        #         "customer_kaust_id": customer_kaust_id,
+        #         "email": customer_email,
+        #         "phone": customer_phone
+        #
+        #     })
+        # appointment = request.env['calendar.event'].create({
+        #     'name': summary,  # Title of the meeting
+        #     'start': start_datetime,
+        #     'appointment_type_id': appointment_type_id,
+        #     'stop': end_datetime,
+        #     'partner_ids': [(6, 0, attendees)],
+        #     'location': location,
+        #     'description': description,
+        #     'duration': (fields.Datetime.from_string(end_datetime) - fields.Datetime.from_string(
+        #         start_datetime)).total_seconds() / 3600.0,
+        # })
+        #
+        # if appointment_type_id:
+        #     total_duration = appointment_type_id.appointment_duration
+        #
+        #     product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
+        #     if (product_varients_ids):
+        #         total_duration += sum(product_varients_ids.mapped('duration'))
+        #     total = appointment_type_id.appointment_duration
+        #     appointment_type_id.appointment_duration = total_duration
+        #     tinmezone = appointment_type_id.appointment_tz
+        #     slots = appointment_type_id._get_appointment_slots(
+        #         tinmezone,
+        #     )
+
+    @core.http.rest_route(
+        routes=build_route('/services'),
+        methods=['GET'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Fetch Services Info',
+            description='Returns the available services info.',
+            responses={
+                '200': {
+                    'description': 'Services Info',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/Services'
+                            },
+                            'example': {
+                                'db': 'mydb',
+                                'user_id': 2,
+                                'company_id': 1,
+                                'user_context': {
+                                    'lang': 'en_US',
+                                    'tz': 'Europe/Vienna',
+                                    'uid': 2
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def get_services(self, **kw):
+        services = request.env['appointment.type'].sudo().search([])
+        data = []
+        for service in services:
+            extras = []
+            if service.product_id:
+                for variant in service.product_id.product_variant_ids:
+                    total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
+                        'total_included')
+                    extras.append({
+                        "extrasid": variant.id,
+                        "extrasname": variant.product_template_variant_value_ids.name,
+                        "slottimeinminutes": variant.duration if variant.duration else 0,
+                        "pricevatinclusive": total_included,
+                    })
+            vehicle_data_list = []
+
+            if service.service_type:
+                for service_type in service.service_type:
+                    # Create a new dictionary for each service type
+                    vehicle_data = {
+                        "vehicletype": [],
+                        "vehicleuse": [],
+                        "vehiclesubtype": []
+                    }
+
+                    # Collect vehicle type information for 'vehicletype'
+                    vehicle_data["vehicletype"].append({
+                        "vehicletypeid": service_type.vehicle_type if service_type.vehicle_type else service_type.name
+                    })
+
+                    # Collect vehicle use information for 'vehicleuse'
+                    vehicle_data["vehicleuse"].append({
+                        "vehicleusename": service_type.in_use if service_type.in_use else ''
+                    })
+
+                    # Collect vehicle subtype information for 'vehiclesubtype'
+                    for subtype in service_type.sub_type_ids:
+                        vehicle_data["vehiclesubtype"].append({
+                            "vehiclesubtypeid": subtype.id,
+                            "vehiclesubtypename": subtype.name,
+                            "pricevatinclusive": subtype.inclusive_tax_price
+                        })
+
+                    # Append the vehicle_data dictionary to the vehicle_data_list
+                    vehicle_data_list.append(vehicle_data)
+
+            data.append({
+                "serviceid": service.id,
+                "servicename": service.name,
+                "description": service.website_meta_description,
+                "slottimeinminutes": service.appointment_duration,
+                "extrasid": extras,
+                "vehicledata": vehicle_data_list,
+            })
+        return request.make_json_response({
+            "services": data})
