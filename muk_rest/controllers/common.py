@@ -210,10 +210,111 @@ class CommonController(http.Controller):
                     'additionalProperties': True,
                     'description': 'Information about the current session.'
                 },
-                'AvailableSlots': {
-                        "from": "2024-09-27T09:00:00+03:00",
-                        "to": "2024-09-27T10:00:00+03:00"
+                "AvailableSlots": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "to": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    "description": "Available time slots for booking."
                 },
+                "ServiceData": {
+                    "type": "object",
+                    "properties": {
+                        "serviceprovider": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "phonenumber": {
+                                        "type": "string",
+                                        "pattern": "^\\+?[0-9]{10,15}$"
+                                    },
+                                    "Termsandconditions": {
+                                        "type": "string"
+                                    },
+                                    "Paymentoptions": {
+                                        "type": "string",
+                                        "enum": ["Card reader", "Online Payment", "STC Pay"]
+                                    }
+                                },
+                                "required": ["name", "description", "phonenumber", "Termsandconditions",
+                                             "Paymentoptions"]
+                            }
+                        },
+                        "servicehours": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "dayoftheweek": {
+                                        "type": "string",
+                                        "enum": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+                                                 "Saturday"]
+                                    },
+                                    "Opentime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)$"
+                                    },
+                                    "Closetime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)$"
+                                    }
+                                },
+                                "required": ["dayoftheweek", "Opentime", "Closetime"]
+                            }
+                        },
+                        "specialdays": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "startdate": {
+                                        "type": "string",
+                                        "pattern": "^([0-2][0-9]|3[0-1])(0[1-9]|1[0-2])\\d{4}$"
+                                    },
+                                    "enddate": {
+                                        "type": "string",
+                                        "pattern": "^([0-2][0-9]|3[0-1])(0[1-9]|1[0-2])\\d{4}$"
+                                    },
+                                    "isaholiday": {
+                                        "type": "string",
+                                        "enum": ["Yes", "No"]
+                                    },
+                                    "opentime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)?$",
+                                        "nullable": True
+                                    },
+                                    "closetime": {
+                                        "type": "string",
+                                        "pattern": "^(0?[1-9]|1[0-2]):[0-5][0-9] ?(am|pm)?$",
+                                        "nullable": True
+                                    },
+                                    "reason": {
+                                        "type": "string",
+                                        "nullable": True
+                                    }
+                                },
+                                "required": ["startdate", "enddate", "isaholiday"]
+                            }
+                        }
+                    },
+                    "required": ["serviceprovider", "servicehours", "specialdays"]
+                },
+
             }
         }
 
@@ -573,6 +674,7 @@ class CommonController(http.Controller):
 
             if appointment_type_id:
                 total_duration = appointment_type_id.appointment_duration
+
                 product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
                 if (product_varients_ids):
                     total_duration += sum(product_varients_ids.mapped('duration'))
@@ -610,3 +712,161 @@ class CommonController(http.Controller):
                 return "no service is available for this id"
         else:
             return "no service id or date is given"
+
+    @core.http.rest_route(
+        routes=build_route('/Serviceprovider'),
+        methods=['GET'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Serviceprovider Inf.',
+            description='Serviceprovider Inf.',
+            responses={
+                '200': {
+                    'description': 'Serviceprovider Info',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/ServiceData'
+                            },
+                            'example': {
+                                "serviceprovider": [
+                                    {
+                                        "name": "<value1>",
+                                        "description": "<name1>",
+                                        "phonenumber": "<phone number>",
+                                        "Termsandconditions": "<T&C in html format or public URL>",
+                                        "Paymentoptions": "<Card reader, Online Payment, STC Pay>"
+                                    }
+                                ],
+                                "servicehours": [
+                                    {
+                                        "dayoftheweek": "Sunday",
+                                        "Opentime": "8:00 am",
+                                        "Closetime": "8:00 pm"
+                                    },
+                                    {
+                                        "dayoftheweek": "Monday",
+                                        "Opentime": "8:00 am",
+                                        "Closetime": "8:00 pm"
+                                    },
+                                    {
+                                        "dayoftheweek": "<value1>",
+                                        "Opentime": "<value2>",
+                                        "Closetime": "<value3>"
+                                    },
+                                    {
+                                        "dayoftheweek": "<value1>",
+                                        "Opentime": "<value2>",
+                                        "Closetime": "<value3>"
+                                    },
+                                    {
+                                        "dayoftheweek": "<value1>",
+                                        "Opentime": "<value2>",
+                                        "Closetime": "<value3>"
+                                    },
+                                    {
+                                        "dayoftheweek": "Friday",
+                                        "Opentime": "1:30 pm",
+                                        "Closetime": "11:59 pm"
+                                    },
+                                    {
+                                        "dayoftheweek": "<value1>",
+                                        "Opentime": "<value2>",
+                                        "Closetime": "<value3>"
+                                    }
+                                ],
+                                "specialdays": [
+                                    {
+                                        "startdate": "<DDMMYYYY>",
+                                        "enddate": "<DDMMYYYY>",
+                                        "isaholiday": "Yes",
+                                        "opentime": " ",
+                                        "closetime": " ",
+                                        "reason": " "
+                                    },
+                                    {
+                                        "startdate": "<DDMMYYYY>",
+                                        "enddate": "<DDMMYYYY>",
+                                        "isaholiday": "No",
+                                        "opentime": " 10:00 am",
+                                        "closetime": " 4:00 pm",
+                                        "reason": "Ramadan Hours"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def get_service_provider(self, **kw):
+        provider_companies = request.env['res.company'].sudo().search([('is_service_provider', '=', True)])
+        service_hours = []
+        special_hours = []
+        service_providers = []
+
+        for company in provider_companies:
+            field_values = {}
+
+            for field in company.related_fields_ids:
+                field_name = field.name
+                field_value = getattr(company, field_name, None)
+                field_values[field_name] = field_value
+
+            service_providers.append(field_values)
+
+            for day in company.working_schedule_id.attendance_ids:
+                open_time = self._convert_time_to_string(day.hour_from) or ""
+                close_time = self._convert_time_to_string(day.hour_to) or ""
+
+                service_hours.append({
+                    "dayoftheweek": day.name or "",
+                    "Opentime": open_time,
+                    "Closetime": close_time
+                })
+
+            if company.working_schedule_id.global_leave_ids:
+                for leave in company.working_schedule_id.global_leave_ids:
+                    start_date = leave.date_from.strftime("%d%m%Y") or ""
+                    end_date = leave.date_to.strftime("%d%m%Y") or ""
+                    special_hours.append({
+                        "startdate": start_date,
+                        "enddate": end_date,
+                        "isaholiday": "Yes",
+                        "opentime": "",
+                        "closetime": "",
+                        "reason": leave.name or ""
+                    })
+
+            if company.working_schedule_specialdays_id:
+                open_time = self._convert_time_to_string(company.working_schedule_specialdays_id.open_time) or ""
+                close_time = self._convert_time_to_string(company.working_schedule_specialdays_id.close_time) or ""
+                special_hours.append({
+                    "startdate": company.working_schedule_specialdays_id.start_date or "",
+                    "enddate": company.working_schedule_specialdays_id.end_date or "",
+                    "isaholiday": "No",
+                    "opentime": open_time,
+                    "closetime": close_time,
+                    "reason": company.working_schedule_specialdays_id.name or ""
+                })
+
+        return request.make_json_response({
+            "serviceproviders": service_providers,
+            "servicehours": service_hours,
+            "specialdays": special_hours})
+
+    def _convert_time_to_string(self, hour_float):
+        # Convert float (e.g., 8.0) to string time format (e.g., '8:00 am')
+        hours = int(hour_float)
+        minutes = int((hour_float - hours) * 60)
+        am_pm = 'am' if hours < 12 else 'pm'
+        if hours == 0:
+            hours = 12
+        elif hours > 12:
+            hours -= 12
+        return f"{hours}:{minutes:02d} {am_pm}"
+
+
