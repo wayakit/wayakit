@@ -42,12 +42,13 @@
 
 import werkzeug
 import json
-from odoo import http, tools, _
+from odoo import http, tools, _, Command
 from odoo.http import request
 from odoo.tools.image import image_data_uri
 import datetime
 import time
 import base64
+from odoo import api, fields, models
 from datetime import datetime, date, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 from odoo.addons.muk_rest import core
@@ -953,7 +954,7 @@ class CommonController(http.Controller):
             default_responses=['400', '401', '500'],
         ),
     )
-    def book_appoinmnet(self, **kw):
+    def book_appointment(self, **kw):
         customer_kaust_id = kw.get('customerkaustid')
         customer_name = kw.get('customername')
         customer_email = kw.get('customeremail')
@@ -962,140 +963,172 @@ class CommonController(http.Controller):
         vehicle_type_id = kw.get('vehicletypeid')
         vehicle_use_id = kw.get('vehicleuseid')
         vehicle_subtype_id = kw.get('vehiclesubtype')
-        extras_ids = kw.get('extrasid').split(',') if kw.get(
-            'extrasid') else []  # Assuming this is a comma-separated string
         total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
-        booking_date = kw.get('Date')
         slot_info = kw.get('slot', [])
-        if slot_info:
-            slot_from = slot_info[0].get('from')
-            slot_to = slot_info[0].get('to')
-        else:
-            slot_from = None
-            slot_to = None
 
-        # appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
-        # partner = request.env['res.partner'].sudo().search([('customer_kaust_id', '=', customer_kaust_id)])
-        # if not partner:
-        #     partner = request.env['res.partner'].create({
-        #         'name': customer_name,
-        #         "customer_kaust_id": customer_kaust_id,
-        #         "email": customer_email,
-        #         "phone": customer_phone
-        #
-        #     })
-        # appointment = request.env['calendar.event'].create({
-        #     'name': summary,  # Title of the meeting
-        #     'start': start_datetime,
-        #     'appointment_type_id': appointment_type_id,
-        #     'stop': end_datetime,
-        #     'partner_ids': [(6, 0, attendees)],
-        #     'location': location,
-        #     'description': description,
-        #     'duration': (fields.Datetime.from_string(end_datetime) - fields.Datetime.from_string(
-        #         start_datetime)).total_seconds() / 3600.0,
-        # })
-        #
-        # if appointment_type_id:
-        #     total_duration = appointment_type_id.appointment_duration
-        #
-        #     product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
-        #     if (product_varients_ids):
-        #         total_duration += sum(product_varients_ids.mapped('duration'))
-        #     total = appointment_type_id.appointment_duration
-        #     appointment_type_id.appointment_duration = total_duration
-        #     tinmezone = appointment_type_id.appointment_tz
-        #     slots = appointment_type_id._get_appointment_slots(
-        #         tinmezone,
-        #     )
+        if not service_id:
+            return {"status": "error", "message": "Service ID is required."}
 
-    @core.http.rest_route(
-        routes=build_route('/services'),
-        methods=['GET'],
-        protected=True,
-        docs=dict(
-            tags=['Common'],
-            summary='Fetch Services Info',
-            description='Returns the available services info.',
-            responses={
-                '200': {
-                    'description': 'Services Info',
-                    'content': {
-                        'application/json': {
-                            'schema': {
-                                '$ref': '#/components/schemas/Services'
-                            },
-                            'example': {
-                                'db': 'mydb',
-                                'user_id': 2,
-                                'company_id': 1,
-                                'user_context': {
-                                    'lang': 'en_US',
-                                    'tz': 'Europe/Vienna',
-                                    'uid': 2
-                                },
-                            }
-                        }
-                    }
-                }
-            },
-            default_responses=['400', '401', '500'],
-        ),
-    )
-    def get_services(self, **kw):
-        services = request.env['appointment.type'].sudo().search([])
-        data = []
-        for service in services:
-            extras = []
-            if service.product_id:
-                for variant in service.product_id.product_variant_ids:
-                    total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
-                        'total_included')
-                    extras.append({
-                        "extrasid": variant.id,
-                        "extrasname": variant.product_template_variant_value_ids.name,
-                        "slottimeinminutes": variant.duration if variant.duration else 0,
-                        "pricevatinclusive": total_included,
-                    })
-            vehicle_data_list = []
+        service_id = int(service_id)
 
-            if service.service_type:
-                for service_type in service.service_type:
-                    # Create a new dictionary for each service type
-                    vehicle_data = {
-                        "vehicletype": [],
-                        "vehicleuse": [],
-                        "vehiclesubtype": []
-                    }
+        try:
+            if slot_info:
+                slot_from = datetime.fromisoformat(slot_info[0].get('from'))
+                slot_to = datetime.fromisoformat(slot_info[0].get('to'))
+            else:
+                return {"status": "error", "message": "Slot information is required."}
+        except (IndexError, ValueError):
+            return {"status": "error", "message": "Invalid slot information."}
 
-                    # Collect vehicle type information for 'vehicletype'
-                    vehicle_data["vehicletype"].append({
-                        "vehicletypeid": service_type.vehicle_type if service_type.vehicle_type else service_type.name
-                    })
+        duration = slot_to - slot_from
+        duration_in_hours = duration.total_seconds() / 3600 if duration else 0
 
-                    # Collect vehicle use information for 'vehicleuse'
-                    vehicle_data["vehicleuse"].append({
-                        "vehicleusename": service_type.in_use if service_type.in_use else ''
-                    })
+        appointment_type_id = request.env['appointment.type'].sudo().browse(service_id).exists()
 
-                    # Collect vehicle subtype information for 'vehiclesubtype'
-                    for subtype in service_type.sub_type_ids:
-                        vehicle_data["vehiclesubtype"].append({
-                            "vehiclesubtypeid": subtype.id,
-                            "vehiclesubtypename": subtype.name,
-                            "pricevatinclusive": subtype.inclusive_tax_price
-                        })
+        if not appointment_type_id:
+            return {"status": "error", "message": "Invalid service ID."}
 
-                    # Append the vehicle_data dictionary to the vehicle_data_list
-                    vehicle_data_list.append(vehicle_data)
+        timezone = appointment_type_id.appointment_tz or 'UTC'
+        start_date1 = fields.Datetime.to_string(slot_from)
+        tz_session = pytz.timezone(timezone)
+        date_from = tz_session.localize(fields.Datetime.from_string(start_date1)).astimezone(pytz.utc).replace(
+            tzinfo=None)
+        date_to = date_from + relativedelta(hours=duration_in_hours)
 
-            data.append({
-                "serviceid": service.id,
-                "servicename": service.name,
-                "description": service.website_meta_description,
-                "slottimeinminutes": service.appointment_duration,
-                "extrasid": extras,
-                "vehicledata": vehicle_data_list,
+        partner = request.env['res.partner'].sudo().search([('customer_kaust_id', '=', customer_kaust_id)], limit=1)
+        if not partner:
+            partner = request.env['res.partner'].sudo().create({
+                'name': customer_name or 'Unknown',
+                'customer_kaust_id': customer_kaust_id,
+                'email': customer_email or '',
+                'phone': customer_phone or '',
             })
+        vehicle_type = request.env['service.type'].sudo().search([('id', '=', int(vehicle_type_id))])
+        vehicle_subtype = request.env['vehicle.type'].sudo().search([('id', '=', int(vehicle_subtype_id))])
+        asked_capacity = 1
+        booking_line_values = []
+        description = ""
+        duration = duration_in_hours
+        appointment_invite = request.env['appointment.invite'].sudo().search([('id', '=', 2222)])
+        name = partner.name
+        customer = partner
+        staff_user = appointment_type_id.staff_user_ids[0]
+        answer_input_values =[]
+        guests = None
+
+
+        meeting = request.env['calendar.event'].with_context(
+            mail_notify_author=True,
+            mail_create_nolog=True,
+            mail_create_nosubscribe=True,
+
+        ).sudo().create({
+            'appointment_answer_input_ids': [Command.create(vals) for vals in answer_input_values],
+            **appointment_type_id._prepare_calendar_event_values(
+                asked_capacity, booking_line_values, description,duration ,
+                appointment_invite, guests, name, customer, staff_user, date_from, date_to
+            )
+        })
+        meeting.write({
+            'vehicle_type_id': vehicle_type if vehicle_type else None,
+            'service_type_id': vehicle_subtype if vehicle_subtype else None,
+        })
+
         return request.make_json_response({
-            "services": data})
+            "bookingid": meeting.id,
+            "customerkaustid": customer_kaust_id,
+            "customername": partner.name,
+            "totalcostvatinclusive": total_cost_vat_inclusive,
+            "status": "confirmed"
+        })
+
+    # @core.http.rest_route(
+    #     routes=build_route('/services'),
+    #     methods=['GET'],
+    #     protected=True,
+    #     docs=dict(
+    #         tags=['Common'],
+    #         summary='Fetch Services Info',
+    #         description='Returns the available services info.',
+    #         responses={
+    #             '200': {
+    #                 'description': 'Services Info',
+    #                 'content': {
+    #                     'application/json': {
+    #                         'schema': {
+    #                             '$ref': '#/components/schemas/Services'
+    #                         },
+    #                         'example': {
+    #                             'db': 'mydb',
+    #                             'user_id': 2,
+    #                             'company_id': 1,
+    #                             'user_context': {
+    #                                 'lang': 'en_US',
+    #                                 'tz': 'Europe/Vienna',
+    #                                 'uid': 2
+    #                             },
+    #                         }
+    #                     }
+    #                 }
+    #             }
+    #         },
+    #         default_responses=['400', '401', '500'],
+    #     ),
+    # )
+    # def get_services(self, **kw):
+    #     services = request.env['appointment.type'].sudo().search([])
+    #     data = []
+    #     for service in services:
+    #         extras = []
+    #         if service.product_id:
+    #             for variant in service.product_id.product_variant_ids:
+    #                 total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
+    #                     'total_included')
+    #                 extras.append({
+    #                     "extrasid": variant.id,
+    #                     "extrasname": variant.product_template_variant_value_ids.name,
+    #                     "slottimeinminutes": variant.duration if variant.duration else 0,
+    #                     "pricevatinclusive": total_included,
+    #                 })
+    #         vehicle_data_list = []
+    #
+    #         if service.service_type:
+    #             for service_type in service.service_type:
+    #                 # Create a new dictionary for each service type
+    #                 vehicle_data = {
+    #                     "vehicletype": [],
+    #                     "vehicleuse": [],
+    #                     "vehiclesubtype": []
+    #                 }
+    #
+    #                 # Collect vehicle type information for 'vehicletype'
+    #                 vehicle_data["vehicletype"].append({
+    #                     "vehicletypeid": service_type.vehicle_type if service_type.vehicle_type else service_type.name
+    #                 })
+    #
+    #                 # Collect vehicle use information for 'vehicleuse'
+    #                 vehicle_data["vehicleuse"].append({
+    #                     "vehicleusename": service_type.in_use if service_type.in_use else ''
+    #                 })
+    #
+    #                 # Collect vehicle subtype information for 'vehiclesubtype'
+    #                 for subtype in service_type.sub_type_ids:
+    #                     vehicle_data["vehiclesubtype"].append({
+    #                         "vehiclesubtypeid": subtype.id,
+    #                         "vehiclesubtypename": subtype.name,
+    #                         "pricevatinclusive": subtype.inclusive_tax_price
+    #                     })
+    #
+    #                 # Append the vehicle_data dictionary to the vehicle_data_list
+    #                 vehicle_data_list.append(vehicle_data)
+    #
+    #         data.append({
+    #             "serviceid": service.id,
+    #             "servicename": service.name,
+    #             "description": service.website_meta_description,
+    #             "slottimeinminutes": service.appointment_duration,
+    #             "extrasid": extras,
+    #             "vehicledata": vehicle_data_list,
+    #         })
+    #     return request.make_json_response({
+    #         "services": data})
