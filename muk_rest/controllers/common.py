@@ -1042,93 +1042,94 @@ class CommonController(http.Controller):
             "status": "confirmed"
         })
 
-    # @core.http.rest_route(
-    #     routes=build_route('/services'),
-    #     methods=['GET'],
-    #     protected=True,
-    #     docs=dict(
-    #         tags=['Common'],
-    #         summary='Fetch Services Info',
-    #         description='Returns the available services info.',
-    #         responses={
-    #             '200': {
-    #                 'description': 'Services Info',
-    #                 'content': {
-    #                     'application/json': {
-    #                         'schema': {
-    #                             '$ref': '#/components/schemas/Services'
-    #                         },
-    #                         'example': {
-    #                             'db': 'mydb',
-    #                             'user_id': 2,
-    #                             'company_id': 1,
-    #                             'user_context': {
-    #                                 'lang': 'en_US',
-    #                                 'tz': 'Europe/Vienna',
-    #                                 'uid': 2
-    #                             },
-    #                         }
-    #                     }
-    #                 }
-    #             }
-    #         },
-    #         default_responses=['400', '401', '500'],
-    #     ),
-    # )
-    # def get_services(self, **kw):
-    #     services = request.env['appointment.type'].sudo().search([])
-    #     data = []
-    #     for service in services:
-    #         extras = []
-    #         if service.product_id:
-    #             for variant in service.product_id.product_variant_ids:
-    #                 total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
-    #                     'total_included')
-    #                 extras.append({
-    #                     "extrasid": variant.id,
-    #                     "extrasname": variant.product_template_variant_value_ids.name,
-    #                     "slottimeinminutes": variant.duration if variant.duration else 0,
-    #                     "pricevatinclusive": total_included,
-    #                 })
-    #         vehicle_data_list = []
-    #
-    #         if service.service_type:
-    #             for service_type in service.service_type:
-    #                 # Create a new dictionary for each service type
-    #                 vehicle_data = {
-    #                     "vehicletype": [],
-    #                     "vehicleuse": [],
-    #                     "vehiclesubtype": []
-    #                 }
-    #
-    #                 # Collect vehicle type information for 'vehicletype'
-    #                 vehicle_data["vehicletype"].append({
-    #                     "vehicletypeid": service_type.vehicle_type if service_type.vehicle_type else service_type.name
-    #                 })
-    #
-    #                 # Collect vehicle use information for 'vehicleuse'
-    #                 vehicle_data["vehicleuse"].append({
-    #                     "vehicleusename": service_type.in_use if service_type.in_use else ''
-    #                 })
-    #
-    #                 # Collect vehicle subtype information for 'vehiclesubtype'
-    #                 for subtype in service_type.sub_type_ids:
-    #                     vehicle_data["vehiclesubtype"].append({
-    #                         "vehiclesubtypeid": subtype.id,
-    #                         "vehiclesubtypename": subtype.name,
-    #                         "pricevatinclusive": subtype.inclusive_tax_price
-    #                     })
-    #
-    #                 # Append the vehicle_data dictionary to the vehicle_data_list
-    #                 vehicle_data_list.append(vehicle_data)
-    #
-    #         data.append({
-    #             "serviceid": service.id,
-    #             "servicename": service.name,
-    #             "description": service.website_meta_description,
-    #             "slottimeinminutes": service.appointment_duration,
-    #             "extrasid": extras,
-    #             "vehicledata": vehicle_data_list,
-    #         })
-    #     return request.make_json_response({
-    #         "services": data})
+    @core.http.rest_route(
+        routes=build_route('/services'),
+        methods=['GET'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Fetch Services Info',
+            description='Returns the available services info.',
+            responses={
+                '200': {
+                    'description': 'Services Info',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/Services'
+                            },
+                            'example': {
+                                'db': 'mydb',
+                                'user_id': 2,
+                                'company_id': 1,
+                                'user_context': {
+                                    'lang': 'en_US',
+                                    'tz': 'Europe/Vienna',
+                                    'uid': 2
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def get_services(self, **kw):
+        services = request.env['appointment.type'].sudo().search([])
+        data = []
+        for service in services:
+            extras = []
+            if service.product_id:
+                for variant in service.product_id.product_variant_ids:
+                    total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
+                        'total_included')
+                    extras.append({
+                        "extrasid": variant.id,
+                        "extrasname": variant.product_template_variant_value_ids.name,
+                        "slottimeinminutes": int(variant.duration *60) if variant.duration else 0,
+                        "pricevatinclusive": total_included,
+                    })
+            vehicle_data_list = []
+
+            if service.service_type:
+                for service_type in service.service_type:
+                    # Create a new dictionary for each service type
+                    vehicle_data = {
+                        "vehicletype": [],
+                        "vehicleuse": [],
+                        "vehiclesubtype": []
+                    }
+
+                    # Collect vehicle type information for 'vehicletype'
+                    vehicle_data["vehicletype"].append({
+                        "vehicletypeid": service_type.id,
+                        "vehicletypename":  service_type.vehicle_type if service_type.vehicle_type else service_type.name
+                    })
+
+                    # Collect vehicle use information for 'vehicleuse'
+                    vehicle_data["vehicleuse"].append({
+                        "vehicleusename": service_type.in_use if service_type.in_use else ''
+                    })
+
+                    # Collect vehicle subtype information for 'vehiclesubtype'
+                    for subtype in service_type.sub_type_ids:
+                        vehicle_data["vehiclesubtype"].append({
+                            "vehiclesubtypeid": subtype.id,
+                            "vehiclesubtypename": subtype.name,
+                            "pricevatinclusive": subtype.inclusive_tax_price
+                        })
+
+                    # Append the vehicle_data dictionary to the vehicle_data_list
+                    vehicle_data_list.append(vehicle_data)
+
+            data.append({
+                "serviceid": service.id,
+                "servicename": service.name,
+                "description": service.website_meta_description,
+                "slottimeinminutes": int(service.appointment_duration)*60,
+                "extrasid": extras,
+                "vehicledata": vehicle_data_list,
+            })
+        return request.make_json_response({
+            "services": data})
