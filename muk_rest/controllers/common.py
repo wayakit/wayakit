@@ -267,6 +267,13 @@ class CommonController(http.Controller):
                     'additionalProperties': True,
                     'description': 'Information about the current session.'
                 },
+                'CancelBooking': {
+                    'bookingid': 41,
+                    'customerkaustid': 'KAUST98765',
+                    'customername': 'John Doe',
+                    'status': 'cancel',
+                    'totalcostvatinclusive': 1000,
+                },
                 "AvailableSlots": {
                     "type": "object",
                     "properties": {
@@ -964,6 +971,7 @@ class CommonController(http.Controller):
         vehicle_use_id = kw.get('vehicleuseid')
         vehicle_subtype_id = kw.get('vehiclesubtype')
         total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
+        extra_ids = kw.get('extrasid')
         slot_info = kw.get('slot', [])
 
         if not service_id:
@@ -971,15 +979,11 @@ class CommonController(http.Controller):
 
         service_id = int(service_id)
 
-        try:
-            if slot_info:
+        if slot_info:
                 slot_from = datetime.fromisoformat(slot_info[0].get('from'))
                 slot_to = datetime.fromisoformat(slot_info[0].get('to'))
-            else:
-                return {"status": "error", "message": "Slot information is required."}
-        except (IndexError, ValueError):
-            return {"status": "error", "message": "Invalid slot information."}
-
+        else:
+            return {"status": "error", "message": "Slot information is required."}
         duration = slot_to - slot_from
         duration_in_hours = duration.total_seconds() / 3600 if duration else 0
 
@@ -1009,7 +1013,7 @@ class CommonController(http.Controller):
         booking_line_values = []
         description = ""
         duration = duration_in_hours
-        appointment_invite = request.env['appointment.invite'].sudo().search([('id', '=', 2222)])
+        appointment_invite = request.env['appointment.invite'].sudo().browse(-1).exists()
         name = partner.name
         customer = partner
         staff_user = appointment_type_id.staff_user_ids[0]
@@ -1029,9 +1033,12 @@ class CommonController(http.Controller):
                 appointment_invite, guests, name, customer, staff_user, date_from, date_to
             )
         })
-        meeting.write({
+        extra_ids_int = [int(id)for id in extra_ids]
+        meeting.sudo().write({
             'vehicle_type_id': vehicle_type if vehicle_type else None,
             'service_type_id': vehicle_subtype if vehicle_subtype else None,
+            'total_cost_vat_inclusive': total_cost_vat_inclusive,
+            'extra_ids': [(6, 0,extra_ids_int)],
         })
 
         return request.make_json_response({
@@ -1133,3 +1140,58 @@ class CommonController(http.Controller):
             })
         return request.make_json_response({
             "services": data})
+
+
+    @core.http.rest_route(
+        routes=build_route('/services/<int:service_id>/cancel/<int:booking_id>'),
+        methods=['POST'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Cancel the Appointment',
+            description='Cancel the Appointment.',
+            responses={
+                '200': {
+                    'description': 'Services Info',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/CancelBooking'
+                            },
+                            'example': {
+                                'bookingid': 41,
+                                'customerkaustid': 'KAUST98765',
+                                'customername': 'John Doe',
+                                'status': 'cancel',
+                                'totalcostvatinclusive': 1000,
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def cancel_booking(self, service_id, booking_id):
+        event = request.env['calendar.event'].sudo().search([('id', '=', booking_id),
+                                                            ('appointment_type_id', '=', service_id)], limit=1)
+        data =[]
+        partner = event.appointment_booker_id
+        if event and partner:
+            if fields.Datetime.from_string(
+                    event.allday and event.start_date or event.start) < datetime.now() + timedelta(
+                    hours=event.appointment_type_id.min_cancellation_hours):
+                status = "It's too late to cancel online, please contact the attendees another way if you really can't make it."
+            else:
+                event.with_context(mail_notify_author=True).sudo().action_cancel_meeting([int(partner.id)])
+                status = 'cancel'
+        else:
+            status = 'Event not found'
+        data.append({
+                'bookingid': booking_id,
+                'customerkaustid': partner.customer_kaust_id if partner and partner.customer_kaust_id else '',
+                'customername': partner.name if partner else '',
+                'status': status,
+                'totalcostvatinclusive': event.total_cost_vat_inclusive if event else 0.0,
+        })
+        return request.make_json_response({ "data": data})

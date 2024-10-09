@@ -70,9 +70,19 @@
         <field name="model">calendar.event</field>
         <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='description']" position="after">
-                <field name="vehicle_type_id"/>
-                <field name="service_type_id"/>
+            <xpath expr="//page[@name='page_invitations']" position="after">
+                <page string="Booking Details" name="booking_details">
+                    <group>
+                        <group>
+                            <field name="vehicle_type_id"/>
+                            <field name="service_type_id"/>
+                        </group>
+                        <group>
+                            <field name="extra_ids" widget="many2many_tags"/>
+                            <field name="total_cost_vat_inclusive"/>
+                        </group>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
