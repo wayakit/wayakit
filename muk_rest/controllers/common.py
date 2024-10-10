@@ -849,12 +849,10 @@ class CommonController(http.Controller):
                             "startdate": start_date,
                             "enddate": end_date,
                             "isaholiday": "Yes" if leave.work_entry_type_id.is_leave else "No",
-                            "opentime": " ",
-                            "closetime": " ",
+                            "opentime": "",
+                            "closetime": "",
                             "reason": leave.name or ""
                         })
-
-
         return request.make_json_response({
             "serviceprovider": service_providers,
             "servicehours": service_hours,
@@ -949,12 +947,7 @@ class CommonController(http.Controller):
             "services": data})
 
 
-
-
-
-
-
-
+    # 3. Fetch service slot duration
 
     @core.http.rest_route(
         routes=build_route('/services/availableslots'),
@@ -1007,7 +1000,6 @@ class CommonController(http.Controller):
                 slots = appointment_type_id._get_appointment_slots(
                     tinmezone,
                 )
-
                 new_slots = next(
                     (day.get('slots') for month in slots for week in month.get('weeks') for day in week
                      if day.get('day') == date and day.get('slots')), []
@@ -1134,7 +1126,6 @@ class CommonController(http.Controller):
         answer_input_values =[]
         guests = None
 
-
         meeting = request.env['calendar.event'].with_context(
             mail_notify_author=True,
             mail_create_nolog=True,
@@ -1147,14 +1138,22 @@ class CommonController(http.Controller):
                 appointment_invite, guests, name, customer, staff_user, date_from, date_to
             )
         })
-        extra_ids_int = [int(id)for id in extra_ids]
         meeting.sudo().write({
             'vehicle_type_id': vehicle_type if vehicle_type else None,
             'service_type_id': vehicle_subtype if vehicle_subtype else None,
             'total_cost_vat_inclusive': total_cost_vat_inclusive,
-            'extra_ids': [(6, 0,extra_ids_int)],
+            'extra_ids': [(6, 0,extra_ids)],
         })
-
+        if extra_ids:
+            order_line_vals = []
+            for product_id in extra_ids:
+                order_line_vals.append((0, 0,{
+                    'product_id': product_id,
+                }))
+            request.env['sale.order'].sudo().create({
+                'partner_id': customer.id,
+                'order_line': order_line_vals,
+            })
         return request.make_json_response({
             "bookingid": meeting.id,
             "customerkaustid": customer_kaust_id,
@@ -1162,7 +1161,6 @@ class CommonController(http.Controller):
             "totalcostvatinclusive": total_cost_vat_inclusive,
             "status": "confirmed"
         })
-
 
 
     @core.http.rest_route(
