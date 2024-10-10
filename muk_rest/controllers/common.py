@@ -698,87 +698,9 @@ class CommonController(http.Controller):
     )
     def session(self, **kw):
         return request.make_json_response(request.env['ir.http'].session_info())
+    # Wayakit custom API's
 
-    @core.http.rest_route(
-        routes=build_route('/services/availableslots'),
-        methods=['POST'],
-        protected=True,
-        docs=dict(
-            tags=['Common'],
-            summary='Get Available Slots',
-            description='Returns the available slots.',
-            responses={
-                '200': {
-                    'description': 'Available Slots',
-                    'content': {
-                        'application/json': {
-                            'schema': {
-                                '$ref': '#/components/schemas/AvailableSlots'
-                            },
-                            'example': {
-                                "availableslots": [
-                                    {
-                                        "from": "2024-09-27T09:00:00+03:00",
-                                        "to": "2024-09-27T10:00:00+03:00"
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                }
-            },
-            default_responses=['400', '401', '500'],
-        ),
-    )
-    def get_available_slots(self, **kw):
-        service_id = kw.get('serviceid')
-        extras_ids = kw.get('extrasid')
-        date = kw.get('Date')
-        if service_id and date:
-            date = datetime.strptime(date, '%d%m%Y').date()
-            appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
-
-            if appointment_type_id:
-                total_duration = appointment_type_id.appointment_duration
-
-                product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
-                if (product_varients_ids):
-                    total_duration += sum(product_varients_ids.mapped('duration'))
-                total = appointment_type_id.appointment_duration
-                appointment_type_id.appointment_duration = total_duration
-                tinmezone = appointment_type_id.appointment_tz
-                slots = appointment_type_id._get_appointment_slots(
-                    tinmezone,
-                )
-
-                new_slots = next(
-                    (day.get('slots') for month in slots for week in month.get('weeks') for day in week
-                     if day.get('day') == date and day.get('slots')), []
-                )
-                if new_slots:
-                    appointment_type_id.appointment_duration = total
-                    availableslots = []
-                    timezone = pytz.timezone(tinmezone)
-
-                    for slot in new_slots:
-                        from_time = datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')
-                        from_time = timezone.localize(from_time)
-                        slot_duration = float(slot['slot_duration'])
-                        to_time = from_time + timedelta(hours=slot_duration)
-
-                        availableslots.append({
-                            'from': from_time.isoformat(),
-                            'to': to_time.isoformat()
-                        })
-                    return request.make_json_response({
-                        "availableslots": availableslots})
-                else:
-                    return "no slots is available"
-            else:
-                return "no service is available for this id"
-        else:
-            return "no service id or date is given"
-
+    # 1. Fetch Provider info
     @core.http.rest_route(
         routes=build_route('/Serviceprovider'),
         methods=['GET'],
@@ -877,12 +799,17 @@ class CommonController(http.Controller):
         for company in provider_companies:
             field_values = {}
 
-            for field in company.related_fields_ids:
-                field_name = field.name
-                field_value = getattr(company, field_name, None)
-                field_values[field_name] = field_value
+            # for field in company.related_fields_ids:
+            #     field_name = field.name
+            #     field_value = getattr(company, field_name, None)
+            #     field_values[field_name] = field_value
 
-            service_providers.append(field_values)
+            service_providers.append({
+                "name": company.name or "",
+                "description": company.description or "",
+                "phonenumber": company.phone or "",
+                "Termsandconditions": company.terms_and_conditions_url or "",
+            })
 
             for day in company.working_schedule_id.attendance_ids:
                 open_time = self._convert_time_to_string(day.hour_from) or ""
@@ -910,9 +837,11 @@ class CommonController(http.Controller):
             if company.working_schedule_specialdays_id:
                 open_time = self._convert_time_to_string(company.working_schedule_specialdays_id.open_time) or ""
                 close_time = self._convert_time_to_string(company.working_schedule_specialdays_id.close_time) or ""
+                start_date = company.working_schedule_specialdays_id.start_date.strftime("%d%m%Y") or ""
+                end_date = company.working_schedule_specialdays_id.end_date.strftime("%d%m%Y") or ""
                 special_hours.append({
-                    "startdate": company.working_schedule_specialdays_id.start_date or "",
-                    "enddate": company.working_schedule_specialdays_id.end_date or "",
+                    "startdate": start_date,
+                    "enddate": end_date,
                     "isaholiday": "No",
                     "opentime": open_time,
                     "closetime": close_time,
@@ -920,9 +849,94 @@ class CommonController(http.Controller):
                 })
 
         return request.make_json_response({
-            "serviceproviders": service_providers,
+            "serviceprovider": service_providers,
             "servicehours": service_hours,
             "specialdays": special_hours})
+
+
+
+
+    @core.http.rest_route(
+        routes=build_route('/services/availableslots'),
+        methods=['POST'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Get Available Slots',
+            description='Returns the available slots.',
+            responses={
+                '200': {
+                    'description': 'Available Slots',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/AvailableSlots'
+                            },
+                            'example': {
+                                "availableslots": [
+                                    {
+                                        "from": "2024-09-27T09:00:00+03:00",
+                                        "to": "2024-09-27T10:00:00+03:00"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def get_available_slots(self, **kw):
+        service_id = kw.get('serviceid')
+        extras_ids = kw.get('extrasid')
+        date = kw.get('Date')
+        if service_id and date:
+            date = datetime.strptime(date, '%d%m%Y').date()
+            appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
+
+            if appointment_type_id:
+                total_duration = appointment_type_id.appointment_duration
+
+                product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
+                if (product_varients_ids):
+                    total_duration += sum(product_varients_ids.mapped('duration'))
+                total = appointment_type_id.appointment_duration
+                appointment_type_id.appointment_duration = total_duration
+                tinmezone = appointment_type_id.appointment_tz
+                slots = appointment_type_id._get_appointment_slots(
+                    tinmezone,
+                )
+
+                new_slots = next(
+                    (day.get('slots') for month in slots for week in month.get('weeks') for day in week
+                     if day.get('day') == date and day.get('slots')), []
+                )
+                if new_slots:
+                    appointment_type_id.appointment_duration = total
+                    availableslots = []
+                    timezone = pytz.timezone(tinmezone)
+
+                    for slot in new_slots:
+                        from_time = datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')
+                        from_time = timezone.localize(from_time)
+                        slot_duration = float(slot['slot_duration'])
+                        to_time = from_time + timedelta(hours=slot_duration)
+
+                        availableslots.append({
+                            'from': from_time.isoformat(),
+                            'to': to_time.isoformat()
+                        })
+                    return request.make_json_response({
+                        "availableslots": availableslots})
+                else:
+                    return "no slots is available"
+            else:
+                return "no service is available for this id"
+        else:
+            return "no service id or date is given"
+
+
 
     def _convert_time_to_string(self, hour_float):
         # Convert float (e.g., 8.0) to string time format (e.g., '8:00 am')

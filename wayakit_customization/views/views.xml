@@ -30,11 +30,13 @@
                 <xpath expr="//page[@name='branches']" position="after">
                     <page string="Company Information" name="company_information">
                         <group>
-                            <field name="related_fields_ids" widget="many2many_tags"
-                                   string="Select Company Fields"/>
+                            <field name="description" />
+<!--                            <field name="related_fields_ids" widget="many2many_tags"-->
+<!--                                   string="Select Company Fields"/>-->
                             <field name="working_schedule_id"/>
                             <field name="is_service_provider"/>
                             <field name="working_schedule_specialdays_id"/>
+                            <field name="terms_and_conditions_url" widget="url" />
                         </group>
                     </page>
                 </xpath>

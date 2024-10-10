@@ -6,8 +6,9 @@ class ResCompany(models.Model):
 
     related_fields_ids = fields.Many2many('ir.model.fields', string='Related Fields',
                                           domain=lambda self: [('model', '=', self._name)])
-
     working_schedule_id = fields.Many2one('resource.calendar', string='Working Schedule',domain="[('company_id', '=', id)]" )
     working_schedule_specialdays_id = fields.Many2one('resource.calendar', string='Working Schedule special days')
     is_service_provider = fields.Boolean(string="Is Service Provider", default=False)
+    description = fields.Text(string='Description')
+    terms_and_conditions_url = fields.Char(string='Terms and Conditions Url')
 
