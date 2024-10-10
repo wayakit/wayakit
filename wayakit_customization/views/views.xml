@@ -16,8 +16,14 @@
             <field name="model">appointment.type</field>
             <field name="inherit_id" ref="appointment_account_payment.appointment_type_view_form"/>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='event_videocall_source']" position="after">
-                    <field name="service_type" widget="many2many_tags"/>
+                <xpath expr="//page[@name='messages']" position="after">
+                    <page string="Api Services Info" name="api_services_info">
+                        <group>
+                            <field name="api_service"/>
+                            <field name="api_description"/>
+                            <field name="service_type" widget="many2many_tags"/>
+                        </group>
+                    </page>
                 </xpath>
             </field>
         </record>

@@ -8,11 +8,11 @@
                 <sheet>
                     <group>
                         <group>
-                            <field name="name" widget="radio"/>
-                            <field name="in_use"/>
+                            <field name="name" />
+                            <field name="service_type" widget="radio"/>
                         </group>
                         <group>
-                            <field name="vehicle_type" invisible="name != 'vehicle'"/>
+                            <field name="vehicle_type" invisible="service_type != 'vehicle'"/>
                         </group>
                     </group>
                     <notebook>
@@ -44,8 +44,8 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="name"/>
+                <field name="service_type" />
                 <field name="vehicle_type" />
-                <field name="in_use"/>
             </tree>
         </field>
     </record>

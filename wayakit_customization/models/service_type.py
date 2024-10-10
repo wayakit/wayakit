@@ -5,7 +5,8 @@ class ServiceType(models.Model):
     _description = "Service Type"
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    name = fields.Selection([
+    name = fields.Char()
+    service_type = fields.Selection([
         ('vehicle', 'Vehicle'),
         ('curtain', 'Curtain'),
     ], string='Service Type')
