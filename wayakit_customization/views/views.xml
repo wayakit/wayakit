@@ -1,100 +1,102 @@
 <odoo>
     <data>
-<record id="view_product_product_form_inherit" model="ir.ui.view">
-            <field name="name">product.product.form.inherit.duration</field>
-            <field name="model">product.product</field>
-            <field name="inherit_id" ref="product.product_normal_form_view"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='detailed_type']" position="after">
-                    <field name="duration" widget="float_time"/>
-                </xpath>
-            </field>
-        </record>
-
-        <record id="view_appointment_type_form_inherit" model="ir.ui.view">
-            <field name="name">appointment.type.form.inherit</field>
-            <field name="model">appointment.type</field>
-            <field name="inherit_id" ref="appointment_account_payment.appointment_type_view_form"/>
-            <field name="arch" type="xml">
-                <xpath expr="//page[@name='messages']" position="after">
-                    <page string="Api Services Info" name="api_services_info">
-                        <group>
-                            <field name="api_service"/>
-                            <field name="api_description"/>
-                            <field name="service_type" widget="many2many_tags"/>
-                        </group>
-                    </page>
-                </xpath>
-            </field>
-        </record>
-
-        <record id="view_company_form_inherit" model="ir.ui.view">
-            <field name="name">Company Form Inherit</field>
-            <field name="model">res.company</field>
-            <field name="inherit_id" ref="base.view_company_form"/>
-            <field name="arch" type="xml">
-                <xpath expr="//page[@name='branches']" position="after">
-                    <page string="Company Information" name="company_information">
-                        <group>
-                            <field name="description" />
-<!--                            <field name="related_fields_ids" widget="many2many_tags"-->
-<!--                                   string="Select Company Fields"/>-->
-                            <field name="working_schedule_id"/>
-                            <field name="is_service_provider"/>
-                            <field name="working_schedule_specialdays_id"/>
-                            <field name="terms_and_conditions_url" widget="url" />
-                        </group>
-                    </page>
-                </xpath>
-            </field>
-        </record>
-        <record id="view_resource_calendar_form_inherit" model="ir.ui.view">
-            <field name="name">resource.calendar.form.inherit</field>
-            <field name="model">resource.calendar</field>
-            <field name="inherit_id" ref="resource.resource_calendar_form"/>
-            <field name="arch" type="xml">
-                <xpath expr="//field[@name='company_id']" position="after">
-                    <group>
-                        <field name="start_date"/>
-                        <field name="end_date"/>
-                        <field name="open_time" widget="float_time"/>
-                        <field name="close_time" widget="float_time"/>
-                    </group>
-                </xpath>
-            </field>
-        </record>
-        <record id="view_partner_form_inherit" model="ir.ui.view">
-            <field name="name">res.partner.form.inherit</field>
-            <field name="model">res.partner</field>
-            <field name="inherit_id" ref="base.view_partner_form"/>
-            <field name="arch" type="xml">
-                <field name="function" position="after">
-                    <field name="customer_kaust_id"/>
+        <record id="view_product_product_form_inherit" model="ir.ui.view">
+                <field name="name">product.product.form.inherit.duration</field>
+                <field name="model">product.product</field>
+                <field name="inherit_id" ref="product.product_normal_form_view"/>
+                <field name="arch" type="xml">
+                    <xpath expr="//field[@name='detailed_type']" position="after">
+                        <field name="duration" widget="float_time"/>
+                    </xpath>
                 </field>
+            </record>
+
+            <record id="view_appointment_type_form_inherit" model="ir.ui.view">
+                <field name="name">appointment.type.form.inherit</field>
+                <field name="model">appointment.type</field>
+                <field name="inherit_id" ref="appointment_account_payment.appointment_type_view_form"/>
+                <field name="arch" type="xml">
+                    <xpath expr="//page[@name='messages']" position="after">
+                        <page string="Api Services Info" name="api_services_info">
+                            <group>
+                                <field name="api_service"/>
+                                <field name="api_description"/>
+                                <field name="service_type" widget="many2many_tags"/>
+                            </group>
+                        </page>
+                    </xpath>
+                </field>
+            </record>
+
+            <record id="view_company_form_inherit" model="ir.ui.view">
+                <field name="name">Company Form Inherit</field>
+                <field name="model">res.company</field>
+                <field name="inherit_id" ref="base.view_company_form"/>
+                <field name="arch" type="xml">
+                    <xpath expr="//page[@name='branches']" position="after">
+                        <page string="Company Information" name="company_information">
+                            <group>
+                                <field name="description" />
+    <!--                            <field name="related_fields_ids" widget="many2many_tags"-->
+    <!--                                   string="Select Company Fields"/>-->
+                                <field name="working_schedule_id"/>
+                                <field name="is_service_provider"/>
+                                <field name="working_schedule_specialdays_id"/>
+                                <field name="terms_and_conditions_url" widget="url" />
+                            </group>
+                        </page>
+                    </xpath>
+                </field>
+            </record>
+
+            <record id="view_resource_calendar_form_inherit" model="ir.ui.view">
+                <field name="name">resource.calendar.form.inherit</field>
+                <field name="model">resource.calendar</field>
+                <field name="inherit_id" ref="resource.resource_calendar_form"/>
+                <field name="arch" type="xml">
+                    <xpath expr="//field[@name='company_id']" position="after">
+                        <group>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="open_time" widget="float_time"/>
+                            <field name="close_time" widget="float_time"/>
+                        </group>
+                    </xpath>
+                </field>
+            </record>
+
+            <record id="view_partner_form_inherit" model="ir.ui.view">
+                <field name="name">res.partner.form.inherit</field>
+                <field name="model">res.partner</field>
+                <field name="inherit_id" ref="base.view_partner_form"/>
+                <field name="arch" type="xml">
+                    <field name="function" position="after">
+                        <field name="customer_kaust_id"/>
+                    </field>
+                </field>
+            </record>
+
+            <record id="view_calendar_event_form_inherit" model="ir.ui.view">
+            <field name="name">calendar.event.form.inherit</field>
+            <field name="model">calendar.event</field>
+            <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='page_invitations']" position="after">
+                    <page string="Booking Details" name="booking_details">
+                        <group>
+                            <group>
+                                <field name="vehicle_type_id"/>
+                                <field name="service_type_id"/>
+                                <field name="sale_order_id"/>
+                            </group>
+                            <group>
+                                <field name="extra_ids" widget="many2many_tags"/>
+                                <field name="total_cost_vat_inclusive"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
             </field>
         </record>
-        <record id="view_calendar_event_form_inherit" model="ir.ui.view">
-        <field name="name">calendar.event.form.inherit</field>
-        <field name="model">calendar.event</field>
-        <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='page_invitations']" position="after">
-                <page string="Booking Details" name="booking_details">
-                    <group>
-                        <group>
-                            <field name="vehicle_type_id"/>
-                            <field name="service_type_id"/>
-                            <field name="sale_order_id"/>
-                        </group>
-                        <group>
-                            <field name="extra_ids" widget="many2many_tags"/>
-                            <field name="total_cost_vat_inclusive"/>
-                        </group>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
-
     </data>
 </odoo>

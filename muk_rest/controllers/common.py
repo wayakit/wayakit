@@ -1149,9 +1149,14 @@ class CommonController(http.Controller):
                 'price_unit': vehicle_subtype.inclusive_tax_price
             })]
             for product_id in extra_ids:
-                order_line_vals.append((0, 0, {
-                    'product_id': product_id,
-                }))
+                product_variant = request.env['product.product'].browse(product_id).exists()
+                if product_variant:
+                    unit_price = product_variant.taxes_id.compute_all(product_variant.lst_price, product=product_variant).get(
+                        'total_included')
+                    order_line_vals.append((0, 0, {
+                        'product_id': product_id,
+                        'price_unit': unit_price,
+                    }))
             order = request.env['sale.order'].sudo().create({
                 'partner_id': customer.id,
                 'order_line': order_line_vals,
