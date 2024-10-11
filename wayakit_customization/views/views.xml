@@ -84,6 +84,7 @@
                         <group>
                             <field name="vehicle_type_id"/>
                             <field name="service_type_id"/>
+                            <field name="sale_order_id"/>
                         </group>
                         <group>
                             <field name="extra_ids" widget="many2many_tags"/>

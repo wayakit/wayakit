@@ -818,13 +818,15 @@ class CommonController(http.Controller):
                 for leave in company.working_schedule_id.global_leave_ids:
                     start_date = leave.date_from.strftime("%d%m%Y") or ""
                     end_date = leave.date_to.strftime("%d%m%Y") or ""
+                    open_time = leave.date_from.strftime("%I:%M %p")
+                    close_time = leave.date_to.strftime("%I:%M %p")
                     if fields.datetime.today() <= leave.date_to:
                         special_hours.append({
                             "startdate": start_date,
                             "enddate": end_date,
                             "isaholiday": "Yes" if leave.work_entry_type_id.is_leave else "No",
-                            "opentime": "",
-                            "closetime": "",
+                            "opentime": open_time if not leave.work_entry_type_id.is_leave else "",
+                            "closetime": close_time if not leave.work_entry_type_id.is_leave else "",
                             "reason": leave.name or ""
                         })
 
@@ -844,13 +846,15 @@ class CommonController(http.Controller):
                 for leave in company.working_schedule_specialdays_id.global_leave_ids:
                     start_date = leave.date_from.strftime("%d%m%Y")
                     end_date = leave.date_to.strftime("%d%m%Y")
+                    open_time = leave.date_from.strftime("%I:%M %p")
+                    close_time = leave.date_to.strftime("%I:%M %p")
                     if fields.datetime.today() <= leave.date_to:
                         special_hours.append({
                             "startdate": start_date,
                             "enddate": end_date,
                             "isaholiday": "Yes" if leave.work_entry_type_id.is_leave else "No",
-                            "opentime": "",
-                            "closetime": "",
+                            "opentime": open_time if not leave.work_entry_type_id.is_leave else "",
+                            "closetime": close_time if not leave.work_entry_type_id.is_leave else "",
                             "reason": leave.name or ""
                         })
         return request.make_json_response({
@@ -912,14 +916,15 @@ class CommonController(http.Controller):
             vehiclesubtype = []
             if service.product_id:
                 for variant in service.product_id.product_variant_ids:
-                    total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
-                        'total_included')
-                    extras.append({
-                        "extrasid": variant.id,
-                        "extrasname": variant.product_template_variant_value_ids.name,
-                        "slottimeinminutes": str(int(variant.duration * 60)),
-                        "pricevatinclusive": total_included,
-                    })
+                    if service.product_id != variant:
+                        total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
+                            'total_included')
+                        extras.append({
+                            "extrasid": variant.id,
+                            "extrasname": variant.product_template_variant_value_ids.name,
+                            "slottimeinminutes": str(int(variant.duration * 60)),
+                            "pricevatinclusive": total_included,
+                        })
             for service_type in service.service_type:
                 vehicletype.append({
                     "vehicletypeid": service_type.id,
@@ -986,7 +991,7 @@ class CommonController(http.Controller):
         date = kw.get('Date')
         if service_id and date:
             date = datetime.strptime(date, '%d%m%Y').date()
-            appointment_type_id = request.env['appointment.type'].sudo().browse(int(service_id)).exists()
+            appointment_type_id = request.env['appointment.type'].sudo().browse(service_id).exists()
 
             if appointment_type_id:
                 total_duration = appointment_type_id.appointment_duration
@@ -1041,6 +1046,8 @@ class CommonController(http.Controller):
             hours -= 12
         return f"{hours}:{minutes:02d} {am_pm}"
 
+    # 4. Make a booking
+
     @core.http.rest_route(
         routes=build_route('/services/<serviceid>/book'),
         methods=['POST'],
@@ -1083,8 +1090,6 @@ class CommonController(http.Controller):
         if not service_id:
             return {"status": "error", "message": "Service ID is required."}
 
-        service_id = int(service_id)
-
         if slot_info:
                 slot_from = datetime.fromisoformat(slot_info[0].get('from'))
                 slot_to = datetime.fromisoformat(slot_info[0].get('to'))
@@ -1113,8 +1118,8 @@ class CommonController(http.Controller):
                 'email': customer_email or '',
                 'phone': customer_phone or '',
             })
-        vehicle_type = request.env['service.type'].sudo().search([('id', '=', int(vehicle_type_id))])
-        vehicle_subtype = request.env['vehicle.type'].sudo().search([('id', '=', int(vehicle_subtype_id))])
+        vehicle_type = request.env['service.type'].sudo().search([('id', '=', vehicle_type_id)])
+        vehicle_subtype = request.env['vehicle.type'].sudo().search([('id', '=', vehicle_subtype_id)])
         asked_capacity = 1
         booking_line_values = []
         description = ""
@@ -1138,12 +1143,6 @@ class CommonController(http.Controller):
                 appointment_invite, guests, name, customer, staff_user, date_from, date_to
             )
         })
-        meeting.sudo().write({
-            'vehicle_type_id': vehicle_type if vehicle_type else None,
-            'service_type_id': vehicle_subtype if vehicle_subtype else None,
-            'total_cost_vat_inclusive': total_cost_vat_inclusive,
-            'extra_ids': [(6, 0, extra_ids)],
-        })
         if appointment_type_id.product_id:
             order_line_vals = [(0, 0, {
                 'product_id': appointment_type_id.product_id.id,
@@ -1153,10 +1152,17 @@ class CommonController(http.Controller):
                 order_line_vals.append((0, 0, {
                     'product_id': product_id,
                 }))
-            request.env['sale.order'].sudo().create({
+            order = request.env['sale.order'].sudo().create({
                 'partner_id': customer.id,
                 'order_line': order_line_vals,
             })
+        meeting.sudo().write({
+            'vehicle_type_id': vehicle_type if vehicle_type else None,
+            'service_type_id': vehicle_subtype if vehicle_subtype else None,
+            'total_cost_vat_inclusive': total_cost_vat_inclusive,
+            'extra_ids': [(6, 0, extra_ids)],
+            'sale_order_id': order.id if order else "",
+        })
         return request.make_json_response({
             "bookingid": meeting.id,
             "customerkaustid": customer_kaust_id,
@@ -1165,6 +1171,7 @@ class CommonController(http.Controller):
             "status": "confirmed"
         })
 
+    # 5. Cancel a booking
 
     @core.http.rest_route(
         routes=build_route('/services/<int:service_id>/cancel/<int:booking_id>'),
@@ -1199,7 +1206,6 @@ class CommonController(http.Controller):
     def cancel_booking(self, service_id, booking_id):
         event = request.env['calendar.event'].sudo().search([('id', '=', booking_id),
                                                             ('appointment_type_id', '=', service_id)], limit=1)
-        data =[]
         partner = event.appointment_booker_id
         if event and partner:
             if fields.Datetime.from_string(
@@ -1207,15 +1213,16 @@ class CommonController(http.Controller):
                     hours=event.appointment_type_id.min_cancellation_hours):
                 status = "It's too late to cancel online, please contact the attendees another way if you really can't make it."
             else:
-                event.with_context(mail_notify_author=True).sudo().action_cancel_meeting([int(partner.id)])
+                event.with_context(mail_notify_author=True).sudo().action_cancel_meeting([partner.id])
                 status = 'cancel'
+                if event.sale_order_id:
+                    event.sale_order_id.action_cancel()
         else:
             status = 'Event not found'
-        data.append({
-                'bookingid': booking_id,
-                'customerkaustid': partner.customer_kaust_id if partner and partner.customer_kaust_id else '',
-                'customername': partner.name if partner else '',
-                'status': status,
-                'totalcostvatinclusive': event.total_cost_vat_inclusive if event else 0.0,
+        return request.make_json_response({
+            'bookingid': booking_id,
+            'customerkaustid': partner.customer_kaust_id if partner and partner.customer_kaust_id else '',
+            'customername': partner.name if partner else '',
+            'status': status,
+            'totalcostvatinclusive': event.total_cost_vat_inclusive if event else 0.0
         })
-        return request.make_json_response({ "data": data})
