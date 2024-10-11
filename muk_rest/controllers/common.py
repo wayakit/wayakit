@@ -1077,7 +1077,7 @@ class CommonController(http.Controller):
         vehicle_use_id = kw.get('vehicleuseid')
         vehicle_subtype_id = kw.get('vehiclesubtype')
         total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
-        extra_ids = kw.get('extrasid')
+        extra_ids = kw.get('extrasid') or []
         slot_info = kw.get('slot', [])
 
         if not service_id:
@@ -1142,12 +1142,15 @@ class CommonController(http.Controller):
             'vehicle_type_id': vehicle_type if vehicle_type else None,
             'service_type_id': vehicle_subtype if vehicle_subtype else None,
             'total_cost_vat_inclusive': total_cost_vat_inclusive,
-            'extra_ids': [(6, 0,extra_ids)],
+            'extra_ids': [(6, 0, extra_ids)],
         })
-        if extra_ids:
-            order_line_vals = []
+        if appointment_type_id.product_id:
+            order_line_vals = [(0, 0, {
+                'product_id': appointment_type_id.product_id,
+                'unit_price': vehicle_subtype.inclusive_tax_price
+            })]
             for product_id in extra_ids:
-                order_line_vals.append((0, 0,{
+                order_line_vals.append((0, 0, {
                     'product_id': product_id,
                 }))
             request.env['sale.order'].sudo().create({
