@@ -1146,7 +1146,7 @@ class CommonController(http.Controller):
         })
         if appointment_type_id.product_id:
             order_line_vals = [(0, 0, {
-                'product_id': appointment_type_id.product_id,
+                'product_id': appointment_type_id.product_id.id,
                 'price_unit': vehicle_subtype.inclusive_tax_price
             })]
             for product_id in extra_ids:
