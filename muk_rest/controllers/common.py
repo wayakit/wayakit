@@ -1049,7 +1049,7 @@ class CommonController(http.Controller):
     # 4. Make a booking
 
     @core.http.rest_route(
-        routes=build_route('/services/<serviceid>/book'),
+        routes=build_route('/services/<int:serviceid>/book'),
         methods=['POST'],
         protected=True,
         docs=dict(
