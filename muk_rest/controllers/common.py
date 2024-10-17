@@ -281,6 +281,13 @@ class CommonController(http.Controller):
                     'status': 'cancel',
                     'totalcostvatinclusive': 1000,
                 },
+                'Feedback': {
+                    'bookingid': 41,
+                    'customerkaustid': 'KAUST98765',
+                    'customername': 'John Doe',
+                    'status': 'cancel',
+                    'totalcostvatinclusive': 1000,
+                },
                 "AvailableSlots": {
                     "type": "object",
                     "properties": {
@@ -1340,4 +1347,67 @@ class CommonController(http.Controller):
             return 'No customer found for this email'
         return request.make_json_response({
             'userrequests': data
+        })
+
+    # 7. Review user booking's
+
+    @core.http.rest_route(
+        routes=build_route('/feedback'),
+        methods=['POST'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Get User Feedback',
+            description='Get User Feedback',
+            responses={
+                '200': {
+                    'description': 'Services Info',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/Feedback'
+                            },
+                            'example': {
+                                'bookingid': 41,
+                                'customerkaustid': 'KAUST98765',
+                                'customername': 'John Doe',
+                                'status': 'cancel',
+                                'totalcostvatinclusive': 1000,
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def update_user_feedback(self, **kw ):
+        booking_id = kw.get('bookingid')
+        comments = kw.get('Comments')
+        rating = kw.get('Ratings')
+        name = kw.get('customername')
+        kaust_id = kw.get('customerkaustid')
+        status = ''
+        if booking_id:
+            event = request.env['calendar.event'].sudo().browse(booking_id).exists()
+            if event:
+                event.sudo().write({
+                    'customer_rating': rating,
+                    'customer_feedback': comments,
+                })
+                status = 'User Feedback submitted successfully.'
+                event.sudo().message_post(
+                    body=f"Customer name: {name}, "
+                         f"Customer kaust id: {kaust_id}, "
+                         f"Rating: {rating}, "
+                         f"Comment: {comments} ",
+                    subject="Feedback",
+                    subtype_xmlid="mail.mt_note",
+                    message_type='comment'  # This ensures HTML will be rendered properly
+                )
+            else:
+                status = 'No booking found with given Id'
+        return request.make_json_response({
+            'bookingid': booking_id ,
+            'status': status
         })

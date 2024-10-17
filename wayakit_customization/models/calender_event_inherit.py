@@ -10,3 +10,5 @@ class CalendarEvent(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='Sale order', readonly=True)
     vehicle_use_id = fields.Integer("Vehicle use Id", readonly=True)
     booking_date = fields.Date("Date", readonly=True)
+    customer_feedback = fields.Text("Comments", readonly=True)
+    customer_rating = fields.Float('Rating')
