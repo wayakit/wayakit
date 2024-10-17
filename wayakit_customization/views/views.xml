@@ -88,10 +88,12 @@
                                 <field name="vehicle_type_id"/>
                                 <field name="service_type_id"/>
                                 <field name="sale_order_id"/>
+                                <field name="booking_date"/>
                             </group>
                             <group>
                                 <field name="extra_ids" widget="many2many_tags"/>
                                 <field name="total_cost_vat_inclusive"/>
+                                <field name="vehicle_use_id"/>
                             </group>
                         </group>
                     </page>
