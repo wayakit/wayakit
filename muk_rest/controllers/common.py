@@ -53,6 +53,7 @@ from datetime import datetime, date, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 from odoo.addons.muk_rest import core
 from odoo.addons.muk_rest.tools.http import build_route
+from markupsafe import Markup
 import json
 from odoo import tools, _
 from odoo import http
@@ -1271,7 +1272,7 @@ class CommonController(http.Controller):
                 if event.sale_order_id:
                     event.sale_order_id.action_cancel()
         else:
-            status = 'Event not found'
+            status = 'Booking not found'
         return request.make_json_response({
             'bookingid': booking_id,
             'customerkaustid': partner.customer_kaust_id if partner and partner.customer_kaust_id else '',
@@ -1349,7 +1350,7 @@ class CommonController(http.Controller):
             'userrequests': data
         })
 
-    # 7. Review user booking's
+    # 7. Update user feedback
 
     @core.http.rest_route(
         routes=build_route('/feedback'),
@@ -1397,13 +1398,12 @@ class CommonController(http.Controller):
                 })
                 status = 'User Feedback submitted successfully.'
                 event.sudo().message_post(
-                    body=f"Customer name: {name}, "
-                         f"Customer kaust id: {kaust_id}, "
-                         f"Rating: {rating}, "
-                         f"Comment: {comments} ",
+                    body=Markup(f"Customer name: {name or ''} <br>"
+                                 f"Customer kaust id: {kaust_id or ''} <br>"
+                                 f"Rating: {rating or ''} <br>"
+                                 f"Comment: {comments or ''} <br>"),
                     subject="Feedback",
-                    subtype_xmlid="mail.mt_note",
-                    message_type='comment'  # This ensures HTML will be rendered properly
+                    message_type='comment'
                 )
             else:
                 status = 'No booking found with given Id'
