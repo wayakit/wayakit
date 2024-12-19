@@ -12,3 +12,5 @@ class CalendarEvent(models.Model):
     booking_date = fields.Date("Date", readonly=True)
     customer_feedback = fields.Text("Comments", readonly=True)
     customer_rating = fields.Float('Rating')
+    reminder_notification = fields.Boolean()
+    completion_notification = fields.Boolean()

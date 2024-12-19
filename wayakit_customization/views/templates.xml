@@ -1,5 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="res_config_settings_mail_inherited" model="ir.ui.view">
+        <field name="name">res.config.settings.mail.inherited</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='integration']" position="after">
+                <block title="Appointment Notification" name="appointment_notification">
+                    <setting string="Notification URL">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="notification_url" string="URL" class="col-lg-3"/>
+                                <field name="notification_url"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting string="Notification Token">
+                        <div class="content-group">
+                            <div class="row mt16">
+                                <label for="notification_token" string="Token" class="col-lg-3"/>
+                                <field name="notification_token"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_service_type_form_view" model="ir.ui.view">
         <field name="name">service.type.form</field>
         <field name="model">service.type</field>

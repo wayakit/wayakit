@@ -1,0 +1,16 @@
+<odoo>
+    <data noupdate="1" >
+            <record id="ir_cron_wayakit_notification_api" model="ir.cron">
+            <field name="name">Notification Update Api</field>
+            <field eval="True" name="active"/>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">5</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="state">code</field>
+            <field name="doall">False</field>
+            <field name="model_id" ref="model_appointment_type"/>
+            <field name="code">model.status_notification_update()</field>
+        </record>
+    </data>
+</odoo>

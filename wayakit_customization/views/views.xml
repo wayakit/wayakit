@@ -16,7 +16,7 @@
                 <field name="model">appointment.type</field>
                 <field name="inherit_id" ref="appointment_account_payment.appointment_type_view_form"/>
                 <field name="arch" type="xml">
-                    <xpath expr="//page[@name='messages']" position="after">
+                    <xpath expr="//notebook" position="inside">
                         <page string="Api Services Info" name="api_services_info">
                             <group>
                                 <field name="api_service"/>
@@ -24,6 +24,21 @@
                                 <field name="service_type" widget="many2many_tags"/>
                             </group>
                         </page>
+                    </xpath>
+                    <xpath expr="//page[@name='messages']/label[@for='message_intro']" position="before">
+                        <group>
+                            <group string="Reminder Notification Details">
+<!--                                <field name="reminder_featureName" string="FeatureName"/>-->
+                                <field name="reminder_notification_title" string="Title"/>
+                                <field name="reminder_notification_body"  string="body"/>
+                            </group>
+                            <group string="Completion Notification Details">
+<!--                                <field name="completion_featureName" string="FeatureName"/>-->
+                                <field name="completion_notification_title" string="Title"/>
+                                <field name="completion_notification_body"  string="body"/>
+                            </group>
+                        </group>
+                        <br/>
                     </xpath>
                 </field>
             </record>
