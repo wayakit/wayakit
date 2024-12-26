@@ -36,12 +36,12 @@ class AppointmentType(models.Model):
                 for event in events_reminder:
                     start = event.start - timedelta(hours=1)
                     if from_datetime <= start <= to_datetime:
-                        reminder_kaust_id.append(event.appointment_booker_id.customer_kaust_id) if event.appointment_booker_id else None
+                        reminder_kaust_id.append(event.appointment_booker_id.customer_kaust_id) if event.appointment_booker_id and event.appointment_booker_id.customer_kaust_id else None
                         reminder_event_ids.append(event.id)
                 events_completion = appointment.meeting_ids.filtered(lambda x: x.reminder_notification and not x.completion_notification)
                 for events_compl in events_completion:
                     if events_compl.stop <= current_datetime:
-                        completion_kaust_id.append(events_compl.appointment_booker_id.customer_kaust_id) if event.appointment_booker_id else None
+                        completion_kaust_id.append(events_compl.appointment_booker_id.customer_kaust_id) if events_compl.appointment_booker_id and events_compl.appointment_booker_id.customer_kaust_id else None
                         completion_event_ids.append(event.id)
                 if reminder_kaust_id:
                     data = self.prepare_notification_api_values(appointment.reminder_notification_title,
