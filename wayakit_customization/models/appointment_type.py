@@ -23,7 +23,7 @@ class AppointmentType(models.Model):
         url = self.env['ir.config_parameter'].sudo().get_param('wayakit_customization.notification_url')
         if token and url:
             current_datetime = fields.Datetime.now()
-            print('current_datetime')
+            _logger.info("current datetime: %s", current_datetime)
             from_datetime = current_datetime - timedelta(minutes=7)
             to_datetime = current_datetime + timedelta(minutes=7)
             Appointments = self.search([('api_service', '=', True)])
@@ -76,12 +76,11 @@ class AppointmentType(models.Model):
             "Content-Type": "application/json",
             "Authorization": "Bearer" + " " + token
         }
-        print(data)
+        _logger.info("Api data: %s", data)
         try:
             response = requests.post(url, headers=headers, json=data)
             data = response.json()
-            print('response:')
-            print(data)
+            _logger.info("Api response: %s", data)
             if data.get('status') == 200:
                 return True
         except Exception as e:
