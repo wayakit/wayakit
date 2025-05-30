@@ -48,6 +48,7 @@ class PaymentProvider(models.Model):
         self.ensure_one()
 
         if self.state == 'enabled':
-            return 'https://api.myfatoorah.com/'
+            # return 'https://api.myfatoorah.com/'
+            return 'https://api-sa.myfatoorah.com/'
         else:
             return 'https://apitest.myfatoorah.com/'
