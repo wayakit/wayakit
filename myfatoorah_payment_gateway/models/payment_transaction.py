@@ -55,6 +55,7 @@ class PaymentTransaction(models.Model):
             raise ValueError("Please provide the phone number.")
         else:
             phone_number = phone_number.replace(str(MobileCountryCode), '')
+            phone_number = phone_number.replace(str(' '), '')
             if phone_number.startswith('+'):
                 phone_number = phone_number[1:]
             elif not phone_number:
