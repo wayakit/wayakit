@@ -848,8 +848,9 @@ class CommonController(http.Controller):
             if company.working_schedule_specialdays_id:
                 open_time = self._convert_time_to_string(company.working_schedule_specialdays_id.open_time) or ""
                 close_time = self._convert_time_to_string(company.working_schedule_specialdays_id.close_time) or ""
-                start_date = company.working_schedule_specialdays_id.start_date.strftime("%d%m%Y") or ""
-                end_date = company.working_schedule_specialdays_id.end_date.strftime("%d%m%Y") or ""
+                start_date = (company.working_schedule_specialdays_id.start_date and company.working_schedule_specialdays_id.start_date.strftime("%d%m%Y")) or ""
+                end_date = (company.working_schedule_specialdays_id.end_date and company.working_schedule_specialdays_id.end_date.strftime("%d%m%Y")) or ""
+
                 special_hours.append({
                     "startdate": start_date,
                     "enddate": end_date,
@@ -936,7 +937,7 @@ class CommonController(http.Controller):
                             'total_included')
                         extras.append({
                             "extrasid": variant.id,
-                            "extrasname": variant.product_template_variant_value_ids.name,
+                            "extrasname": " ".join(variant.product_template_variant_value_ids.mapped("name")),
                             "slottimeinminutes": str(int(variant.duration * 60)),
                             "pricevatinclusive": total_included,
                         })
