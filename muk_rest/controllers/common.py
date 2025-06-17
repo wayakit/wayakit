@@ -949,9 +949,9 @@ class CommonController(http.Controller):
 
                 for subtype in service_type.sub_type_ids:
                     if subtype.inclusive_tax_price:
-                        rounded_price = round(subtype.inclusive_tax_price, 2)
+                        rounded_price = format(subtype.inclusive_tax_price, '.2f')
                     else:
-                        rounded_price = 0.0
+                        rounded_price = 0.00
                     vehiclesubtype.append({
                         "vehicletypeid": service_type.id,
                         "vehiclesubtypeid": subtype.id,
