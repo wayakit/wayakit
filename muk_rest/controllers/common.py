@@ -948,11 +948,15 @@ class CommonController(http.Controller):
                 })
 
                 for subtype in service_type.sub_type_ids:
+                    if subtype.inclusive_tax_price:
+                        rounded_price = round(subtype.inclusive_tax_price, 2)
+                    else:
+                        rounded_price = 0.0
                     vehiclesubtype.append({
                         "vehicletypeid": service_type.id,
                         "vehiclesubtypeid": subtype.id,
                         "vehiclesubtypename": subtype.name,
-                        "pricevatinclusive": subtype.inclusive_tax_price
+                        "pricevatinclusive": rounded_price
                     })
             slot_time_in_min = int(service.appointment_duration * 60)
             data.append({
