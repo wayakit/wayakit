@@ -813,6 +813,7 @@ class CommonController(http.Controller):
 
         for company in provider_companies:
             service_providers.append({
+                "id" : company.id,
                 "name": company.name or "",
                 "description": company.description or "",
                 "phonenumber": company.phone or "",
@@ -917,57 +918,74 @@ class CommonController(http.Controller):
     def get_services(self, **kw):
         services = request.env['appointment.type'].sudo().search([('api_service', '=', True)])
         data = []
-        vehicleuse = [{
-            "vehicleuseid": '1',
-            "vehicleusename": 'Personal'
-        },
-            {
-                "vehicleuseid": '2',
-                "vehicleusename": 'Business'
-            }
-        ]
+        # vehicleuse = [{
+        #     "vehicleuseid": '1',
+        #     "vehicleusename": 'Personal'
+        # },
+        #     {
+        #         "vehicleuseid": '2',
+        #         "vehicleusename": 'Business'
+        #     }
+        # ]
         for service in services:
             extras = []
             vehicletype = []
             vehiclesubtype = []
+            questions = []
             if service.product_id:
                 for variant in service.product_id.product_variant_ids:
-                    if service.product_id != variant:
-                        total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
-                            'total_included')
-                        extras.append({
-                            "extrasid": variant.id,
-                            "extrasname": " ".join(variant.product_template_variant_value_ids.mapped("name")),
-                            "slottimeinminutes": str(int(variant.duration * 60)),
-                            "pricevatinclusive": total_included,
-                        })
-            for service_type in service.service_type:
-                vehicletype.append({
-                    "vehicletypeid": service_type.id,
-                    "vehicletypename":  service_type.vehicle_type if service_type.vehicle_type else service_type.service_type
-                })
-
-                for subtype in service_type.sub_type_ids:
-                    if subtype.inclusive_tax_price:
-                        rounded_price = format(subtype.inclusive_tax_price, '.2f')
-                    else:
-                        rounded_price = 0.00
-                    vehiclesubtype.append({
-                        "vehicletypeid": service_type.id,
-                        "vehiclesubtypeid": subtype.id,
-                        "vehiclesubtypename": subtype.name,
-                        "pricevatinclusive": rounded_price
+                    # if service.product_id != variant:
+                    total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
+                        'total_included')
+                    extras.append({
+                        "extrasid": variant.id,
+                        "extrasname": " ".join(variant.product_template_variant_value_ids.mapped("name")),
+                        "slottimeinminutes": str(int(variant.duration * 60)),
+                        "pricevatinclusive": total_included,
                     })
+            for question in service.question_ids:
+                if question.api_question:
+                    answers = []
+                    if question.answer_ids:
+                        for answer in question.answer_ids:
+                            answers.append(answer.name)
+
+                    questions.append({
+                        "name" : question.name,
+                        "required" : question.question_required,
+                        "type" : question.question_type,
+                        'answers': answers
+                    })
+
+
+            # for service_type in service.service_type:
+            #     vehicletype.append({
+            #         "vehicletypeid": service_type.id,
+            #         "vehicletypename":  service_type.vehicle_type if service_type.vehicle_type else service_type.service_type
+            #     })
+            #
+            #     for subtype in service_type.sub_type_ids:
+            #         if subtype.inclusive_tax_price:
+            #             rounded_price = format(subtype.inclusive_tax_price, '.2f')
+            #         else:
+            #             rounded_price = 0.00
+            #         vehiclesubtype.append({
+            #             "vehicletypeid": service_type.id,
+            #             "vehiclesubtypeid": subtype.id,
+            #             "vehiclesubtypename": subtype.name,
+            #             "pricevatinclusive": rounded_price
+            #         })
             slot_time_in_min = int(service.appointment_duration * 60)
             data.append({
                 "serviceid": service.id or "",
                 "servicename": service.name or "",
                 "description": service.api_description or "",
                 "slottimeinminutes": str(slot_time_in_min),
-                "vehicletype": vehicletype,
-                "vehicleuse": vehicleuse,
-                "vehiclesubtype": vehiclesubtype,
+                # "vehicletype": vehicletype,
+                # "vehicleuse": vehicleuse,
+                # "vehiclesubtype": vehiclesubtype,
                 "extrasid": extras,
+                "questions": questions,
             })
         return request.make_json_response({
             "services": data})
@@ -1101,37 +1119,72 @@ class CommonController(http.Controller):
         customer_email = kw.get('customeremail')
         customer_phone = kw.get('customerphone')
         service_id = kw.get('serviceid')
-        vehicle_type_id = kw.get('vehicletypeid')
-        vehicle_use_id = kw.get('vehicleuseid')
-        vehicle_subtype_id = kw.get('vehiclesubtype')
         total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
         extra_ids = kw.get('extrasid') or []
         slot_info = kw.get('slot', [])
         Date = kw.get('Date')
+        questions = kw.get('questions', [])
 
+        # Initialize variables that might be used later
+        meeting = None
+        order = None
+        date_from = None
+        date_to = None
+
+        # Build HTML list safely
+        html_list = "<ul>"
+        html_list += f"<li>customer name: {customer_name or ''}</li>"
+        html_list += f"<li>customer email: {customer_email or ''}</li>"
+        html_list += f"<li>customer phone: {customer_phone or ''}</li>"
+        html_list += f"<li>customer kaust_id: {customer_kaust_id or ''}</li>"
+
+        # Safe iteration over questions
+        if questions:
+            for q in questions:
+                if isinstance(q, dict) and 'name' in q and 'answers' in q:
+                    html_list += f"<li>{q['name']}: {q['answers']}</li>"
+        html_list += "</ul>"
+
+        # Validate required fields
         if not service_id:
             return {"status": "error", "message": "Service ID is required."}
 
-        if slot_info:
-                slot_from = datetime.fromisoformat(slot_info[0].get('from'))
-                slot_to = datetime.fromisoformat(slot_info[0].get('to'))
-        else:
+        # Validate and parse slot information
+        if not slot_info or not isinstance(slot_info, list) or len(slot_info) == 0:
             return {"status": "error", "message": "Slot information is required."}
+
+        try:
+            first_slot = slot_info[0]
+            if not isinstance(first_slot, dict) or 'from' not in first_slot or 'to' not in first_slot:
+                return {"status": "error", "message": "Invalid slot format."}
+
+            slot_from = datetime.fromisoformat(first_slot.get('from'))
+            slot_to = datetime.fromisoformat(first_slot.get('to'))
+        except (ValueError, TypeError, AttributeError) as e:
+            return {"status": "error", "message": f"Invalid slot datetime format: {str(e)}"}
+
+        # Calculate duration
         duration = slot_to - slot_from
         duration_in_hours = duration.total_seconds() / 3600 if duration else 0
 
+        # Validate service
         appointment_type_id = request.env['appointment.type'].sudo().browse(service_id).exists()
-
         if not appointment_type_id:
             return {"status": "error", "message": "Invalid service ID."}
 
+        # Process timezone and dates
         timezone = appointment_type_id.appointment_tz or 'UTC'
         start_date1 = fields.Datetime.to_string(slot_from)
-        tz_session = pytz.timezone(timezone)
-        date_from = tz_session.localize(fields.Datetime.from_string(start_date1)).astimezone(pytz.utc).replace(
-            tzinfo=None)
-        date_to = date_from + relativedelta(hours=duration_in_hours)
 
+        try:
+            tz_session = pytz.timezone(timezone)
+            date_from = tz_session.localize(fields.Datetime.from_string(start_date1)).astimezone(pytz.utc).replace(
+                tzinfo=None)
+            date_to = date_from + relativedelta(hours=duration_in_hours)
+        except Exception as e:
+            return {"status": "error", "message": f"Timezone processing error: {str(e)}"}
+
+        # Find or create partner
         partner = request.env['res.partner'].sudo().search([('customer_kaust_id', '=', customer_kaust_id)], limit=1)
         if not partner:
             partner = request.env['res.partner'].sudo().create({
@@ -1140,92 +1193,136 @@ class CommonController(http.Controller):
                 'email': customer_email or '',
                 'phone': customer_phone or '',
             })
-        vehicle_type = request.env['service.type'].sudo().search([('id', '=', vehicle_type_id)])
-        vehicle_subtype = request.env['vehicle.type'].sudo().search([('id', '=', vehicle_subtype_id)])
+
+        # Initialize other variables
         asked_capacity = 1
         booking_line_values = []
-        description = ""
+        description = html_list
         duration = duration_in_hours
         appointment_invite = request.env['appointment.invite'].sudo().browse(-1).exists()
         name = partner.name
         customer = partner
+
+        # Validate staff user exists
+        if not appointment_type_id.staff_user_ids:
+            return {"status": "error", "message": "No staff user assigned to this service."}
+
         staff_user = appointment_type_id.staff_user_ids[0]
-        answer_input_values =[]
+        answer_input_values = []
         guests = None
 
+        # Process duration and slots
         total_duration = appointment_type_id.appointment_duration
         product_varients_ids = request.env['product.product'].browse(extra_ids).exists()
-        if (product_varients_ids):
+        if product_varients_ids:
             total_duration += sum(product_varients_ids.mapped('duration'))
+
         total = appointment_type_id.appointment_duration
         appointment_type_id.appointment_duration = total_duration
+
+        # Parse Date safely
         if Date:
-            Date = datetime.strptime(Date, '%d%m%Y').date()
-        slots = appointment_type_id._get_appointment_slots(
-            timezone,
-        )
-        appointment_type_id.appointment_duration = total
-        slots = next(
-            (day.get('slots') for month in slots for week in month.get('weeks') for day in week
-             if day.get('day') == date_from.date() and day.get('slots')), []
-        )
-        matching_slot = next(
-            (
-                slot for slot in slots
-                if slot.get('datetime') and
-                   tz_session.localize(datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')) == slot_from and
-                   tz_session.localize(datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')) + timedelta(
-                hours=total_duration) == slot_to
-            ),
-            None
-        )
-        if matching_slot:
+            try:
+                Date = datetime.strptime(Date, '%d%m%Y').date()
+            except ValueError as e:
+                return {"status": "error", "message": f"Invalid date format: {str(e)}"}
+
+        # Get slots
+        try:
+            slots = appointment_type_id._get_appointment_slots(timezone)
+            appointment_type_id.appointment_duration = total
+
+            slots = next(
+                (day.get('slots') for month in slots for week in month.get('weeks') for day in week
+                 if day.get('day') == date_from.date() and day.get('slots')), []
+            )
+
+            matching_slot = next(
+                (
+                    slot for slot in slots
+                    if slot.get('datetime') and
+                       tz_session.localize(datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')) == slot_from and
+                       tz_session.localize(datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')) + timedelta(
+                    hours=total_duration) == slot_to
+                ),
+                None
+            )
+        except Exception as e:
+            return {"status": "error", "message": f"Error processing slots: {str(e)}"}
+
+        if not matching_slot:
+            return {"status": "error", "message": "Slot not found for the given date or time."}
+
+        # Create meeting
+        try:
             meeting = request.env['calendar.event'].with_context(
                 mail_notify_author=True,
                 mail_create_nolog=True,
                 mail_create_nosubscribe=True,
-
             ).sudo().create({
                 'appointment_answer_input_ids': [Command.create(vals) for vals in answer_input_values],
                 **appointment_type_id._prepare_calendar_event_values(
-                    asked_capacity, booking_line_values, description,duration ,
+                    asked_capacity, booking_line_values, description, duration,
                     appointment_invite, guests, name, customer, staff_user, date_from, date_to
                 )
             })
-            if appointment_type_id.product_id:
-                order_line_vals = [(0, 0, {
-                    'product_id': appointment_type_id.product_id.id,
-                    'price_unit': vehicle_subtype.inclusive_tax_price
-                })]
+        except Exception as e:
+            return {"status": "error", "message": f"Error creating meeting: {str(e)}"}
+
+        # Create order if needed
+        if appointment_type_id.product_id:
+            try:
+                order_line_vals = []
                 for product_id in extra_ids:
                     product_variant = request.env['product.product'].browse(product_id).exists()
                     if product_variant:
-                        unit_price = product_variant.taxes_id.compute_all(product_variant.lst_price,
-                                                                          product=product_variant).get(
-                            'total_included')
+                        unit_price = product_variant.taxes_id.compute_all(
+                            product_variant.lst_price,
+                            product=product_variant
+                        ).get('total_included', 0)
                         order_line_vals.append((0, 0, {
                             'product_id': product_id,
                             'price_unit': unit_price,
                         }))
-                order = request.env['sale.order'].sudo().create({
-                    'partner_id': customer.id,
-                    'order_line': order_line_vals,
+
+                SaleOrder = request.env['sale.order']
+                if meeting and hasattr(meeting, 'opportunity_id') and meeting.opportunity_id:
+                    order_ctx = meeting.opportunity_id.action_sale_quotations_new().get('context', {})
+                    order_vals = {
+                        'opportunity_id': order_ctx.get('default_opportunity_id'),
+                        'origin': order_ctx.get('default_origin'),
+                        'partner_id': order_ctx.get('default_partner_id'),
+                        'campaign_id': order_ctx.get('default_campaign_id'),
+                        'medium_id': order_ctx.get('default_medium_id'),
+                        'source_id': order_ctx.get('default_source_id'),
+                        'tag_ids': order_ctx.get('default_tag_ids'),
+                        'team_id': order_ctx.get('default_team_id'),
+                        'user_id': order_ctx.get('default_user_id'),
+                        'company_id': order_ctx.get('default_company_id'),
+                        'order_line': order_line_vals,
+                    }
+                    order = SaleOrder.create(order_vals)
+            except Exception as e:
+                # Log the error but don't fail the entire booking
+                print(f"Warning: Could not create order: {str(e)}")
+
+        # Update meeting with additional information
+        try:
+            if meeting:
+                meeting.sudo().write({
+                    'booking_date': Date if Date else None,
+                    'total_cost_vat_inclusive': total_cost_vat_inclusive,
+                    'extra_ids': [(6, 0, extra_ids)],
+                    'sale_order_id': order.id if order else False,
                 })
-            meeting.sudo().write({
-                'booking_date': Date if Date else None,
-                'vehicle_use_id': vehicle_use_id,
-                'vehicle_type_id': vehicle_type if vehicle_type else None,
-                'service_type_id': vehicle_subtype if vehicle_subtype else None,
-                'total_cost_vat_inclusive': total_cost_vat_inclusive,
-                'extra_ids': [(6, 0, extra_ids)],
-                'sale_order_id': order.id if order else "",
-            })
-        else:
-            return "slot not found for the given date or time."
+        except Exception as e:
+            return {"status": "error", "message": f"Error updating meeting: {str(e)}"}
+
+        # Return success response
         return request.make_json_response({
             "bookingid": meeting.id if meeting else "",
             "customerkaustid": customer_kaust_id,
-            "customername": partner.name,
+            "customername": partner.name if partner else "",
             "totalcostvatinclusive": total_cost_vat_inclusive,
             "status": "confirmed"
         })
@@ -1338,16 +1435,23 @@ class CommonController(http.Controller):
                 }]
                 date = event.booking_date.strftime("%d%m%Y") if event.booking_date else ''
                 extras_name = ', '.join(event.extra_ids.mapped('product_template_variant_value_ids.name'))
-                vehicle_use_name = 'Personal' if event.vehicle_use_id == 1 else 'Business' if event.vehicle_use_id == 2 else ""
+                # vehicle_use_name = 'Personal' if event.vehicle_use_id == 1 else 'Business' if event.vehicle_use_id == 2 else ""
+                status = 'cancel'
+                if event.active:
+                    status = 'active'
+                    if event.sale_order_id and event.sale_order_id.invoice_ids.filtered(
+                            lambda inv: inv.state == 'posted'):
+                        status = 'complete'
                 data.append({
                     'servicename': event.appointment_type_id.name if event.appointment_type_id else "",
-                    'vehicletypename': event.vehicle_type_id.name if event.vehicle_type_id else "",
-                    'vehicleusename': vehicle_use_name,
-                    'vehiclesubtypename': event.service_type_id.name if event.service_type_id else "",
+                    # 'vehicletypename': event.vehicle_type_id.name if event.vehicle_type_id else "",
+                    # 'vehicleusename': vehicle_use_name,
+                    # 'vehiclesubtypename': event.service_type_id.name if event.service_type_id else "",
                     'extrasname': extras_name,
                     'totalcostvatinclusive': event.total_cost_vat_inclusive,
                     'Date': date,
-                    'slot' : slot
+                    'slot' : slot,
+                    'status' : status
                 })
         else:
             return 'No customer found for this email'

@@ -90,8 +90,8 @@
         </field>
     </record>
 
-    <menuitem action="wayakit_customization.service_type_aciton" id="menu_service_type" sequence="1" name="Service Type"
-              parent="appointment.appointment_menu_config" />
+<!--    <menuitem action="wayakit_customization.service_type_aciton" id="menu_service_type" sequence="1" name="Service Type"-->
+<!--              parent="appointment.appointment_menu_config" />-->
 
 
 </odoo>

@@ -11,6 +11,23 @@
                 </field>
             </record>
 
+            <record id="view_appointment_type_form_question_inherit" model="ir.ui.view">
+                <field name="name">appointment.type.form.question.inherit</field>
+                <field name="model">appointment.type</field>
+                <field name="inherit_id" ref="appointment.appointment_type_view_form"/>
+                <field name="arch" type="xml">
+                    <xpath expr="//field[@name='question_ids']/tree/field[@name='question_required']" position="after">
+                        <field name="api_question"/>
+                    </xpath>
+
+                    <xpath expr="//field[@name='question_ids']/form/sheet/group/group[@name='question_form_right']/field[@name='question_required']" position="after">
+                        <field name="api_question"/>
+                    </xpath>
+
+                </field>
+            </record>
+
+
             <record id="view_appointment_type_form_inherit" model="ir.ui.view">
                 <field name="name">appointment.type.form.inherit</field>
                 <field name="model">appointment.type</field>
@@ -21,7 +38,7 @@
                             <group>
                                 <field name="api_service"/>
                                 <field name="api_description"/>
-                                <field name="service_type" widget="many2many_tags"/>
+<!--                                <field name="service_type" widget="many2many_tags"/>-->
                             </group>
                         </page>
                     </xpath>
@@ -100,14 +117,15 @@
                     <page string="Booking Details" name="booking_details">
                         <group>
                             <group>
-                                <field name="vehicle_type_id"/>
-                                <field name="service_type_id"/>
+<!--                                <field name="vehicle_type_id"/>-->
+<!--                                <field name="service_type_id"/>-->
+                                <field name="opportunity_id"/>
                                 <field name="sale_order_id"/>
                                 <field name="booking_date"/>
                                 <field name="customer_rating"/>
                             </group>
                             <group>
-                                <field name="extra_ids" widget="many2many_tags"/>
+                                <field name="extra_ids" string="Product" widget="many2many_tags"/>
                                 <field name="total_cost_vat_inclusive"/>
                                 <field name="vehicle_use_id"/>
                                 <field name="customer_feedback"/>
