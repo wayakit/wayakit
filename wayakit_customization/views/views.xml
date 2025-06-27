@@ -127,7 +127,7 @@
                             <group>
                                 <field name="extra_ids" string="Product" widget="many2many_tags"/>
                                 <field name="total_cost_vat_inclusive"/>
-                                <field name="vehicle_use_id"/>
+<!--                                <field name="vehicle_use_id"/>-->
                                 <field name="customer_feedback"/>
                             </group>
                         </group>
