@@ -1372,7 +1372,17 @@ class CommonController(http.Controller):
                 event.with_context(mail_notify_author=True).sudo().action_cancel_meeting([partner.id])
                 status = 'cancel'
                 if event.sale_order_id:
-                    event.sale_order_id.action_cancel()
+                    try:
+                        sale_order = event.sale_order_id
+                        cancel_wizard = request.env['sale.order.cancel'].create({
+                            'order_id': sale_order.id
+                        })
+                        # Call the cancel+email action
+                        cancel_wizard.action_cancel()
+                    except Exception as e:
+                        # Return the error as a response
+                        status = str(e)
+
         else:
             status = 'Booking not found'
         return request.make_json_response({
