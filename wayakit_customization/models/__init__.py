@@ -8,3 +8,4 @@ from . import res_company_inherit
 from . import resource_calender_inherit
 from . import calender_event_inherit
 from . import res_settings
+from . import appointment_question
