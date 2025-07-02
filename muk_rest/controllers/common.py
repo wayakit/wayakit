@@ -937,6 +937,10 @@ class CommonController(http.Controller):
                     # if service.product_id != variant:
                     total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
                         'total_included')
+                    if total_included:
+                        total_included = float(format(total_included, '.2f'))
+                    else:
+                        total_included = 0.0
                     extras.append({
                         "extrasid": variant.id,
                         "extrasname": " ".join(variant.product_template_variant_value_ids.mapped("name")),
