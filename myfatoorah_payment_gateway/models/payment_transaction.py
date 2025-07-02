@@ -51,16 +51,44 @@ class PaymentTransaction(models.Model):
             [('id', '=', self.id)]).sale_order_ids
         MobileCountryCode = self.partner_id.country_id.phone_code
         phone_number = self.partner_phone
+
+        # Original Code
+
+        # if not phone_number:
+        #     raise ValueError("Please provide the phone number.")
+        # else:
+        #     phone_number = phone_number.replace(str(MobileCountryCode), '')
+        #     phone_number = phone_number.replace(str(' '), '')
+        #     if phone_number.startswith('+'):
+        #         phone_number = phone_number[1:]
+        #     elif not phone_number:
+        #         raise ValueError(
+        #             "Please provide the phone number in proper format")
+
+        # Original Code Ends here
+
+        # Custom code start (Awais)
+
         if not phone_number:
-            raise ValueError("Please provide the phone number.")
+            phone_number = ''
         else:
-            phone_number = phone_number.replace(str(MobileCountryCode), '')
-            phone_number = phone_number.replace(str(' '), '')
+            # Remove spaces first
+            phone_number = phone_number.replace(' ', '')
+
+            # Remove leading + if present
             if phone_number.startswith('+'):
                 phone_number = phone_number[1:]
-            elif not phone_number:
-                raise ValueError(
-                    "Please provide the phone number in proper format")
+
+            country_code_str = str(MobileCountryCode)
+            if phone_number.startswith(country_code_str):
+                phone_number = phone_number[len(country_code_str):]
+
+            if len(phone_number) > 11:
+                phone_number = phone_number[-11:]
+
+        #         Custom code Ends here
+
+
         currency = self.env.company.currency_id.name
         sendpay_data = {
             "NotificationOption": "ALL",

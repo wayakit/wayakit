@@ -44,8 +44,7 @@
                                                     <input type="text"
                                                            class="form-control shadow-none"
                                                            name="mobile"
-                                                           t-att-value="mobile"
-                                                           readonly="1"/>
+                                                           t-att-value="mobile"/>
                                                 </td>
                                                  <td>
                                                     <label for="invoice_amount">
