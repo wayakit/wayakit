@@ -1285,7 +1285,7 @@ class CommonController(http.Controller):
                         ).get('total_included', 0)
                         order_line_vals.append((0, 0, {
                             'product_id': product_id,
-                            'price_unit': unit_price,
+                            # 'price_unit': unit_price,
                             'product_uom_qty': product.get('quantity') or 1
                         }))
 
