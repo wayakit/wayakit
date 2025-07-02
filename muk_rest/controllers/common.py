@@ -1120,7 +1120,9 @@ class CommonController(http.Controller):
         customer_phone = kw.get('customerphone')
         service_id = kw.get('serviceid')
         total_cost_vat_inclusive = kw.get('totalcostvatinclusive')
-        extra_ids = kw.get('extrasid') or []
+        # extra_ids = kw.get('extrasid') or []
+        extra_ids = kw.get('extrasid')
+        extra_id_list = [item['id'] for item in extra_ids if isinstance(item, dict) and 'id' in item] if isinstance(extra_ids, list) else []
         slot_info = kw.get('slot', [])
         Date = kw.get('Date')
         questions = kw.get('questions', [])
@@ -1213,7 +1215,7 @@ class CommonController(http.Controller):
 
         # Process duration and slots
         total_duration = appointment_type_id.appointment_duration
-        product_varients_ids = request.env['product.product'].browse(extra_ids).exists()
+        product_varients_ids = request.env['product.product'].browse(extra_id_list).exists()
         if product_varients_ids:
             total_duration += sum(product_varients_ids.mapped('duration'))
 
@@ -1273,7 +1275,8 @@ class CommonController(http.Controller):
         if appointment_type_id.product_id:
             try:
                 order_line_vals = []
-                for product_id in extra_ids:
+                for product in extra_ids:
+                    product_id = product.get('id')
                     product_variant = request.env['product.product'].browse(product_id).exists()
                     if product_variant:
                         unit_price = product_variant.taxes_id.compute_all(
@@ -1283,6 +1286,7 @@ class CommonController(http.Controller):
                         order_line_vals.append((0, 0, {
                             'product_id': product_id,
                             'price_unit': unit_price,
+                            'product_uom_qty': product.get('quantity') or 1
                         }))
 
                 SaleOrder = request.env['sale.order']
@@ -1312,7 +1316,7 @@ class CommonController(http.Controller):
                 meeting.sudo().write({
                     'booking_date': Date if Date else None,
                     'total_cost_vat_inclusive': total_cost_vat_inclusive,
-                    'extra_ids': [(6, 0, extra_ids)],
+                    'extra_ids': [(6, 0, extra_id_list)],
                     'sale_order_id': order.id if order else False,
                 })
         except Exception as e:
