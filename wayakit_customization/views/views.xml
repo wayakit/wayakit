@@ -38,6 +38,7 @@
                             <group>
                                 <field name="api_service"/>
                                 <field name="api_description"/>
+                                <field name="product_tmpl_id" domain="[('detailed_type', '=', 'booking_fees')]" />
 <!--                                <field name="service_type" widget="many2many_tags"/>-->
                             </group>
                         </page>

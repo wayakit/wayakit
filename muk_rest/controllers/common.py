@@ -932,8 +932,8 @@ class CommonController(http.Controller):
             vehicletype = []
             vehiclesubtype = []
             questions = []
-            if service.product_id:
-                for variant in service.product_id.product_variant_ids:
+            if service.product_tmpl_id:
+                for variant in service.product_tmpl_id.product_variant_ids:
                     # if service.product_id != variant:
                     total_included = variant.taxes_id.compute_all(variant.lst_price, product=variant).get(
                         'total_included')
@@ -1039,7 +1039,7 @@ class CommonController(http.Controller):
             if appointment_type_id:
                 total_duration = appointment_type_id.appointment_duration
 
-                product_varients_ids = appointment_type_id.product_id.product_variant_ids.browse(extras_ids).exists()
+                product_varients_ids = appointment_type_id.product_tmpl_id.product_variant_ids.browse(extras_ids).exists()
                 if (product_varients_ids):
                     total_duration += sum(product_varients_ids.mapped('duration'))
                 total = appointment_type_id.appointment_duration
@@ -1276,17 +1276,17 @@ class CommonController(http.Controller):
             return {"status": "error", "message": f"Error creating meeting: {str(e)}"}
 
         # Create order if needed
-        if appointment_type_id.product_id:
+        if appointment_type_id.product_tmpl_id:
             try:
                 order_line_vals = []
                 for product in extra_ids:
                     product_id = product.get('id')
                     product_variant = request.env['product.product'].browse(product_id).exists()
                     if product_variant:
-                        unit_price = product_variant.taxes_id.compute_all(
-                            product_variant.lst_price,
-                            product=product_variant
-                        ).get('total_included', 0)
+                        # unit_price = product_variant.taxes_id.compute_all(
+                        #     product_variant.lst_price,
+                        #     product=product_variant
+                        # ).get('total_included', 0)
                         order_line_vals.append((0, 0, {
                             'product_id': product_id,
                             # 'price_unit': unit_price,
@@ -1461,6 +1461,7 @@ class CommonController(http.Controller):
                             lambda inv: inv.state == 'posted'):
                         status = 'complete'
                 data.append({
+                    'bookingid': event.id,
                     'servicename': event.appointment_type_id.name if event.appointment_type_id else "",
                     # 'vehicletypename': event.vehicle_type_id.name if event.vehicle_type_id else "",
                     # 'vehicleusename': vehicle_use_name,
