@@ -17,6 +17,7 @@ class AppointmentType(models.Model):
     # completion_featureName = fields.Char()
     completion_notification_title = fields.Char()
     completion_notification_body = fields.Text()
+    product_tmpl_id = fields.Many2one('product.template', string='Product')
 
     def status_notification_update(self):
         token = self.env['ir.config_parameter'].sudo().get_param('wayakit_customization.notification_token')
