@@ -303,6 +303,20 @@ class CommonController(http.Controller):
                     },
                     "description": "Available time slots for booking."
                 },
+                "AvailableSlotsRange": {
+                    "type": "object",
+                    "properties": {
+                        "from": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "to": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    "description": "Available time slots for booking."
+                },
                 "ServiceData": {
                     "type": "object",
                     "properties": {
@@ -1539,3 +1553,117 @@ class CommonController(http.Controller):
             'bookingid': booking_id ,
             'status': status
         })
+
+
+
+
+    # 8. Fetch service slot duration with date range
+
+    @core.http.rest_route(
+        routes=build_route('/services/availableslots/daterange/'),
+        methods=['POST'],
+        protected=True,
+        docs=dict(
+            tags=['Common'],
+            summary='Get Available Slots',
+            description='Returns the available slots.',
+            responses={
+                '200': {
+                    'description': 'Available Slots',
+                    'content': {
+                        'application/json': {
+                            'schema': {
+                                '$ref': '#/components/schemas/AvailableSlotsRange'
+                            },
+                            'example': {
+                                "availableslots": [
+                                    {
+                                        "from": "2024-09-27T09:00:00+03:00",
+                                        "to": "2024-09-27T10:00:00+03:00"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            default_responses=['400', '401', '500'],
+        ),
+    )
+    def get_available_slots_daterange(self, **kw):
+        service_id = kw.get('serviceid')
+        extras_ids = kw.get('extrasid')
+        start_date_str = kw.get('startDate')
+        end_date_str = kw.get('endDate')
+
+        if service_id and start_date_str and end_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%d%m%Y').date()
+                end_date = datetime.strptime(end_date_str, '%d%m%Y').date()
+            except ValueError:
+                return "Invalid date format. Expected: ddmmyyyy"
+
+            if start_date > end_date:
+                return "Start date cannot be after end date"
+
+            appointment_type_id = request.env['appointment.type'].sudo().browse(service_id).exists()
+
+            if appointment_type_id:
+                total_duration = appointment_type_id.appointment_duration
+
+                product_varients_ids = appointment_type_id.product_tmpl_id.product_variant_ids.browse(
+                    extras_ids).exists()
+                if (product_varients_ids):
+                    total_duration += sum(product_varients_ids.mapped('duration'))
+                total = appointment_type_id.appointment_duration
+                appointment_type_id.appointment_duration = total_duration
+                tinmezone = appointment_type_id.appointment_tz
+                slots = appointment_type_id._get_appointment_slots(
+                    tinmezone,
+                )
+
+                # Generate list of dates in range
+                date_range = []
+                current_date = start_date
+                while current_date <= end_date:
+                    date_range.append(current_date)
+                    current_date += timedelta(days=1)
+
+                # Collect all slots from all dates in the range
+                all_slots = []
+                for target_date in date_range:
+                    date_slots = next(
+                        (day.get('slots') for month in slots for week in month.get('weeks') for day in week
+                         if day.get('day') == target_date and day.get('slots')), []
+                    )
+                    if date_slots:
+                        all_slots.extend(date_slots)
+
+                appointment_type_id.appointment_duration = total
+
+                if all_slots:
+                    availableslots = []
+                    timezone = pytz.timezone(tinmezone)
+
+                    for slot in all_slots:
+                        from_time = datetime.strptime(slot['datetime'], '%Y-%m-%d %H:%M:%S')
+                        from_time = timezone.localize(from_time)
+                        slot_duration = float(slot['slot_duration'])
+                        to_time = from_time + timedelta(hours=slot_duration)
+
+                        availableslots.append({
+                            'from': from_time.isoformat(),
+                            'to': to_time.isoformat()
+                        })
+
+                    # Sort slots by datetime
+                    availableslots.sort(key=lambda x: x['from'])
+
+                    return request.make_json_response({
+                        "availableslots": availableslots})
+                else:
+                    return "no slots is available"
+            else:
+                return "no service is available for this id"
+        else:
+            return "no service id or start date or end date is given"
