@@ -97,7 +97,8 @@ class PaymentTransaction(models.Model):
             "MobileCountryCode": MobileCountryCode,
             "CustomerMobile": phone_number,
             "CustomerEmail": self.partner_email,
-            "InvoiceValue": (self.amount - sale_order.amount_tax),
+            # "InvoiceValue": (self.amount - sale_order.amount_tax), It was default written in myfatorah module i changed it to line below
+            "InvoiceValue": (self.amount),
             "CallBackUrl": f"{odoo_base_url}/payment/myfatoorah/_return_url",
             "ErrorUrl": f"{odoo_base_url}/payment/myfatoorah/failed",
             "Language": "en",
