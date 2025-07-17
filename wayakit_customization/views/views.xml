@@ -120,7 +120,7 @@
                             <group>
 <!--                                <field name="vehicle_type_id"/>-->
 <!--                                <field name="service_type_id"/>-->
-                                <field name="opportunity_id"/>
+                                <!--<field name="opportunity_id"/>-->
                                 <field name="sale_order_id"/>
                                 <field name="booking_date"/>
                                 <field name="customer_rating"/>
