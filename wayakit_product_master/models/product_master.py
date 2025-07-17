@@ -1,0 +1,37 @@
+from odoo import models, fields
+
+class ProductMaster(models.Model):
+    _name = 'wayakit.product.master'
+    _description = 'Wayakit Product Master'
+
+    external_id = fields.Char(string='External ID')
+    product_id = fields.Char(string='Product ID')
+    product_name = fields.Char(string='Product Name')
+    label_product_name = fields.Char(string='Label Product Name')
+    status = fields.Char(string='Status')
+    master_product = fields.Char(string='Master Product')
+    uploaded_in_odoo = fields.Boolean(string='Uploaded in Odoo')
+    notes = fields.Text(string='Notes')
+    formula_code = fields.Char(string='Formula Code')
+    moq = fields.Char(string='MOQ')
+    order_unit = fields.Char(string='Order Unit')
+    presentation = fields.Char(string='Presentation')
+    scent = fields.Char(string='Scent')
+    type = fields.Char(string='Type')
+    link_to_product_mockup = fields.Char(string='Link to Product Mockup')
+    volume_liters = fields.Float(string='Volume (Liters)')
+    pack_quantity_units = fields.Integer(string='Pack Quantity (Units)')
+    type_of_product = fields.Char(string='Type of Product')
+    category = fields.Char(string='Category')
+    generic_product_type = fields.Char(string='Generic Product Type')
+    subindustry = fields.Char(string='Subindustry')
+    industry = fields.Char(string='Industry')
+    description = fields.Text(string='Description')
+    bottle = fields.Char(string='Bottle')
+    label = fields.Char(string='Label')
+    liquid = fields.Char(string='Liquid')
+    microfibers = fields.Char(string='Microfibers')
+    plastic_bag = fields.Char(string='Plastic Bag')
+    labor_price = fields.Float(string='Labor Price')
+    unit_cost_sar = fields.Float(string='Unit Cost (SAR)')
+    base_price_without_vat = fields.Float(string='Base Price without VAT')

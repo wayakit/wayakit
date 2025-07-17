@@ -1,0 +1,94 @@
+<odoo>
+    <record id="view_product_master_tree" model="ir.ui.view">
+        <field name="name">wayakit.product.master.tree</field>
+        <field name="model">wayakit.product.master</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="external_id"/>
+                <field name="product_id"/>
+                <field name="product_name"/>
+                <field name="label_product_name"/>
+                <field name="status"/>
+                <field name="master_product"/>
+                <field name="uploaded_in_odoo"/>
+                <field name="notes"/>
+                <field name="formula_code"/>
+                <field name="moq"/>
+                <field name="order_unit"/>
+                <field name="presentation"/>
+                <field name="scent"/>
+                <field name="type"/>
+                <field name="link_to_product_mockup"/>
+                <field name="volume_liters"/>
+                <field name="pack_quantity_units"/>
+                <field name="type_of_product"/>
+                <field name="category"/>
+                <field name="generic_product_type"/>
+                <field name="subindustry"/>
+                <field name="industry"/>
+                <field name="description"/>
+                <field name="bottle"/>
+                <field name="label"/>
+                <field name="liquid"/>
+                <field name="microfibers"/>
+                <field name="plastic_bag"/>
+                <field name="labor_price"/>
+                <field name="unit_cost_sar"/>
+                <field name="base_price_without_vat"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_product_master_form" model="ir.ui.view">
+        <field name="name">wayakit.product.master.form</field>
+        <field name="model">wayakit.product.master</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="external_id"/>
+                        <field name="product_id"/>
+                        <field name="product_name"/>
+                        <field name="label_product_name"/>
+                        <field name="status"/>
+                        <field name="master_product"/>
+                        <field name="uploaded_in_odoo"/>
+                        <field name="notes"/>
+                        <field name="formula_code"/>
+                        <field name="moq"/>
+                        <field name="order_unit"/>
+                        <field name="presentation"/>
+                        <field name="scent"/>
+                        <field name="type"/>
+                        <field name="link_to_product_mockup"/>
+                        <field name="volume_liters"/>
+                        <field name="pack_quantity_units"/>
+                        <field name="type_of_product"/>
+                        <field name="category"/>
+                        <field name="generic_product_type"/>
+                        <field name="subindustry"/>
+                        <field name="industry"/>
+                        <field name="description"/>
+                        <field name="bottle"/>
+                        <field name="label"/>
+                        <field name="liquid"/>
+                        <field name="microfibers"/>
+                        <field name="plastic_bag"/>
+                        <field name="labor_price"/>
+                        <field name="unit_cost_sar"/>
+                        <field name="base_price_without_vat"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_product_master" model="ir.actions.act_window">
+        <field name="name">Product Master</field>
+        <field name="res_model">wayakit.product.master</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_product_master_root" name="Wayakit"/>
+    <menuitem id="menu_product_master" name="Product Master" parent="menu_product_master_root" action="action_product_master"/>
+</odoo>
