@@ -1163,6 +1163,21 @@ class CommonController(http.Controller):
             for q in questions:
                 if isinstance(q, dict) and 'name' in q and 'answers' in q:
                     html_list += f"<li>{q['name']}: {q['answers']}</li>"
+
+        if extra_id_list:
+            # Batch fetch all products at once (more efficient)
+            products = request.env['product.product'].browse(extra_id_list).exists()
+            product_names = {product.id: product.product_template_variant_value_ids.name for product in products}
+
+            # Build HTML list
+            for item in extra_ids:
+                if isinstance(item, dict) and 'id' in item and 'quantity' in item:
+                    product_id = item['id']
+                    quantity = item['quantity']
+
+                    if product_id in product_names:
+                        product_name = product_names[product_id]
+                        html_list += f"<li>{product_name}: {quantity}</li>"
         html_list += "</ul>"
 
         # Validate required fields
