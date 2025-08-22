@@ -50,12 +50,14 @@ class CustomAppointmentController(AppointmentController):
             description, answer_input_values, name, customer, appointment_invite, guests=None,
             staff_user=None, asked_capacity=1, booking_line_values=None
     ):
-        # First create the sale order (if logged in)
+        # Create customer contact from form data and sales order
         sale_order = False
-        if not request.env.user._is_public():
+        customer_partner = self._create_or_update_customer_partner(name, description)
+
+        if customer_partner:
             sale_order = self._create_appointment_sale_order(
                 appointment_type,
-                customer,
+                customer_partner,  # Use the created/updated customer
                 answer_input_values
             )
 
@@ -78,7 +80,59 @@ class CustomAppointmentController(AppointmentController):
 
         return result
 
-    def _create_appointment_sale_order(self, appointment_type, customer, answer_input_values):
+    def _create_or_update_customer_partner(self, name, description):
+        """Create or update customer partner from form data"""
+        try:
+            # Extract email and phone from description (HTML format)
+            email = phone = None
+
+            # Parse the description HTML to extract email and phone
+            if description and '<ul>' in description:
+                # Example description format:
+                # <ul><li>Phone: +1234567890</li><li>Email: customer@example.com</li></ul>
+                import re
+                phone_match = re.search(r'Phone:? ([^<]+)', description)
+                email_match = re.search(r'Email:? ([^<]+)', description)
+
+                if phone_match:
+                    phone = phone_match.group(1).strip()
+                if email_match:
+                    email = email_match.group(1).strip()
+
+            # Search for existing partner by email or phone
+            partner_obj = request.env['res.partner'].sudo()
+            existing_partner = False
+
+            if email:
+                existing_partner = partner_obj.search([
+                    '|', ('email', '=ilike', email), ('email_normalized', '=ilike', email)
+                ], limit=1)
+
+            if not existing_partner and phone:
+                existing_partner = partner_obj.search([
+                    ('phone', '=ilike', phone),
+                    ('mobile', '=ilike', phone)
+                ], limit=1, order='id desc')
+
+            partner_vals = {
+                'name': name,
+                'phone': phone,
+                'email': email,
+            }
+
+            if existing_partner:
+                # Update existing partner
+                existing_partner.write(partner_vals)
+                return existing_partner
+            else:
+                # Create new partner
+                return partner_obj.create(partner_vals)
+
+        except Exception as e:
+            # Fallback: create partner with just the name
+            return request.env['res.partner'].sudo().create({'name': name})
+
+    def _create_appointment_sale_order(self, appointment_type, customer_partner, answer_input_values):
         """Create a sale order from appointment data with proper product matching"""
         # Find the service question and selected answer
         service_question, selected_answer = self._find_service_selection(answer_input_values)
@@ -90,10 +144,10 @@ class CustomAppointmentController(AppointmentController):
         if not product:
             return False
 
-        # Create the sales order
+        # Create the sales order with the customer partner (not logged-in user)
         order_vals = {
-            'partner_id': customer.id,
-            'user_id': request.env.user.id,
+            'partner_id': customer_partner.id,  # Use the customer from form
+            'user_id': request.env.user.id,  # Keep logged-in user as salesperson
             'date_order': fields.Datetime.now(),
             'origin': f"Appointment: {appointment_type.name}",
             'order_line': [(0, 0, {
