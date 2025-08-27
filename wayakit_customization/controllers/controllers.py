@@ -248,34 +248,34 @@ class CustomAppointmentController(AppointmentController):
 
     def _find_curtain_furniture_product(self, question_text):
         """Find matching product for Curtain and Furniture Care items based on question text"""
-        # Map form question text to actual product names
-        product_mapping = {
-            "Curtain set [SAR 350 VAT included]": "Curtain set [1 unit]",
-            "Dining chair [SAR 62 VAT included]": "Furniture Care [Dining Chair]",
-            "Blue Chair Oasis [SAR 56.15 VAT included]": "Furniture Care [Blue Dining chair - Oasis]",
-            "Small Sofa [SAR 350 VAT included]": "Furniture Care [Small Sofa]",
-            "Big Sofa [SAR 420 VAT included]": "Furniture Care [Big Sofa]",
-            "Mattresses [SAR 336.89 VAT included]": "Furniture Care [Mattress]",
-            "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Carpet Care [Small up to 2 sqm]",
-            "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Carpet Care [Medium 2.1-6 sqm]",
-            "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Carpet Care [Big 7-20 sqm]"
+        # Map form question text to search terms for products
+        product_search_terms = {
+            "Curtain set [SAR 350 VAT included]": "Curtain set",
+            "Dining chair [SAR 62 VAT included]": "Dining Chair",
+            "Blue Chair Oasis [SAR 56.15 VAT included]": "Blue Dining chair",
+            "Small Sofa [SAR 350 VAT included]": "Small Sofa",
+            "Big Sofa [SAR 420 VAT included]": "Big Sofa",
+            "Mattresses [SAR 336.89 VAT included]": "Mattress",
+            "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Small up to 2 sqm",
+            "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Medium 2.1-6 sqm",
+            "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Big 7-20 sqm"
         }
 
-        # Get the actual product name from the mapping
-        product_name = product_mapping.get(question_text)
+        # Get the search term for this question
+        search_term = product_search_terms.get(question_text)
 
-        if not product_name:
-            print(f"No mapping found for question: {question_text}")
+        if not search_term:
+            print(f"No search term found for question: {question_text}")
             return None
 
-        # Search for the product
+        # Search for the product using ilike for case-insensitive search
         domain = [
-            ('name', '=', product_name),
+            ('name', 'ilike', search_term),
             ('type', '=', 'service')
         ]
 
         product = request.env['product.product'].sudo().search(domain, limit=1)
-        print(f"Searching for product: {product_name}, Found: {product.name if product else 'None'}")
+        print(f"Searching for product with term: '{search_term}', Found: {product.name if product else 'None'}")
         return product
 
     def _find_service_selection(self, answer_input_values):
