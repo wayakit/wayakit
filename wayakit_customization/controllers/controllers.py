@@ -55,11 +55,20 @@ class CustomAppointmentController(AppointmentController):
         customer_partner = self._create_or_update_customer_partner(name, description)
 
         if customer_partner:
-            sale_order = self._create_appointment_sale_order(
-                appointment_type,
-                customer_partner,  # Use the created/updated customer
-                answer_input_values
-            )
+            # Check appointment type and handle accordingly
+            if appointment_type.name.lower() == "curtain and furniture care":
+                sale_order = self._create_curtain_furniture_sale_order(
+                    appointment_type,
+                    customer_partner,
+                    answer_input_values
+                )
+            else:
+                # For Car Wash Care and other types, use the existing logic
+                sale_order = self._create_appointment_sale_order(
+                    appointment_type,
+                    customer_partner,  # Use the created/updated customer
+                    answer_input_values
+                )
 
         # Call original method to create calendar event
         result = super()._handle_appointment_form_submission(
@@ -134,6 +143,10 @@ class CustomAppointmentController(AppointmentController):
 
     def _create_appointment_sale_order(self, appointment_type, customer_partner, answer_input_values):
         """Create a sale order from appointment data with proper product matching"""
+        # Only process if this is a Car Wash Care appointment
+        if appointment_type.name.lower() != "car wash care":
+            return False
+
         # Find the service question and selected answer
         service_question, selected_answer = self._find_service_selection(answer_input_values)
         if not (service_question and selected_answer):
@@ -160,6 +173,111 @@ class CustomAppointmentController(AppointmentController):
 
         return request.env['sale.order'].sudo().create(order_vals)
 
+    def _create_curtain_furniture_sale_order(self, appointment_type, customer_partner, answer_input_values):
+        """Create a sale order for Curtain and Furniture Care appointment type"""
+        # Only process if this is a Curtain and Furniture Care appointment
+        if appointment_type.name.lower() != "curtain and furniture care":
+            return False
+
+        # Extract product quantities from the answers
+        product_quantities = self._extract_curtain_furniture_quantities(answer_input_values)
+
+        if not product_quantities:
+            print("No product quantities found for Curtain and Furniture Care")
+            return False
+
+        # Create order lines based on the extracted quantities
+        order_lines = []
+        for question_text, quantity in product_quantities.items():
+            if quantity > 0:
+                product = self._find_curtain_furniture_product(question_text)
+                if product:
+                    order_lines.append((0, 0, {
+                        'product_id': product.id,
+                        'name': product.name,
+                        'product_uom_qty': quantity,
+                        'price_unit': product.list_price,
+                    }))
+                    print(f"Added product: {product.name}, Quantity: {quantity}")
+                else:
+                    print(f"Product not found for: {question_text}")
+
+        if not order_lines:
+            print("No order lines created for Curtain and Furniture Care")
+            return False
+
+        # Create the sales order
+        order_vals = {
+            'partner_id': customer_partner.id,
+            'user_id': request.env.user.id,
+            'date_order': fields.Datetime.now(),
+            'origin': f"Appointment: {appointment_type.name}",
+            'order_line': order_lines
+        }
+
+        return request.env['sale.order'].sudo().create(order_vals)
+
+    def _extract_curtain_furniture_quantities(self, answer_input_values):
+        """Extract product quantities from Curtain and Furniture Care appointment answers"""
+        product_quantities = {}
+
+        for answer in answer_input_values:
+            question = request.env['appointment.question'].browse(answer['question_id'])
+
+            # Skip basic info questions (name, email, phone, area, unit number)
+            basic_info_fields = ['full name', 'email', 'phone number', 'area', 'unit number']
+            if question.name.lower() in basic_info_fields:
+                continue
+
+            # For selection questions with quantities (0-10)
+            if question.question_type == 'select' and 'value_answer_id' in answer:
+                answer_record = request.env['appointment.answer'].browse(answer['value_answer_id'])
+                if answer_record:
+                    # Extract quantity from answer (e.g., "6" from "6")
+                    quantity_match = re.match(r'^(\d+)', answer_record.name)
+                    if quantity_match:
+                        quantity = int(quantity_match.group(1))
+                        # Use the question text to identify the product
+                        question_text = question.name
+
+                        if question_text and quantity > 0:
+                            product_quantities[question_text] = quantity
+                            print(f"Extracted product: {question_text}, Quantity: {quantity}")
+
+        return product_quantities
+
+    def _find_curtain_furniture_product(self, question_text):
+        """Find matching product for Curtain and Furniture Care items based on question text"""
+        # Map form question text to actual product names
+        product_mapping = {
+            "Curtain set [SAR 350 VAT included]": "Curtain set [1 unit]",
+            "Dining chair [SAR 62 VAT included]": "Furniture Care [Dining Chair]",
+            "Blue Chair Oasis [SAR 56.15 VAT included]": "Furniture Care [Blue Dining chair - Oasis]",
+            "Small Sofa [SAR 350 VAT included]": "Furniture Care [Small Sofa]",
+            "Big Sofa [SAR 420 VAT included]": "Furniture Care [Big Sofa]",
+            "Mattresses [SAR 336.89 VAT included]": "Furniture Care [Mattress]",
+            "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Carpet Care [Small up to 2 sqm]",
+            "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Carpet Care [Medium 2.1-6 sqm]",
+            "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Carpet Care [Big 7-20 sqm]"
+        }
+
+        # Get the actual product name from the mapping
+        product_name = product_mapping.get(question_text)
+
+        if not product_name:
+            print(f"No mapping found for question: {question_text}")
+            return None
+
+        # Search for the product
+        domain = [
+            ('name', '=', product_name),
+            ('type', '=', 'service')
+        ]
+
+        product = request.env['product.product'].sudo().search(domain, limit=1)
+        print(f"Searching for product: {product_name}, Found: {product.name if product else 'None'}")
+        return product
+
     def _find_service_selection(self, answer_input_values):
         """Find the service selection question and answer"""
         for answer in answer_input_values:
@@ -173,6 +291,7 @@ class CustomAppointmentController(AppointmentController):
 
     def _find_matching_product(self, answer_name):
         """Match the appointment answer to an existing product"""
+        # Only process if this is a Car Wash Care appointment
         # Clean and parse the answer text
         service_type = self._extract_service_type(answer_name)
         vehicle_type = self._extract_vehicle_type(answer_name)
