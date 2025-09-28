@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="product_price_suggestion_tree_view" model="ir.ui.view">
+            <field name="name">product.price.suggestion.tree</field>
+            <field name="model">product.price.suggestion</field>
+            <field name="arch" type="xml">
+                <tree string="Price Suggestions">
+                    <field name="product_id_str"/>
+                    <field name="suggested_price"/>
+                    <field name="profit"/>
+                    <field name="last_update_date"/>
+                    <field name="industry"/>
+                    <field name="subindustry"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="product_price_suggestion_form_view" model="ir.ui.view">
+            <field name="name">product.price.suggestion.form</field>
+            <field name="model">product.price.suggestion</field>
+            <field name="arch" type="xml">
+                <form string="Price Suggestion">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="product_id_str"/>
+                                <field name="product_type"/>
+                                <field name="generic_product_type"/>
+                                <field name="industry"/>
+                                <field name="subindustry"/>
+                            </group>
+                            <group>
+                                <field name="volume_units"/>
+                                <field name="production_cost"/>
+                                <field name="suggested_price"/>
+                                <field name="profit"/>
+                                <field name="last_update_date"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_product_price_suggestion" model="ir.actions.act_window">
+            <field name="name">Price Suggestions</field>
+            <field name="res_model">product.price.suggestion</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    There are no price suggestions yet.
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="menu_price_intelligence_root"
+            name="Price Intelligence"
+            sequence="10"/>
+
+        <menuitem
+            id="menu_product_price_suggestion"
+            name="Price Suggestions"
+            parent="menu_price_intelligence_root"
+            action="action_product_price_suggestion"
+            sequence="10"/>
+
+    </data>
+</odoo>
