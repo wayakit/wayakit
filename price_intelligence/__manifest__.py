@@ -12,7 +12,8 @@
     'website': "https://www.yourcompany.com",
     'category': 'Sales',
     'version': '17.0.1.0.0',
-    'depends': ['base'],
+    # AQUÍ ESTÁ EL CAMBIO:
+    'depends': ['base', 'sales_team'],
     'data': [
         'security/ir.model.access.csv',
         'views/product_price_suggestion_views.xml',
