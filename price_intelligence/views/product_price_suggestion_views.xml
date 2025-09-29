@@ -6,13 +6,17 @@
             <field name="name">product.price.suggestion.tree</field>
             <field name="model">product.price.suggestion</field>
             <field name="arch" type="xml">
-                <tree string="Price Suggestions">
+                <tree string="Price Suggestions" create="false" edit="false" delete="false" default_order="last_update_date desc">
+                    <field name="last_update_date"/>
                     <field name="product_id_str"/>
+                    <field name="product_type"/>
+                    <field name="generic_product_type"/>
+                    <field name="subindustry"/>
+                    <field name="industry"/>
+                    <field name="volume_units"/>
+                    <field name="production_cost"/>
                     <field name="suggested_price"/>
                     <field name="profit"/>
-                    <field name="last_update_date"/>
-                    <field name="industry"/>
-                    <field name="subindustry"/>
                 </tree>
             </field>
         </record>
@@ -21,22 +25,22 @@
             <field name="name">product.price.suggestion.form</field>
             <field name="model">product.price.suggestion</field>
             <field name="arch" type="xml">
-                <form string="Price Suggestion">
+                 <form string="Price Suggestion" create="false" edit="false" delete="false">
                     <sheet>
                         <group>
                             <group>
+                                <field name="last_update_date"/>
                                 <field name="product_id_str"/>
                                 <field name="product_type"/>
                                 <field name="generic_product_type"/>
-                                <field name="industry"/>
                                 <field name="subindustry"/>
+                                <field name="industry"/>
                             </group>
                             <group>
                                 <field name="volume_units"/>
                                 <field name="production_cost"/>
                                 <field name="suggested_price"/>
                                 <field name="profit"/>
-                                <field name="last_update_date"/>
                             </group>
                         </group>
                     </sheet>
