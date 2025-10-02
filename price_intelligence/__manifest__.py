@@ -12,7 +12,7 @@
     'website': "https://www.yourcompany.com",
     'category': 'Sales',
     'version': '17.0.1.0.0',
-    # AQUÍ ESTÁ EL CAMBIO:
+    'license': 'LGPL-3',
     'depends': ['base', 'sales_team'],
     'data': [
         'security/ir.model.access.csv',
