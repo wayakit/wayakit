@@ -21,4 +21,5 @@
     'application': True,
     'installable': True,
     'auto_install': False,
+    'icon': '/price_intelligence/static/description/icon.png',
 }
