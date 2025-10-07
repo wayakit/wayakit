@@ -31,6 +31,7 @@
                     <field name="generic_product_type"/>
                     <field name="subindustry"/>
                     <field name="industry"/>
+                    <field name="volume_units"/>
                     <group expand="1" string="Group By">
                         <filter string="Industry" name="industry" context="{'group_by':'industry'}"/>
                         <filter string="Sub-industry" name="subindustry" context="{'group_by':'subindustry'}"/>
