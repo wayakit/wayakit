@@ -15,6 +15,7 @@
     'license': 'LGPL-3',
     'depends': ['base', 'sales_team'],
     'data': [
+        'security/price_intelligence_security.xml',
         'security/ir.model.access.csv',
         'views/product_price_suggestion_views.xml',
     ],

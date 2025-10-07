@@ -21,6 +21,25 @@
             </field>
         </record>
 
+        <record id="product_price_suggestion_search_view" model="ir.ui.view">
+            <field name="name">product.price.suggestion.search</field>
+            <field name="model">product.price.suggestion</field>
+            <field name="arch" type="xml">
+                <search string="Search Price Suggestions">
+                    <field name="product_id_str"/>
+                    <field name="product_type"/>
+                    <field name="generic_product_type"/>
+                    <field name="subindustry"/>
+                    <field name="industry"/>
+                    <group expand="1" string="Group By">
+                        <filter string="Industry" name="industry" context="{'group_by':'industry'}"/>
+                        <filter string="Sub-industry" name="subindustry" context="{'group_by':'subindustry'}"/>
+                        <filter string="Generic Product Type" name="generic_product_type" context="{'group_by':'generic_product_type'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
         <record id="product_price_suggestion_form_view" model="ir.ui.view">
             <field name="name">product.price.suggestion.form</field>
             <field name="model">product.price.suggestion</field>
