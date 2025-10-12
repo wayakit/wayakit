@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_product_master_form" model="ir.ui.view">
+            <field name="name">product.master.form</field>
+            <field name="model">product.master</field>
+            <field name="arch" type="xml">
+                <form string="Master Product">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="product_name"/>
+                                <field name="product_id"/>
+                                <field name="label_product_name"/>
+                                <field name="external_id"/>
+                            </group>
+                            <group>
+                                <field name="status"/>
+                                <field name="master_product"/>
+                                <field name="uploaded_in_odoo"/>
+                                <field name="formula_code"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="General Information">
+                                <group>
+                                    <group>
+                                        <field name="type_of_product"/>
+                                        <field name="category"/>
+                                        <field name="generic_product_type"/>
+                                        <field name="subindustry_id"/>
+                                        <field name="industry_id"/>
+                                    </group>
+                                    <group>
+                                        <field name="presentation"/>
+                                        <field name="scent"/>
+                                        <field name="type"/>
+                                        <field name="volume_liters"/>
+                                        <field name="pack_quantity_units"/>
+                                        <field name="dilution_rate"/>
+                                    </group>
+                                </group>
+                                <group string="Description">
+                                    <field name="description" nolabel="1"/>
+                                </group>
+                                <group string="Notes">
+                                     <field name="notes" nolabel="1"/>
+                                </group>
+                                 <group string="Links">
+                                    <field name="link_to_product_mockup"/>
+                                </group>
+                            </page>
+                            <page string="Costs">
+                                <group>
+                                    <group>
+                                        <field name="moq"/>
+                                        <field name="order_unit"/>
+                                        <field name="bottle_cost"/>
+                                        <field name="label_cost"/>
+                                        <field name="liquid_cost"/>
+                                        <field name="microfibers_cost"/>
+                                    </group>
+                                    <group>
+                                        <field name="plastic_bag_cost"/>
+                                        <field name="labor_cost"/>
+                                        <field name="shipping_cost"/>
+                                        <field name="other_costs"/>
+                                        <separator/>
+                                        <field name="unit_cost_sar" style="font-weight:bold;"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_product_master_search" model="ir.ui.view">
+            <field name="name">product.master.search</field>
+            <field name="model">product.master</field>
+            <field name="arch" type="xml">
+                <search string="Search Master Products">
+                    <field name="product_name" string="Product Name"/>
+                    <field name="product_id" string="Product ID"/>
+                    <field name="external_id" string="External ID"/>
+                    <field name="label_product_name"/>
+                    <field name="formula_code"/>
+                    <field name="category"/>
+                    <field name="industry_id"/>
+                    <field name="subindustry_id"/>
+                    <field name="generic_product_type"/>
+                    <field name="volume_liters"/>
+                    <field name="pack_quantity_units"/>
+                    <separator/>
+                    <filter string="Master Product" name="is_master_product" domain="[('master_product', '=', True)]"/>
+                    <filter string="Uploaded in Odoo" name="is_uploaded" domain="[('uploaded_in_odoo', '=', True)]"/>
+                    <separator/>
+                    <filter string="Status" name="status" context="{'group_by': 'status'}"/>
+                    <filter string="Industry" name="industry" context="{'group_by': 'industry_id'}"/>
+                    <filter string="Sub-Industry" name="subindustry" context="{'group_by': 'subindustry_id'}"/>
+                    <filter string="Category" name="category" context="{'group_by': 'category'}"/>
+                </search>
+            </field>
+        </record>
+
+        <record id="view_product_master_tree" model="ir.ui.view">
+            <field name="name">product.master.tree</field>
+            <field name="model">product.master</field>
+            <field name="arch" type="xml">
+                <tree string="Master Products">
+                    <field name="product_id"/>
+                    <field name="product_name"/>
+                    <field name="status" optional="show"/>
+                    <field name="category"/>
+                    <field name="external_id" optional="hide"/>
+                    <field name="label_product_name" optional="hide"/>
+                    <field name="master_product" optional="hide"/>
+                    <field name="uploaded_in_odoo" optional="hide"/>
+                    <field name="notes" optional="hide"/>
+                    <field name="formula_code"/>
+                    <field name="moq" optional="show"/>
+                    <field name="order_unit" optional="hide"/>
+                    <field name="presentation" optional="show"/>
+                    <field name="scent" optional="hide"/>
+                    <field name="type" optional="hide"/>
+                    <field name="link_to_product_mockup" optional="hide"/>
+                    <field name="volume_liters"/>
+                    <field name="pack_quantity_units"/>
+                    <field name="type_of_product"/>
+                    <field name="generic_product_type"/>
+                    <field name="subindustry_id"/>
+                    <field name="industry_id"/>
+                    <field name="description" optional="hide"/>
+                    <field name="dilution_rate" optional="hide"/>
+                    <field name="bottle_cost" optional="hide"/>
+                    <field name="label_cost" optional="hide"/>
+                    <field name="liquid_cost" optional="hide"/>
+                    <field name="microfibers_cost" optional="hide"/>
+                    <field name="plastic_bag_cost" optional="hide"/>
+                    <field name="labor_cost" optional="hide"/>
+                    <field name="shipping_cost" optional="hide"/>
+                    <field name="other_costs" optional="hide"/>
+                    <field name="unit_cost_sar"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="action_product_master" model="ir.actions.act_window">
+            <field name="name">Master Products</field>
+            <field name="res_model">product.master</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_product_master_search"/>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new master product
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="menu_product_master"
+            name="Master Products"
+            parent="menu_price_intelligence_root"
+            action="action_product_master"
+            sequence="20"/>
+
+    </data>
+</odoo>
