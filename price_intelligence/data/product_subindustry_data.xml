@@ -11,7 +11,7 @@
         <record id="sub_hotels" model="product.subindustry"><field name="name">Hotels</field><field name="industry_id" ref="industry_horeca"/></record>
 
         <record id="sub_gyms" model="product.subindustry"><field name="name">Gyms</field><field name="industry_id" ref="industry_fm"/></record>
-        <record id="sub_spas" model="product.subindustry"><field name="name">Spas and talons</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_spas" model="product.subindustry"><field name="name">Spas and salons</field><field name="industry_id" ref="industry_fm"/></record>
         <record id="sub_fm" model="product.subindustry"><field name="name">Facilities management</field><field name="industry_id" ref="industry_fm"/></record>
         <record id="sub_faith" model="product.subindustry"><field name="name">Faith</field><field name="industry_id" ref="industry_fm"/></record>
 
