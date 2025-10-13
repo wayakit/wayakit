@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="1">
-        <record id="industry_fm" model="product.industry"><field name="name">Facilities Management</field></record>
+        <record id="industry_fm" model="product.industry"><field name="name">Facilities management</field></record>
         <record id="industry_health" model="product.industry"><field name="name">Healthcare</field></record>
         <record id="industry_horeca" model="product.industry"><field name="name">Horeca</field></record>
         <record id="industry_house" model="product.industry"><field name="name">Households</field></record>
