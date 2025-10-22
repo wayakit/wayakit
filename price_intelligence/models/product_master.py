@@ -20,12 +20,22 @@ class ProductMaster(models.Model):
     moq = fields.Float(string='MOQ')
     order_unit = fields.Char(string='Order Unit')
     presentation = fields.Char(string='Presentation')
-    scent = fields.Char(string='Scent')
-    type = fields.Char(string='Type')
+    scent = fields.Selection([
+        ('rose_musk', 'Rose musk'),
+        ('unscented', 'Unscented'),
+        ('jasmine', 'Jasmine'),
+        ('baby_scent', 'Baby scent'),
+        ('not_applicable', 'Attribute not aplicable')
+    ], string='Scent')
+    type = fields.Selection([
+        ('not_applicable', 'Attribute not applicable'),
+        ('new', 'New'),
+        ('refill', 'Refill (only liquid)')
+    ], string='Type')
     link_to_product_mockup = fields.Char(string='Link to Product Mockup')
     volume_liters = fields.Float(string='Volume (Liters)')
     pack_quantity_units = fields.Integer(string='Pack Quantity (Units)')
-    type_of_product = fields.Char(string='Type of Product')
+    type_of_product_id = fields.Many2one('product.classification', string='Type of Product')
     category = fields.Char(string='Category')
     generic_product_type = fields.Char(string='Generic Product Type')
     subindustry_id = fields.Many2one('product.subindustry', string='Sub-Industry')
@@ -43,7 +53,9 @@ class ProductMaster(models.Model):
     labor_cost = fields.Float(string='Labor')
     shipping_cost = fields.Float(string='Shipping')
     other_costs = fields.Float(string='Other Costs')
-    unit_cost_sar = fields.Float(string='Unit Cost (SAR)')
+    unit_cost_sar = fields.Float(string='Unit Cost (SAR)',
+                                 compute='_compute_unit_cost_sar',
+                                 store=True)
 
     @api.depends('subindustry_id')
     def _compute_industry(self):
@@ -52,3 +64,32 @@ class ProductMaster(models.Model):
                 record.industry_id = record.subindustry_id.industry_id
             else:
                 record.industry_id = False
+
+    @api.onchange('type_of_product_id')
+    def _onchange_type_of_product_id(self):
+        if self.type_of_product_id:
+            classification = self.type_of_product_id
+
+            self.category = classification.category
+            self.subindustry_id = classification.subindustry_id
+            self.generic_product_type = classification.generic_product_type
+        else:
+            self.category = False
+            self.subindustry_id = False
+            self.generic_product_type = False
+            self.industry_id = False
+
+    @api.depends('bottle_cost', 'label_cost', 'liquid_cost', 'microfibers_cost',
+                 'plastic_bag_cost', 'labor_cost', 'shipping_cost', 'other_costs')
+    def _compute_unit_cost_sar(self):
+        for record in self:
+            record.unit_cost_sar = (
+                    record.bottle_cost +
+                    record.label_cost +
+                    record.liquid_cost +
+                    record.microfibers_cost +
+                    record.plastic_bag_cost +
+                    record.labor_cost +
+                    record.shipping_cost +
+                    record.other_costs
+            )

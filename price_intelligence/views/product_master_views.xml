@@ -19,17 +19,19 @@
                                 <field name="master_product"/>
                                 <field name="uploaded_in_odoo"/>
                                 <field name="formula_code"/>
+                                <field name="moq"/>
+                                <field name="order_unit"/>
                             </group>
                         </group>
                         <notebook>
                             <page string="General Information">
                                 <group>
                                     <group>
-                                        <field name="type_of_product"/>
-                                        <field name="category"/>
-                                        <field name="generic_product_type"/>
-                                        <field name="subindustry_id"/>
-                                        <field name="industry_id"/>
+                                        <field name="type_of_product_id"/>
+                                        <field name="category" readonly="1"/>
+                                        <field name="generic_product_type" readonly="1"/>
+                                        <field name="subindustry_id" readonly="1"/>
+                                        <field name="industry_id" readonly="1"/>
                                     </group>
                                     <group>
                                         <field name="presentation"/>
@@ -53,8 +55,6 @@
                             <page string="Costs">
                                 <group>
                                     <group>
-                                        <field name="moq"/>
-                                        <field name="order_unit"/>
                                         <field name="bottle_cost"/>
                                         <field name="label_cost"/>
                                         <field name="liquid_cost"/>
@@ -127,7 +127,7 @@
                     <field name="link_to_product_mockup" optional="hide"/>
                     <field name="volume_liters"/>
                     <field name="pack_quantity_units"/>
-                    <field name="type_of_product"/>
+                    <field name="type_of_product_id"/>
                     <field name="generic_product_type"/>
                     <field name="subindustry_id"/>
                     <field name="industry_id"/>
