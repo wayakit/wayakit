@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_price_suggestion_user,product.price.suggestion.user,model_product_price_suggestion,price_intelligence.group_price_intelligence_user,1,1,1,1
+access_product_master_user,product.master user,model_product_master,price_intelligence.group_price_intelligence_user,1,1,1,1
+access_product_industry_user,product.industry user,model_product_industry,price_intelligence.group_price_intelligence_user,1,1,1,1
+access_product_subindustry_user,product.subindustry user,model_product_subindustry,price_intelligence.group_price_intelligence_user,1,1,1,1
+access_product_classification_user,product.classification.user,model_product_classification,price_intelligence.group_price_intelligence_user,1,1,1,1
