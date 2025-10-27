@@ -4,3 +4,4 @@ access_product_master_user,product.master user,model_product_master,price_intell
 access_product_industry_user,product.industry user,model_product_industry,price_intelligence.group_price_intelligence_user,1,1,1,1
 access_product_subindustry_user,product.subindustry user,model_product_subindustry,price_intelligence.group_price_intelligence_user,1,1,1,1
 access_product_classification_user,product.classification.user,model_product_classification,price_intelligence.group_price_intelligence_user,1,1,1,1
+access_competitor_product,access.competitor.product,model_competitor_product,price_intelligence.group_price_intelligence_user,1,1,1,1

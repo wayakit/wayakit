@@ -33,15 +33,35 @@
             </field>
         </record>
 
+        <record id="view_product_classification_search" model="ir.ui.view">
+            <field name="name">product.classification.search</field>
+            <field name="model">product.classification</field>
+            <field name="arch" type="xml">
+                <search string="Search Product Classifications">
+                    <field name="name" string="Type of Product"/>
+                    <field name="generic_product_type"/>
+                    <field name="category"/>
+                    <field name="subindustry_id"/>
+                    <field name="industry_id"/>
+
+                    <group expand="1" string="Group By">
+                        <filter string="Industry" name="group_by_industry" context="{'group_by': 'industry_id'}"/>
+                        <filter string="Sub-Industry" name="group_by_subindustry" context="{'group_by': 'subindustry_id'}"/>
+                        <filter string="Category" name="group_by_category" context="{'group_by': 'category'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
         <record id="action_product_classification" model="ir.actions.act_window">
             <field name="name">Product Classifications</field>
             <field name="res_model">product.classification</field>
             <field name="view_mode">tree,form</field>
-        </record>
+            <field name="search_view_id" ref="view_product_classification_search"/>
+            </record>
 
         <menuitem
             id="menu_product_classification"
-            name="Product Classifications"
+            name="Products Classification"
             parent="menu_price_intelligence_root"
             action="action_product_classification"
             sequence="10"/>

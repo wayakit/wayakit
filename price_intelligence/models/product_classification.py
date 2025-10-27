@@ -22,7 +22,7 @@ class ProductClassification(models.Model):
                                        help="Ej: 'General purpose cleaner'")
 
     _sql_constraints = [
-        ('name_uniq', 'unique (name)', 'El "Type of Product" debe ser único!')
+        ('name_uniq', 'unique (name)', '"Type of Product" must be unique!')
     ]
 
     @api.onchange('subindustry_id')

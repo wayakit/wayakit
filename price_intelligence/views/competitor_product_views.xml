@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="competitor_product_view_tree" model="ir.ui.view">
+        <field name="name">competitor.product.tree</field>
+        <field name="model">competitor.product</field>
+        <field name="arch" type="xml">
+            <tree string="Competitor Products">
+                <field name="date" optional="show"/>
+                <field name="name"/>
+                <field name="product_channel" optional="show"/>
+                <field name="classification_id" string="Type of product"/>
+                <field name="product_category" optional="show"/>
+                <field name="subindustry_id" optional="show"/>
+                <field name="industry_id" optional="show"/>
+                <field name="generic_product_type" optional="show"/>
+                <field name="pack_size" optional="show"/>
+                <field name="quantity_per_unit" optional="show"/>
+                <field name="total_quantity" optional="show"/>
+                <field name="uom" optional="show"/>
+                <field name="price_source" string="Original Price"/>
+                <field name="currency_id"/>
+                <field name="price_unit_sar" optional="show"/>
+                <field name="price_unit_usd" optional="hide"/>
+                <field name="price_unit_cop" optional="hide"/>
+                <field name="source" optional="hide"/>
+                <field name="link" optional="hide"/>
+                <field name="company" optional="show"/>
+                <field name="country_id" optional="show"/>
+                <field name="price_per_ml" optional="show" string="Price per mL/g (USD)"/>
+                <field name="price_per_liter_usd" optional="hide" string="Price per L/kg (USD)"/>
+                <field name="price_per_liter_sar" optional="show"/>
+                <field name="price_per_liter_cop" optional="hide"/>
+                <field name="rating" optional="hide"/>
+                <field name="number_of_ratings" optional="hide"/>
+                <field name="popularity" optional="hide"/>
+                <field name="ecofriendly" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="competitor_product_view_form" model="ir.ui.view">
+        <field name="name">competitor.product.form</field>
+        <field name="model">competitor.product</field>
+        <field name="arch" type="xml">
+            <form string="Competitor Product">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" placeholder="e.g. Competitor Detergent X"/></h1>
+                    </div>
+                    <group>
+                        <group name="main_info" string="Product Info">
+                            <field name="company"/>
+                            <field name="date"/>
+                            <field name="country_id"/>
+                            <field name="ecofriendly"/>
+                        </group>
+                        <group name="source_info" string="Source">
+                            <field name="source"/>
+                            <field name="link" widget="url"/>
+                            <field name="product_channel"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Classification" name="classification">
+                            <group>
+                                <group>
+                                    <field name="classification_id" string="Type of product"/>
+                                </group>
+                                <group string="Auto-filled data">
+                                    <field name="industry_id"/>
+                                    <field name="subindustry_id"/>
+                                    <field name="product_category"/>
+                                    <field name="generic_product_type"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Pricing &amp; Quantity" name="pricing">
+                            <group>
+                                <group name="quantity" string="Quantity &amp; UoM">
+                                    <field name="pack_size"/>
+                                    <field name="quantity_per_unit"/>
+                                    <field name="uom"/>
+                                    <field name="total_quantity" decoration-bold="1" string="Total Quantity (Calc.)"/>
+                                </group>
+                                <group name="source_price" string="Original Price (Manual Entry)">
+                                    <field name="price_source"/>
+                                    <field name="currency_id"/>
+                                </group>
+                            </group>
+                            <h3 class="mt-4">Calculated Prices</h3>
+                            <group>
+                                <group string="Price per Unit (Total Product)">
+                                    <field name="price_unit_usd"/>
+                                    <field name="price_unit_sar"/>
+                                    <field name="price_unit_cop"/>
+                                </group>
+                                <group string="Price per Liter / Kg (Calculated)">
+                                    <field name="price_per_liter_usd"/>
+                                    <field name="price_per_liter_sar"/>
+                                    <field name="price_per_liter_cop"/>
+                                    <field name="price_per_ml" string="Price per mL/g (USD)" decoration-info="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Rating &amp; Popularity" name="rating">
+                            <group>
+                                <field name="rating"/>
+                                <field name="number_of_ratings"/>
+                                <field name="popularity" decoration-bold="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+
+                    <field name="usd_currency_id" invisible="1"/>
+                    <field name="sar_currency_id" invisible="1"/>
+                    <field name="cop_currency_id" invisible="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="competitor_product_view_search" model="ir.ui.view">
+        <field name="name">competitor.product.search</field>
+        <field name="model">competitor.product</field>
+        <field name="arch" type="xml">
+            <search string="Search Competitor Products">
+                <field name="name"/>
+                <field name="company"/>
+                <field name="country_id"/>
+                <field name="classification_id" string="Type of product"/>
+                <field name="industry_id"/>
+                <field name="subindustry_id"/>
+                <field name="currency_id"/>
+                <field name="ecofriendly"/>
+                <field name="popularity"/>
+                <field name="product_channel"/>
+                <field name="product_category"/>
+                <field name="generic_product_type"/>
+
+                <separator/>
+                <filter string="B2B" name="channel_b2b" domain="[('product_channel', '=', 'b2b')]"/>
+                <filter string="Retail" name="channel_retail" domain="[('product_channel', '=', 'retail')]"/>
+                <filter string="E-commerce" name="channel_ecommerce" domain="[('product_channel', '=', 'ecommerce')]"/>
+                <separator/>
+                <group expand="1" string="Group By">
+                    <filter string="Channel" name="group_by_channel" context="{'group_by': 'product_channel'}"/>
+                    <filter string="Industry" name="group_by_industry" context="{'group_by': 'industry_id'}"/>
+                    <filter string="Sub-Industry" name="group_by_subindustry" context="{'group_by': 'subindustry_id'}"/>
+                    <filter string="Country" name="group_by_country" context="{'group_by': 'country_id'}"/>
+                    <filter string="Currency" name="group_by_currency" context="{'group_by': 'currency_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="competitor_product_action" model="ir.actions.act_window">
+        <field name="name">Competitor Products</field>
+        <field name="res_model">competitor.product</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="competitor_product_view_search"/>
+        <field name="help" type="html">
+          <p class="o_view_nocontent_smiling_face">
+            Register a new competitor product
+          </p><p>
+            Track pricing and classification of products from your competition.
+          </p>
+        </field>
+    </record>
+
+    <menuitem
+        id="competitor_product_menu"
+        name="Competitor Products"
+        parent="price_intelligence.menu_price_intelligence_root"
+        action="competitor_product_action"
+        sequence="30"/>
+
+</odoo>

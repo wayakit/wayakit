@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api
+from odoo.exceptions import ValidationError
+
 
 class ProductMaster(models.Model):
     _name = 'product.master'
     _description = 'Master Product Table'
-    external_id = fields.Char(string='External ID')
-    product_id = fields.Char(string='Product ID')
-    product_name = fields.Char(string='Product Name')
-    label_product_name = fields.Char(string='Label Product Name')
+    create_date = fields.Datetime(string="Creation Date")
+    external_id = fields.Char(string='External ID', required=True)
+    product_id = fields.Char(string='Product ID', required=True)
+    product_name = fields.Char(string='Product Name', required=True)
+    label_product_name = fields.Char(string='Label Product Name', required=True)
+
     status = fields.Selection([
         ('active', 'Active'),
         ('inactive', 'Inactive')
@@ -16,68 +20,74 @@ class ProductMaster(models.Model):
     master_product = fields.Boolean(string='Master Product')
     uploaded_in_odoo = fields.Boolean(string='Uploaded in Odoo')
     notes = fields.Text(string='Notes')
-    formula_code = fields.Char(string='Formula Code')
+
+    formula_code = fields.Char(string='Formula Code', required=True)
+
     moq = fields.Float(string='MOQ')
-    order_unit = fields.Char(string='Order Unit')
-    presentation = fields.Char(string='Presentation')
+
+    order_unit = fields.Char(string='Order Unit', required=True)
+    presentation = fields.Char(string='Presentation', required=True)
     scent = fields.Selection([
         ('rose_musk', 'Rose musk'),
         ('unscented', 'Unscented'),
         ('jasmine', 'Jasmine'),
         ('baby_scent', 'Baby scent'),
         ('not_applicable', 'Attribute not aplicable')
-    ], string='Scent')
+    ], string='Scent', required=True)
     type = fields.Selection([
         ('not_applicable', 'Attribute not applicable'),
         ('new', 'New'),
         ('refill', 'Refill (only liquid)')
-    ], string='Type')
+    ], string='Type', required=True)
+
     link_to_product_mockup = fields.Char(string='Link to Product Mockup')
-    volume_liters = fields.Float(string='Volume (Liters)')
-    pack_quantity_units = fields.Integer(string='Pack Quantity (Units)')
-    type_of_product_id = fields.Many2one('product.classification', string='Type of Product')
-    category = fields.Char(string='Category')
-    generic_product_type = fields.Char(string='Generic Product Type')
-    subindustry_id = fields.Many2one('product.subindustry', string='Sub-Industry')
-    industry_id = fields.Many2one('product.industry', string='Industry', readonly=True, store=True,
-                                  compute='_compute_industry')
+
+    volume_liters = fields.Float(string='Volume (Liters)', required=True)
+    pack_quantity_units = fields.Integer(string='Pack Quantity (Units)', required=True)
+
+    type_of_product_id = fields.Many2one('product.classification', string='Type of Product', required=True)
+
+    category = fields.Char(
+        string='Category',
+        related='type_of_product_id.category',
+        store=True,
+        readonly=True
+    )
+    generic_product_type = fields.Char(
+        string='Generic Product Type',
+        related='type_of_product_id.generic_product_type',
+        store=True,
+        readonly=True
+    )
+    subindustry_id = fields.Many2one(
+        'product.subindustry',
+        string='Sub-Industry',
+        related='type_of_product_id.subindustry_id',
+        store=True,
+        readonly=True
+    )
+    industry_id = fields.Many2one(
+        'product.industry',
+        string='Industry',
+        related='type_of_product_id.industry_id',
+        store=True,
+        readonly=True
+    )
     description = fields.Text(string='Description')
     dilution_rate = fields.Char(string='Dilution Rate')
 
-    # Cost Fields
-    bottle_cost = fields.Float(string='Bottle')
-    label_cost = fields.Float(string='Label')
-    liquid_cost = fields.Float(string='Liquid')
-    microfibers_cost = fields.Float(string='Microfibers')
-    plastic_bag_cost = fields.Float(string='Plastic Bag')
-    labor_cost = fields.Float(string='Labor')
-    shipping_cost = fields.Float(string='Shipping')
-    other_costs = fields.Float(string='Other Costs')
+    bottle_cost = fields.Float(string='Bottle', required=True)
+    label_cost = fields.Float(string='Label', required=True)
+    liquid_cost = fields.Float(string='Liquid', required=True)
+    microfibers_cost = fields.Float(string='Microfibers', required=True)
+    plastic_bag_cost = fields.Float(string='Plastic Bag', required=True)
+    labor_cost = fields.Float(string='Labor', required=True)
+    shipping_cost = fields.Float(string='Shipping', required=True)
+    other_costs = fields.Float(string='Other Costs', required=True)
+
     unit_cost_sar = fields.Float(string='Unit Cost (SAR)',
                                  compute='_compute_unit_cost_sar',
                                  store=True)
-
-    @api.depends('subindustry_id')
-    def _compute_industry(self):
-        for record in self:
-            if record.subindustry_id:
-                record.industry_id = record.subindustry_id.industry_id
-            else:
-                record.industry_id = False
-
-    @api.onchange('type_of_product_id')
-    def _onchange_type_of_product_id(self):
-        if self.type_of_product_id:
-            classification = self.type_of_product_id
-
-            self.category = classification.category
-            self.subindustry_id = classification.subindustry_id
-            self.generic_product_type = classification.generic_product_type
-        else:
-            self.category = False
-            self.subindustry_id = False
-            self.generic_product_type = False
-            self.industry_id = False
 
     @api.depends('bottle_cost', 'label_cost', 'liquid_cost', 'microfibers_cost',
                  'plastic_bag_cost', 'labor_cost', 'shipping_cost', 'other_costs')
@@ -93,3 +103,11 @@ class ProductMaster(models.Model):
                     record.shipping_cost +
                     record.other_costs
             )
+
+    @api.constrains('volume_liters', 'pack_quantity_units')
+    def _check_volume_or_pack_quantity(self):
+        for record in self:
+            if record.volume_liters <= 0 and record.pack_quantity_units <= 0:
+                raise ValidationError(
+                    "The product must have a 'Volume (Liters)' or 'Pack Quantity (Units)' greater than 0. Both can't be 0."
+                )

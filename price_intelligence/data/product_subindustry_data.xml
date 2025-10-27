@@ -14,6 +14,7 @@
         <record id="sub_spas" model="product.subindustry"><field name="name">Spas and salons</field><field name="industry_id" ref="industry_fm"/></record>
         <record id="sub_fm" model="product.subindustry"><field name="name">Facilities management</field><field name="industry_id" ref="industry_fm"/></record>
         <record id="sub_faith" model="product.subindustry"><field name="name">Faith</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_curtain_care" model="product.subindustry"><field name="name">Curtain care</field><field name="industry_id" ref="industry_fm"/></record>
 
         <record id="sub_health" model="product.subindustry"><field name="name">Healthcare</field><field name="industry_id" ref="industry_health"/></record>
 

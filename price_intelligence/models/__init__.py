@@ -4,3 +4,4 @@ from . import product_master
 from . import product_classification
 from . import product_industry
 from . import product_subindustry
+from . import competitor_product
