@@ -26,13 +26,13 @@ class ProductMaster(models.Model):
     moq = fields.Float(string='MOQ')
 
     order_unit = fields.Char(string='Order Unit')
-    presentation = fields.Char(string='Presentation', required=True)
+    presentation = fields.Char(string='Presentation')
     scent = fields.Selection([
         ('rose_musk', 'Rose musk'),
         ('unscented', 'Unscented'),
         ('jasmine', 'Jasmine'),
         ('baby_scent', 'Baby scent'),
-        ('not_applicable', 'Attribute not aplicable')
+        ('not_applicable', 'Attribute not applicable')
     ], string='Scent')
     type = fields.Selection([
         ('not_applicable', 'Attribute not applicable'),
@@ -42,8 +42,8 @@ class ProductMaster(models.Model):
 
     link_to_product_mockup = fields.Char(string='Link to Product Mockup')
 
-    volume_liters = fields.Float(string='Volume (Liters)', required=True)
-    pack_quantity_units = fields.Integer(string='Pack Quantity (Units)', required=True)
+    volume_liters = fields.Float(string='Volume (Liters)')
+    pack_quantity_units = fields.Integer(string='Pack Quantity (Units)')
 
     type_of_product_id = fields.Many2one('product.classification', string='Type of Product', required=True)
 
@@ -104,10 +104,10 @@ class ProductMaster(models.Model):
                     record.other_costs
             )
 
-    @api.constrains('volume_liters', 'pack_quantity_units')
-    def _check_volume_or_pack_quantity(self):
-        for record in self:
-            if record.volume_liters <= 0 and record.pack_quantity_units <= 0:
-                raise ValidationError(
-                    "The product must have a 'Volume (Liters)' or 'Pack Quantity (Units)' greater than 0. Both can't be 0."
-                )
+    #@api.constrains('volume_liters', 'pack_quantity_units')
+    #def _check_volume_or_pack_quantity(self):
+    #    for record in self:
+    #        if record.volume_liters <= 0 and record.pack_quantity_units <= 0:
+    #            raise ValidationError(
+    #                "The product must have a 'Volume (Liters)' or 'Pack Quantity (Units)' greater than 0. Both can't be 0."
+    #            )
