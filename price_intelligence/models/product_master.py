@@ -8,7 +8,7 @@ class ProductMaster(models.Model):
     _name = 'product.master'
     _description = 'Master Product Table'
     create_date = fields.Datetime(string="Creation Date")
-    external_id = fields.Char(string='External ID', required=True)
+    external_id = fields.Char(string='External ID')
     product_id = fields.Char(string='Product ID', required=True)
     product_name = fields.Char(string='Product Name', required=True)
     label_product_name = fields.Char(string='Label Product Name', required=True)
@@ -21,11 +21,11 @@ class ProductMaster(models.Model):
     uploaded_in_odoo = fields.Boolean(string='Uploaded in Odoo')
     notes = fields.Text(string='Notes')
 
-    formula_code = fields.Char(string='Formula Code', required=True)
+    formula_code = fields.Char(string='Formula Code')
 
     moq = fields.Float(string='MOQ')
 
-    order_unit = fields.Char(string='Order Unit', required=True)
+    order_unit = fields.Char(string='Order Unit')
     presentation = fields.Char(string='Presentation', required=True)
     scent = fields.Selection([
         ('rose_musk', 'Rose musk'),
@@ -33,12 +33,12 @@ class ProductMaster(models.Model):
         ('jasmine', 'Jasmine'),
         ('baby_scent', 'Baby scent'),
         ('not_applicable', 'Attribute not aplicable')
-    ], string='Scent', required=True)
+    ], string='Scent')
     type = fields.Selection([
         ('not_applicable', 'Attribute not applicable'),
         ('new', 'New'),
         ('refill', 'Refill (only liquid)')
-    ], string='Type', required=True)
+    ], string='Type')
 
     link_to_product_mockup = fields.Char(string='Link to Product Mockup')
 
