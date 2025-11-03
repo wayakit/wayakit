@@ -23,6 +23,7 @@
         'data/product_industry_data.xml',
         'data/product_subindustry_data.xml',
         'views/competitor_product_views.xml',
+        'views/product_price_suggestion_history_views.xml',
     ],
     'application': True,
     'installable': True,
