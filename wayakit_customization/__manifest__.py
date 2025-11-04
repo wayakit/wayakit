@@ -25,6 +25,7 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'views/website_sale_hide_fields.xml',
         'views/views.xml',
         'views/templates.xml',
         'views/ir_cron.xml',

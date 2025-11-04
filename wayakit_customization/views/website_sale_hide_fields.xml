@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Method 1: Using CSS to hide the fields completely -->
+        <template id="custom_css_hide_fields" inherit_id="website.layout">
+            <xpath expr="//head" position="inside">
+                <style>
+                    /* Hide company name field and its container */
+                    div:has(> input[name="company_name"]),
+                    div:has(> div > input[name="company_name"]),
+                    .form-group:has(input[name="company_name"]),
+                    [class*="col"]:has(input[name="company_name"]) {
+                        display: none !important;
+                    }
+
+                    /* Hide VAT field and its container */
+                    div:has(> input[name="vat"]),
+                    div:has(> div > input[name="vat"]),
+                    .form-group:has(input[name="vat"]),
+                    [class*="col"]:has(input[name="vat"]) {
+                        display: none !important;
+                    }
+
+                    /* Alternative selectors if :has is not supported */
+                    input[name="company_name"],
+                    input[name="vat"],
+                    label[for="company_name"],
+                    label[for="vat"] {
+                        display: none !important;
+                    }
+
+                    /* Hide parent containers by targeting common patterns */
+                    .checkout_autoformat input[name="company_name"],
+                    .checkout_autoformat input[name="vat"] {
+                        display: none !important;
+                    }
+
+                    /* Hide the entire row if it only contains these fields */
+                    .row:has(> [class*="col"]:only-child input[name="company_name"]),
+                    .row:has(> [class*="col"]:only-child input[name="vat"]) {
+                        display: none !important;
+                    }
+                </style>
+            </xpath>
+        </template>
+
+        <!-- Method 2: JavaScript solution for complete removal -->
+        <template id="custom_js_hide_fields" inherit_id="website_sale.address">
+            <xpath expr="//form" position="inside">
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Function to completely remove field and its container
+                        function removeFieldCompletely(fieldName) {
+                            var field = document.querySelector('input[name="' + fieldName + '"]');
+                            if (field) {
+                                // Try to find the column container
+                                var container = field.closest('[class*="col"]');
+                                if (container) {
+                                    container.remove();
+                                } else {
+                                    // If no column found, try form-group
+                                    container = field.closest('.form-group');
+                                    if (container) {
+                                        container.remove();
+                                    } else {
+                                        // Last resort: remove the parent div
+                                        if (field.parentElement) {
+                                            field.parentElement.remove();
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Also remove any labels
+                            var label = document.querySelector('label[for="' + fieldName + '"]');
+                            if (label) {
+                                var labelContainer = label.closest('[class*="col"]') || label.parentElement;
+                                if (labelContainer) {
+                                    labelContainer.remove();
+                                }
+                            }
+                        }
+
+                        // Remove company_name and vat fields
+                        removeFieldCompletely('company_name');
+                        removeFieldCompletely('vat');
+
+                        // Clean up any empty rows
+                        document.querySelectorAll('.row').forEach(function(row) {
+                            if (row.children.length === 0 || row.textContent.trim() === '') {
+                                row.remove();
+                            }
+                        });
+                    });
+                </script>
+            </xpath>
+        </template>
+    </data>
+</odoo>
