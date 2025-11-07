@@ -19,6 +19,7 @@
         'security/ir.model.access.csv',
         'views/product_price_suggestion_views.xml',
         'views/product_classification_views.xml',
+        'views/product_formula_code_views.xml',
         'views/product_master_views.xml',
         'data/product_industry_data.xml',
         'data/product_subindustry_data.xml',
