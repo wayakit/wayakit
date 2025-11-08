@@ -13,7 +13,7 @@
     'category': 'Sales',
     'version': '17.0.1.0.0',
     'license': 'LGPL-3',
-    'depends': ['base', 'sales_team'],
+    'depends': ['base', 'sales_team', 'helpdesk'],
     'data': [
         'security/price_intelligence_security.xml',
         'security/ir.model.access.csv',
@@ -25,6 +25,9 @@
         'data/product_subindustry_data.xml',
         'views/competitor_product_views.xml',
         'views/product_price_suggestion_history_views.xml',
+        'data/sampling_cost_sequence.xml',
+        'views/sampling_cost_calculator_views.xml',
+        'views/helpdesk_ticket_views.xml',
     ],
     'application': True,
     'installable': True,

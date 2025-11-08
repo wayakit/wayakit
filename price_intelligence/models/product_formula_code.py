@@ -4,6 +4,7 @@ from odoo import models, fields
 class ProductFormulaCode(models.Model):
     _name = 'product.formula.code'
     _description = 'Product Formula Code'
+    _rec_name = 'sku'
 
     product_template_id = fields.Many2one(
         'product.template',

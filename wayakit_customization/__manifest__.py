@@ -20,7 +20,7 @@
     'version': '0.1',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'product', 'appointment', 'appointment_account_payment'],
+    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence'],
 
     # always loaded
     'data': [

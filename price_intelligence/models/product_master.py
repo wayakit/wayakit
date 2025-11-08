@@ -7,6 +7,7 @@ from odoo.exceptions import ValidationError
 class ProductMaster(models.Model):
     _name = 'product.master'
     _description = 'Master Product Table'
+
     create_date = fields.Datetime(string="Creation Date")
     external_id = fields.Char(string='External ID')
     product_id = fields.Char(string='Product ID', required=True)
@@ -21,7 +22,7 @@ class ProductMaster(models.Model):
     uploaded_in_odoo = fields.Boolean(string='Uploaded in Odoo')
     notes = fields.Text(string='Notes')
 
-    formula_code = fields.Char(string='Formula Code')
+    formula_code = fields.Many2one('product.formula.code', string='Formula Code')
 
     moq = fields.Float(string='MOQ')
 
@@ -78,7 +79,10 @@ class ProductMaster(models.Model):
 
     bottle_cost = fields.Float(string='Bottle', required=True)
     label_cost = fields.Float(string='Label', required=True)
-    liquid_cost = fields.Float(string='Liquid', required=True)
+    liquid_cost = fields.Float(string='Liquid',
+                               compute='_compute_liquid_cost',
+                               store=True,
+                               readonly=True)
     microfibers_cost = fields.Float(string='Microfibers', required=True)
     plastic_bag_cost = fields.Float(string='Plastic Bag', required=True)
     labor_cost = fields.Float(string='Labor', required=True)
@@ -88,6 +92,19 @@ class ProductMaster(models.Model):
     unit_cost_sar = fields.Float(string='Unit Cost (SAR)',
                                  compute='_compute_unit_cost_sar',
                                  store=True)
+
+    @api.depends('formula_code', 'volume_liters')
+    def _compute_liquid_cost(self):
+        for record in self:
+            # Asegúrate de que tenemos una fórmula y un volumen para calcular
+            if record.formula_code and record.volume_liters > 0:
+                # ¡IMPORTANTE!
+                # Asumo que el campo en 'product.formula.code' se llama 'cost_per_liter'
+                # Si se llama 'price' o 'costo_litro', cambia 'cost_per_liter' por ese nombre.
+                cost_liter = record.formula_code.price_per_liter
+                record.liquid_cost = cost_liter * record.volume_liters
+            else:
+                record.liquid_cost = 0.0
 
     @api.depends('bottle_cost', 'label_cost', 'liquid_cost', 'microfibers_cost',
                  'plastic_bag_cost', 'labor_cost', 'shipping_cost', 'other_costs')
@@ -111,3 +128,20 @@ class ProductMaster(models.Model):
     #            raise ValidationError(
     #                "The product must have a 'Volume (Liters)' or 'Pack Quantity (Units)' greater than 0. Both can't be 0."
     #            )
+
+    _rec_name = 'product_name'
+
+    @api.model
+    def _name_search(self, name='', args=None, operator='ilike', limit=100, order=None, name_get_uid=None):
+        if args is None:
+            args = []
+        domain = args[:]
+        if name:
+            domain = ['|',
+                      '|',
+                      ('product_name', operator, name),
+                      ('external_id', operator, name),
+                      ('product_id', operator, name)
+                      ] + domain
+
+        return self._search(domain, limit=limit, order=order, access_rights_uid=name_get_uid)
