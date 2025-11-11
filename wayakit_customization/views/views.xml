@@ -1,6 +1,6 @@
 <odoo>
     <data>
-        <record id="view_product_product_form_inherit" model="ir.ui.view">
+        <record id="view_product_product_form_inherit_v2" model="ir.ui.view">
                 <field name="name">product.product.form.inherit.duration</field>
                 <field name="model">product.product</field>
                 <field name="inherit_id" ref="product.product_normal_form_view"/>
