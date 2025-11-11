@@ -136,18 +136,5 @@
                 </xpath>
             </field>
         </record>
-
-        <record id="product_template_form_view_inherit_master_product" model="ir.ui.view">
-        <field name="name">product.template.form.inherit.master</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="product.product_template_form_view"/>
-        <field name="arch" type="xml">
-
-            <xpath expr="//field[@name='standard_price']" position="before">
-                <field name="master_product_id"/>
-            </xpath>
-
-        </field>
-    </record>
     </data>
 </odoo>

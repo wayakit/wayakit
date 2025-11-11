@@ -12,6 +12,12 @@ class CompetitorProduct(models.Model):
     date = fields.Date(string="Date", default=fields.Date.context_today, required=True)
     country_id = fields.Many2one('res.country', string="Country", required=True)
     company = fields.Char(string="Company")
+    company_id = fields.Many2one(
+        'res.company',
+        string="Wayakit Company",
+        required=True,
+        default=lambda self: self.env.company,
+        help="Wayakit Company (SA, MX CO) the price is relevant to.")
     source = fields.Char(string="Source (e.g., Website)")
     link = fields.Char(string="Link")
     product_channel = fields.Selection([

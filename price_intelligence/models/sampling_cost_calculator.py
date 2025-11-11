@@ -117,7 +117,6 @@ class SamplingCostCalculatorLine(models.Model):
 
     @api.depends(
         'volume_sample_l', 'liquid_base_cost_related', 'volume_product_reference_l',
-        # <-- AÑADIMOS 'volume_product_reference_l'
         'bottle', 'label', 'labor',
         'microfibers', 'plastic_bag', 'other_costs'
     )

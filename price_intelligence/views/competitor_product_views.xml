@@ -8,7 +8,7 @@
             <tree string="Competitor Products">
                 <field name="date" optional="show"/>
                 <field name="name"/>
-                <field name="product_channel" optional="show"/>
+                <field name="company_id" optional="show" string="Wayakit Company"/> <field name="product_channel" optional="show"/>
                 <field name="classification_id" string="Type of product"/>
                 <field name="product_category" optional="show"/>
                 <field name="subindustry_id" optional="show"/>
@@ -51,8 +51,7 @@
                     </div>
                     <group>
                         <group name="main_info" string="Product Info">
-                            <field name="company"/>
-                            <field name="date"/>
+                            <field name="company" string="Competitor Company"/> <field name="company_id"/> <field name="date"/>
                             <field name="country_id"/>
                             <field name="ecofriendly"/>
                         </group>
@@ -128,8 +127,8 @@
         <field name="arch" type="xml">
             <search string="Search Competitor Products">
                 <field name="name"/>
-                <field name="company"/>
-                <field name="country_id"/>
+                <field name="company" string="Competitor Company"/>
+                <field name="company_id" string="Wayakit Company"/> <field name="country_id"/>
                 <field name="classification_id" string="Type of product"/>
                 <field name="industry_id"/>
                 <field name="subindustry_id"/>
@@ -146,7 +145,7 @@
                 <filter string="E-commerce" name="channel_ecommerce" domain="[('product_channel', '=', 'ecommerce')]"/>
                 <separator/>
                 <group expand="1" string="Group By">
-                    <filter string="Channel" name="group_by_channel" context="{'group_by': 'product_channel'}"/>
+                    <filter string="Wayakit Company" name="group_by_wayakit_company" context="{'group_by': 'company_id'}"/> <filter string="Channel" name="group_by_channel" context="{'group_by': 'product_channel'}"/>
                     <filter string="Industry" name="group_by_industry" context="{'group_by': 'industry_id'}"/>
                     <filter string="Sub-Industry" name="group_by_subindustry" context="{'group_by': 'subindustry_id'}"/>
                     <filter string="Country" name="group_by_country" context="{'group_by': 'country_id'}"/>
