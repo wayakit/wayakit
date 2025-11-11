@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="sub_airports" model="product.subindustry"><field name="name">Airports</field><field name="industry_id" ref="industry_transport"/></record>
+        <record id="sub_aviation" model="product.subindustry"><field name="name">Aviation</field><field name="industry_id" ref="industry_transport"/></record>
+        <record id="sub_land_transport" model="product.subindustry"><field name="name">Land transportation</field><field name="industry_id" ref="industry_transport"/></record>
+        <record id="sub_maritime" model="product.subindustry"><field name="name">Maritime</field><field name="industry_id" ref="industry_transport"/></record>
+         <record id="sub_automotive" model="product.subindustry"><field name="name">Automotive</field><field name="industry_id" ref="industry_transport"/></record>
+
+        <record id="sub_restaurants" model="product.subindustry"><field name="name">Restaurants</field><field name="industry_id" ref="industry_horeca"/></record>
+        <record id="sub_hotels" model="product.subindustry"><field name="name">Hotels</field><field name="industry_id" ref="industry_horeca"/></record>
+
+        <record id="sub_gyms" model="product.subindustry"><field name="name">Gyms</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_spas" model="product.subindustry"><field name="name">Spas and salons</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_fm" model="product.subindustry"><field name="name">Facilities management</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_faith" model="product.subindustry"><field name="name">Faith</field><field name="industry_id" ref="industry_fm"/></record>
+        <record id="sub_curtain_care" model="product.subindustry"><field name="name">Curtain care</field><field name="industry_id" ref="industry_fm"/></record>
+
+        <record id="sub_health" model="product.subindustry"><field name="name">Healthcare</field><field name="industry_id" ref="industry_health"/></record>
+
+        <record id="sub_defense" model="product.subindustry"><field name="name">Defense</field><field name="industry_id" ref="industry_industrial"/></record>
+        <record id="sub_industrial" model="product.subindustry"><field name="name">Industrial facilities</field><field name="industry_id" ref="industry_industrial"/></record>
+
+        <record id="sub_home" model="product.subindustry"><field name="name">Home</field><field name="industry_id" ref="industry_house"/></record>
+        <record id="sub_pets" model="product.subindustry"><field name="name">Pets</field><field name="industry_id" ref="industry_house"/></record>
+    </data>
+</odoo>

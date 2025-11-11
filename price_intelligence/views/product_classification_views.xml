@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_product_classification_form" model="ir.ui.view">
+            <field name="name">product.classification.form</field>
+            <field name="model">product.classification</field>
+            <field name="arch" type="xml">
+                <form string="Product Classification">
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="generic_product_type"/>
+                            <field name="category"/>
+                            <field name="subindustry_id"/>
+                            <field name="industry_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_product_classification_tree" model="ir.ui.view">
+            <field name="name">product.classification.tree</field>
+            <field name="model">product.classification</field>
+            <field name="arch" type="xml">
+                <tree string="Product Classifications">
+                    <field name="name"/>
+                    <field name="category"/>
+                    <field name="generic_product_type"/>
+                    <field name="subindustry_id"/>
+                    <field name="industry_id"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_product_classification_search" model="ir.ui.view">
+            <field name="name">product.classification.search</field>
+            <field name="model">product.classification</field>
+            <field name="arch" type="xml">
+                <search string="Search Product Classifications">
+                    <field name="name" string="Type of Product"/>
+                    <field name="generic_product_type"/>
+                    <field name="category"/>
+                    <field name="subindustry_id"/>
+                    <field name="industry_id"/>
+
+                    <group expand="1" string="Group By">
+                        <filter string="Industry" name="group_by_industry" context="{'group_by': 'industry_id'}"/>
+                        <filter string="Sub-Industry" name="group_by_subindustry" context="{'group_by': 'subindustry_id'}"/>
+                        <filter string="Category" name="group_by_category" context="{'group_by': 'category'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+        <record id="action_product_classification" model="ir.actions.act_window">
+            <field name="name">Product Classifications</field>
+            <field name="res_model">product.classification</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="view_product_classification_search"/>
+            </record>
+
+        <menuitem
+            id="menu_product_classification"
+            name="Products Classification"
+            parent="menu_price_intelligence_root"
+            action="action_product_classification"
+            sequence="10"/>
+
+    </data>
+</odoo>

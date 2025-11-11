@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_product_formula_code_tree" model="ir.ui.view">
+            <field name="name">product.formula.code.tree</field>
+            <field name="model">product.formula.code</field>
+            <field name="arch" type="xml">
+                <tree string="Formula Codes">
+                    <field name="product_template_id"/>
+                    <field name="sku"/>
+                    <field name="base_product"/>
+                    <field name="formula_status"/>
+                    <field name="price_per_liter" widget="monetary"/>
+                    <field name="notes"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_product_formula_code_form" model="ir.ui.view">
+            <field name="name">product.formula.code.form</field>
+            <field name="model">product.formula.code</field>
+            <field name="arch" type="xml">
+                <form string="Formula Code">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="product_template_id"/>
+                                <field name="sku"/>
+                                <field name="base_product"/>
+                            </group>
+                            <group>
+                                <field name="formula_status"/>
+                                <field name="price_per_liter" widget="monetary"/>
+                            </group>
+                        </group>
+                        <group string="Notes" colspan="2">
+                            <field name="notes" nolabel="1"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_product_formula_code" model="ir.actions.act_window">
+            <field name="name">Formula Codes</field>
+            <field name="res_model">product.formula.code</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    Create a new formula code
+                </p>
+            </field>
+        </record>
+
+        <menuitem
+            id="menu_product_formula_code"
+            name="Formula Codes"
+            parent="menu_price_intelligence_root"
+            action="action_product_formula_code"
+            sequence="30"/>
+
+    </data>
+</odoo>
