@@ -93,14 +93,10 @@ class ProductMaster(models.Model):
                                  compute='_compute_unit_cost_sar',
                                  store=True)
 
-    @api.depends('formula_code', 'volume_liters')
+    @api.depends('formula_code', 'formula_code.price_per_liter', 'volume_liters')
     def _compute_liquid_cost(self):
         for record in self:
-            # Asegúrate de que tenemos una fórmula y un volumen para calcular
             if record.formula_code and record.volume_liters > 0:
-                # ¡IMPORTANTE!
-                # Asumo que el campo en 'product.formula.code' se llama 'cost_per_liter'
-                # Si se llama 'price' o 'costo_litro', cambia 'cost_per_liter' por ese nombre.
                 cost_liter = record.formula_code.price_per_liter
                 record.liquid_cost = cost_liter * record.volume_liters
             else:
