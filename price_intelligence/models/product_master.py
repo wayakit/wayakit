@@ -227,13 +227,16 @@ class ProductMaster(models.Model):
             else:  # 20L y default
                 extras = [0.04, 0.03, 0.02, 0.01]
 
-            # 3. Función Helper para calcular todo de un golpe
             def calc_tier_data(c, m_eff, m_extra, volume):
                 total_margin = m_eff + m_extra
-                if total_margin >= 1.0:
-                    price = 0.0
-                else:
-                    price = c / (1.0 - total_margin)
+
+                # SAFETY CAP: Si pasa de 99%, lo topamos a 99%
+                if total_margin >= 0.99:
+                    total_margin = 0.99
+
+                # Fórmula: Costo / (1 - Margen)
+                # Con el tope, el denominador mínimo es 0.01 (Costo * 100)
+                price = c / (1.0 - total_margin)
 
                 p_liter = price / volume if volume > 0 else 0.0
                 return price, total_margin, p_liter

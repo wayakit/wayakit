@@ -87,6 +87,15 @@
                                     </group>
                                 </group>
 
+                                <div class="alert alert-warning text-center" role="alert"
+                                     style="margin-bottom: 10px;"
+                                     invisible="base_prediction_margin &lt; 0.70">
+                                    <i class="fa fa-exclamation-triangle"/>
+                                    <strong> Safety Notice:</strong>
+                                    High margin detected. If the Total Margin (Base + Tier Extra) exceeds 100%,
+                                    the system will cap it at <strong>99%</strong> to ensure price calculation validity.
+                                </div>
+
                                 <separator string="Calculated Pricing Tiers (SAR)"/>
 
                                 <group col="5">
