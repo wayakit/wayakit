@@ -21,6 +21,31 @@ class ProductClassification(models.Model):
     generic_product_type = fields.Char(string='Generic Product Type', required=True,
                                        help="Ej: 'General purpose cleaner'")
 
+    base_margin_07 = fields.Float(
+        string='Standard Base Margin (0.7L)',
+        default=0.30,  # 30% por defecto
+        digits=(12, 4),
+        help="Base margin for standard presentation of 0.7L. Other volumes are calculated automatically."
+    )
+
+    # 2. Reglas de Volumen (Configuración Centralizada)
+    # Aquí defines cuánto sumar al margen base para cada tamaño.
+    variance_box = fields.Float(
+        string='Regla Caja (8.4L)',
+        default=0.00,  # +0%
+        help="How much to add to price of boxes."
+    )
+    variance_4l = fields.Float(
+        string='Regla Galón (4L)',
+        default=0.15,  # +15%
+        help="How much to add to price of gallons."
+    )
+    variance_20l = fields.Float(
+        string='Regla Bidón (20L)',
+        default=0.20,  # +20% (Tu nueva regla)
+        help="How much to add to price of bids."
+    )
+
     _sql_constraints = [
         ('name_uniq', 'unique (name)', '"Type of Product" must be unique!')
     ]

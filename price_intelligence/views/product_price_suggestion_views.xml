@@ -89,6 +89,7 @@
             name="Price Suggestions"
             parent="menu_price_intelligence_root"
             action="action_product_price_suggestion"
+            groups="price_intelligence.group_price_intelligence_user"/>
             sequence="10"/>
 
     </data>

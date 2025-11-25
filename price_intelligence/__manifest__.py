@@ -17,6 +17,7 @@
     'data': [
         'security/price_intelligence_security.xml',
         'security/ir.model.access.csv',
+        'views/menus.xml',
         'views/product_price_suggestion_views.xml',
         'views/product_classification_views.xml',
         'views/product_formula_code_views.xml',

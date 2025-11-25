@@ -87,7 +87,7 @@
 
     <menuitem id="menu_sampling_cost_calculator"
         name="Sampling Cost Calculator"
-        parent="price_intelligence.menu_price_intelligence_root"
+        parent="menu_price_intelligence_root"
         action="action_sampling_cost_calculator"
         sequence="50"/>
 

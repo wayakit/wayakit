@@ -14,6 +14,19 @@
                             <field name="subindustry_id"/>
                             <field name="industry_id"/>
                         </group>
+                        <group string="Pricing Strategy (Rules)">
+                                <div class="text-muted" colspan="2">
+                                    Define here margins and volume rules.
+                                </div>
+
+                                <field name="base_margin_07" widget="percentage"/>
+
+                                <separator string="Volume Adjustments (Add to Base)"/>
+
+                                <field name="variance_box" widget="percentage" string="Box (8.4L) Extra"/>
+                                <field name="variance_4l" widget="percentage" string="Medium (4L) Extra"/>
+                                <field name="variance_20l" widget="percentage" string="Large (20L) Extra"/>
+                        </group>
                     </sheet>
                 </form>
             </field>
@@ -62,7 +75,7 @@
         <menuitem
             id="menu_product_classification"
             name="Products Classification"
-            parent="menu_price_intelligence_root"
+            parent="menu_price_intelligence_configuration"
             action="action_product_classification"
             sequence="10"/>
 

@@ -71,6 +71,111 @@
                                     </group>
                                 </group>
                             </page>
+
+                            <page string="Pricing List">
+                                <group>
+                                    <group string="Configuration">
+                                        <field name="base_prediction_margin" widget="percentage"/>
+                                    </group>
+                                    <group string="AI Suggestion">
+                                        <label for="ai_predicted_price"/>
+                                        <div class="o_row">
+                                            <field name="ai_predicted_price" widget="monetary"/>
+                                            <span class="text-muted pl-2">Margin:</span>
+                                            <field name="ai_predicted_margin" widget="percentage" decoration-bf="1"/>
+                                        </div>
+                                    </group>
+                                </group>
+
+                                <separator string="Calculated Pricing Tiers (SAR)"/>
+
+                                <group col="5">
+                                    <group string="⚡ SPARK">
+                                        <field name="price_tier_spark" nolabel="1" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1" force_save="1" style="font-weight:bold; font-size:1.3em;"/>
+
+                                        <div style="margin-top:4px; margin-bottom:8px;">
+                                            <div class="small">Margin: <field name="margin_tier_spark" widget="percentage" class="oe_inline"/></div>
+                                            <div class="small">P/L: <field name="pl_tier_spark" widget="monetary" class="oe_inline"/></div>
+                                        </div>
+
+                                        <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
+                                            High Volume / Retail<br/>
+                                            700 mL/Rags: 1-144 units<br/>
+                                            4 L: 1-24 units<br/>
+                                            20 L: 1-5 units<br/>
+                                            Box 700 mL: 1-12 units
+                                        </div>
+                                    </group>
+
+                                    <group string="💧 FLOW">
+                                        <field name="price_tier_flow" nolabel="1" widget="monetary" readonly="1" force_save="1" style="font-weight:bold; font-size:1.3em;"/>
+
+                                        <div style="margin-top:4px; margin-bottom:8px;">
+                                            <div class="small">Margin: <field name="margin_tier_flow" widget="percentage" class="oe_inline"/></div>
+                                            <div class="small">P/L: <field name="pl_tier_flow" widget="monetary" class="oe_inline"/></div>
+                                        </div>
+
+                                        <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
+                                            Standard Wholesale<br/>
+                                            700 mL/Rags: 145-1428<br/>
+                                            4 L: 25-248 units<br/>
+                                            20 L: 6-50 units<br/>
+                                            Box 700 mL: 13-119 units
+                                        </div>
+                                    </group>
+
+                                    <group string="♻️ CYCLE">
+                                        <field name="price_tier_cycle" nolabel="1" widget="monetary" readonly="1" force_save="1" style="font-weight:bold; font-size:1.3em;"/>
+
+                                        <div style="margin-top:4px; margin-bottom:8px;">
+                                            <div class="small">Margin: <field name="margin_tier_cycle" widget="percentage" class="oe_inline"/></div>
+                                            <div class="small">P/L: <field name="pl_tier_cycle" widget="monetary" class="oe_inline"/></div>
+                                        </div>
+
+                                        <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
+                                            Mid-Range Contracts<br/>
+                                            700 mL/Rags: 1429-7140<br/>
+                                            4 L: 249-1248 units<br/>
+                                            20 L: 51-250 units<br/>
+                                            Box 700 mL: 120-595 units
+                                        </div>
+                                    </group>
+
+                                    <group string="🌊 STREAM">
+                                        <field name="price_tier_stream" nolabel="1" widget="monetary" readonly="1" force_save="1" style="font-weight:bold; font-size:1.3em;"/>
+
+                                        <div style="margin-top:4px; margin-bottom:8px;">
+                                            <div class="small">Margin: <field name="margin_tier_stream" widget="percentage" class="oe_inline"/></div>
+                                            <div class="small">P/L: <field name="pl_tier_stream" widget="monetary" class="oe_inline"/></div>
+                                        </div>
+
+                                        <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
+                                            Large Contracts<br/>
+                                            700 mL/Rags: 7141-21432<br/>
+                                            4 L: 1249-3748 units<br/>
+                                            20 L: 251-750 units<br/>
+                                            Box 700 mL: 596-1786
+                                        </div>
+                                    </group>
+
+                                    <group string="🌍 SOURCE">
+                                        <field name="price_tier_source" nolabel="1" widget="monetary" decoration-info="1" readonly="1" force_save="1" style="font-weight:bold; font-size:1.3em;"/>
+
+                                        <div style="margin-top:4px; margin-bottom:8px;">
+                                            <div class="small" style="color:#1a73e8;">Margin: <field name="margin_tier_source" widget="percentage" class="oe_inline"/></div>
+                                            <div class="small" style="color:#1a73e8;">P/L: <field name="pl_tier_source" widget="monetary" class="oe_inline"/></div>
+                                        </div>
+
+                                        <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4; color:blue;">
+                                            Factory Direct<br/>
+                                            700 mL/Rags: >21432<br/>
+                                            4 L: >3748 units<br/>
+                                            20 L: >750 units<br/>
+                                            Box 700 mL: >1786 units
+                                        </div>
+                                    </group>
+                                </group>
+                            </page>
                         </notebook>
                     </sheet>
                 </form>
