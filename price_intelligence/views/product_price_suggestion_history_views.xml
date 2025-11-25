@@ -58,8 +58,9 @@
         <menuitem
             id="menu_product_price_suggestion_history"
             name="History"
-            parent="menu_price_intelligence_root"
+            parent="menu_price_intelligence_configuration"
             action="action_product_price_suggestion_history"
+            groups="price_intelligence.group_price_intelligence_user"
             sequence="30"/>
 
     </data>

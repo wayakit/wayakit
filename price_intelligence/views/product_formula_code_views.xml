@@ -56,7 +56,7 @@
         <menuitem
             id="menu_product_formula_code"
             name="Formula Codes"
-            parent="menu_price_intelligence_root"
+            parent="menu_price_intelligence_configuration"
             action="action_product_formula_code"
             sequence="30"/>
 
