@@ -164,7 +164,7 @@ class ProductMaster(models.Model):
                 currency_symbol = found_product.currency_id.symbol or '$'
 
                 # URL al backend
-                url = f"{base_url}/web#id={found_product.id}&model=product.template&view_type=form"
+                url = f"/web#id={found_product.id}&model=product.template&view_type=form"
 
                 price_text = f"{currency_symbol} {price:,.2f}"
 
