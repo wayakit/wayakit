@@ -2,6 +2,10 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from markupsafe import Markup  # <--- AGREGA ESTO AQUÍ
+import logging # <--- Y ESTO SI QUIERES LOGS
+
+_logger = logging.getLogger(__name__)
 
 
 class ProductMaster(models.Model):
@@ -92,6 +96,89 @@ class ProductMaster(models.Model):
     unit_cost_sar = fields.Float(string='Unit Cost (SAR)',
                                  compute='_compute_unit_cost_sar',
                                  store=True)
+
+    ecommerce_data_html = fields.Html(
+        string='Ecommerce Price',
+        compute='_compute_ecommerce_data',
+        store=False,
+        help="Price fetched from Odoo Ecommerce with direct link to product form. If not found, infers product with same category."
+    )
+
+    def _get_product_template_from_ext_id(self, ext_id):
+        """
+        Helper para buscar el objeto product.template real dado un External ID.
+        """
+        if not ext_id:
+            return None
+
+        imd_env = self.env['ir.model.data']
+        domain = [('model', '=', 'product.template')]
+
+        if '.' in ext_id:
+            module, name = ext_id.split('.', 1)
+            domain += [('module', '=', module), ('name', '=', name)]
+        else:
+            domain += [('name', '=', ext_id)]
+
+        xml_id_rec = imd_env.search(domain, limit=1)
+
+        if xml_id_rec:
+            try:
+                return self.env['product.template'].browse(xml_id_rec.res_id)
+            except Exception as e:
+                _logger.warning(f"Error fetching product: {e}")
+                return None
+        return None
+
+    @api.depends('external_id', 'generic_product_type')  # <--- Cambiado de 'category' a 'generic_product_type'
+    def _compute_ecommerce_data(self):
+        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+
+        for record in self:
+            found_product = None
+
+            # 1. Búsqueda Propia por External ID
+            my_product = record._get_product_template_from_ext_id(record.external_id)
+            if my_product:
+                found_product = my_product
+
+            # 2. Fallback: Buscar hermanos por 'Generic Product Type'
+            # Si no encontré mi producto o su precio es 0, busco en los demás.
+            if (not found_product or found_product.list_price == 0.0) and record.generic_product_type:
+
+                siblings = self.search([
+                    ('generic_product_type', '=', record.generic_product_type),  # <--- Filtro actualizado
+                    ('id', '!=', record.id),
+                    ('external_id', '!=', False)
+                ])
+
+                for sibling in siblings:
+                    sibling_product = record._get_product_template_from_ext_id(sibling.external_id)
+                    if sibling_product and sibling_product.list_price > 0:
+                        found_product = sibling_product
+                        break
+
+                        # 3. Construcción del HTML
+            if found_product:
+                price = found_product.list_price
+                currency_symbol = found_product.currency_id.symbol or '$'
+
+                # URL al backend
+                url = f"/web#id={found_product.id}&model=product.template&view_type=form"
+
+                price_text = f"{currency_symbol} {price:,.2f}"
+
+                # Estilo simple: Verde, Negrita, Tamaño normal, Sin flecha.
+                html_content = f"""
+                        <a href="{url}" target="_blank" 
+                           style="color: #28a745; font-weight: bold; text-decoration: none;">
+                           {price_text}
+                        </a>
+                    """
+                record.ecommerce_data_html = Markup(html_content)
+            else:
+                # Texto gris simple si no hay precio
+                record.ecommerce_data_html = Markup('<span style="color: #6c757d;">$ 0.00</span>')
 
     # =========================================================
     # LOGICA DE PRECIOS E INTELIGENCIA
