@@ -77,6 +77,11 @@
                                     <group string="Configuration">
                                         <field name="base_prediction_margin" widget="percentage"/>
                                     </group>
+
+                                    <group string="E-commerce Reference">
+                                        <field name="ecommerce_data_html" nolabel="1" colspan="2" readonly="1"/>
+                                    </group>
+
                                     <group string="AI Suggestion">
                                         <label for="ai_predicted_price"/>
                                         <div class="o_row">
