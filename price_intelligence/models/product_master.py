@@ -105,13 +105,11 @@ class ProductMaster(models.Model):
     )
 
     def _get_product_template_from_ext_id(self, ext_id):
-        """
-        Helper para buscar el objeto product.template real dado un External ID.
-        """
         if not ext_id:
             return None
 
-        imd_env = self.env['ir.model.data']
+        imd_env = self.env['ir.model.data'].sudo()
+
         domain = [('model', '=', 'product.template')]
 
         if '.' in ext_id:
@@ -124,7 +122,7 @@ class ProductMaster(models.Model):
 
         if xml_id_rec:
             try:
-                return self.env['product.template'].browse(xml_id_rec.res_id)
+                return self.env['product.template'].sudo().browse(xml_id_rec.res_id)
             except Exception as e:
                 _logger.warning(f"Error fetching product: {e}")
                 return None
@@ -137,17 +135,14 @@ class ProductMaster(models.Model):
         for record in self:
             found_product = None
 
-            # 1. Búsqueda Propia por External ID
             my_product = record._get_product_template_from_ext_id(record.external_id)
             if my_product:
                 found_product = my_product
 
-            # 2. Fallback: Buscar hermanos por 'Generic Product Type'
-            # Si no encontré mi producto o su precio es 0, busco en los demás.
             if (not found_product or found_product.list_price == 0.0) and record.generic_product_type:
 
                 siblings = self.search([
-                    ('generic_product_type', '=', record.generic_product_type),  # <--- Filtro actualizado
+                    ('generic_product_type', '=', record.generic_product_type),
                     ('id', '!=', record.id),
                     ('external_id', '!=', False)
                 ])
@@ -276,11 +271,11 @@ class ProductMaster(models.Model):
 
             added_margin = 0.0
             if record.type_of_product_id and record.volume_liters > 0:
-                if 8.0 <= record.volume_liters <= 9.0:  # Caja
+                if 8.0 <= record.volume_liters <= 9.0:
                     added_margin = record.type_of_product_id.variance_box
-                elif 3.5 <= record.volume_liters <= 5.0:  # 4L
+                elif 3.5 <= record.volume_liters <= 5.0:
                     added_margin = record.type_of_product_id.variance_4l
-                elif record.volume_liters >= 18.0:  # 20L
+                elif record.volume_liters >= 18.0:
                     added_margin = record.type_of_product_id.variance_20l
 
             effective_margin = base + added_margin
