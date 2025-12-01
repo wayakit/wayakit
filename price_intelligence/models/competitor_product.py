@@ -138,9 +138,12 @@ class CompetitorProduct(models.Model):
             rec.popularity = rec.rating * rec.number_of_ratings
 
     def _get_target_currencies(self):
-        usd = self.env.ref('base.USD', raise_if_not_found=False)
-        sar = self.env.ref('base.SAR', raise_if_not_found=False)
-        cop = self.env.ref('base.COP', raise_if_not_found=False)
+        # CAMBIO: Usamos sudo().search en lugar de ref para evitar error de permisos
+        Currency = self.env['res.currency'].sudo()
+        usd = Currency.search([('name', '=', 'USD')], limit=1)
+        sar = Currency.search([('name', '=', 'SAR')], limit=1)
+        cop = Currency.search([('name', '=', 'COP')], limit=1)
+
         for rec in self:
             rec.usd_currency_id = usd or False
             rec.sar_currency_id = sar or False
@@ -148,10 +151,12 @@ class CompetitorProduct(models.Model):
 
     @api.depends('price_source', 'currency_id', 'uom', 'total_quantity', 'date')
     def _compute_converted_prices(self):
-        usd = self.env.ref('base.USD', raise_if_not_found=False)
-        sar = self.env.ref('base.SAR', raise_if_not_found=False)
-        cop = self.env.ref('base.COP', raise_if_not_found=False)
+        Currency = self.env['res.currency'].sudo()
+        usd = Currency.search([('name', '=', 'USD')], limit=1)
+        sar = Currency.search([('name', '=', 'SAR')], limit=1)
+        cop = Currency.search([('name', '=', 'COP')], limit=1)
 
+        # Si no se encuentran las monedas, poner todo en 0 para evitar errores
         if not all([usd, sar, cop]):
             self.update({
                 'price_unit_usd': 0, 'price_unit_sar': 0, 'price_unit_cop': 0,
@@ -170,6 +175,7 @@ class CompetitorProduct(models.Model):
             price_per_ml = 0.0
 
             if rec.price_source > 0 and rec.currency_id and rec.date:
+                # Conversión usando las monedas obtenidas con sudo()
                 price_unit_usd = rec.currency_id._convert(
                     rec.price_source, usd, rec.env.company, rec.date)
                 price_unit_sar = rec.currency_id._convert(
