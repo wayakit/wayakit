@@ -27,13 +27,19 @@
             <field name="arch" type="xml">
                 <tree string="Price Suggestion History" create="false" edit="false" delete="false">
                     <field name="product_id_str"/>
+                    <field name="product_name"/>
                     <field name="product_type"/>
                     <field name="subindustry"/>
                     <field name="industry"/>
                     <field name="volume_units"/>
                     <field name="production_cost"/>
                     <field name="suggested_price"/>
+                    <field name="predicted_price_per_unit" optional="hide"/>
                     <field name="profit" widget="percentage"/>
+                    <field name="model_confidence" optional="show"/>
+                    <field name="market_min_found" optional="hide"/>
+                    <field name="market_max_found" optional="hide"/>
+                    <field name="competitors_count" optional="hide"/>
                     <field name="original_create_date" string="Suggested in"/>
                     <field name="create_date" string="Archived in"/>
                 </tree>
