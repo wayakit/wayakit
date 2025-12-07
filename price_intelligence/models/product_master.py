@@ -2,8 +2,9 @@
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
-from markupsafe import Markup  # <--- AGREGA ESTO AQUÍ
-import logging # <--- Y ESTO SI QUIERES LOGS
+from markupsafe import Markup
+import logging
+import re
 
 _logger = logging.getLogger(__name__)
 
@@ -104,14 +105,14 @@ class ProductMaster(models.Model):
         help="Price fetched from Odoo Ecommerce with direct link to product form. If not found, infers product with same category."
     )
 
-    def _get_product_template_from_ext_id(self, ext_id):
+    def _get_product_from_ext_id(self, ext_id):
+        """Busca el registro en Odoo (Template o Product) y valida activo/publicado."""
         if not ext_id:
             return None
 
         imd_env = self.env['ir.model.data'].sudo()
 
-        domain = [('model', '=', 'product.template')]
-
+        domain = []
         if '.' in ext_id:
             module, name = ext_id.split('.', 1)
             domain += [('module', '=', module), ('name', '=', name)]
@@ -121,49 +122,188 @@ class ProductMaster(models.Model):
         xml_id_rec = imd_env.search(domain, limit=1)
 
         if xml_id_rec:
-            try:
-                return self.env['product.template'].sudo().browse(xml_id_rec.res_id)
-            except Exception as e:
-                _logger.warning(f"Error fetching product: {e}")
-                return None
+            if xml_id_rec.model in ['product.template', 'product.product']:
+                try:
+                    record = self.env[xml_id_rec.model].sudo().browse(xml_id_rec.res_id)
+
+                    # Validaciones de seguridad
+                    if not record.exists():
+                        return None
+                    if not record.active:
+                        return None
+
+                    is_published = False
+                    if xml_id_rec.model == 'product.product':
+                        is_published = record.product_tmpl_id.is_published
+                    else:
+                        is_published = record.is_published
+
+                    if not is_published:
+                        return None
+
+                    return record
+                except Exception as e:
+                    _logger.warning(f"Error fetching product: {e}")
+                    return None
         return None
 
-    @api.depends('external_id', 'generic_product_type')  # <--- Cambiado de 'category' a 'generic_product_type'
+    def _get_variant_price(self, product_obj, target_vol_liters):
+        """
+        Busca el precio priorizando:
+        1. Type = New
+        2. Volume = Match Exacto (Flexible)
+        3. Scent = Unscented (Prioridad)
+        """
+        if not product_obj:
+            return 0.0, None
+
+        if product_obj._name == 'product.product':
+            return product_obj.lst_price, product_obj
+
+        volume_match = None
+
+        for variant in product_obj.product_variant_ids:
+            if not variant.active:
+                continue
+
+            match_type = False
+            match_vol = False
+            is_unscented = False
+
+            for ptav in variant.product_template_attribute_value_ids:
+                attr_name = ptav.attribute_id.name.lower()
+                val_name = ptav.name.lower()
+                val_clean = val_name.replace(" ", "")
+
+                if 'type' in attr_name and 'new' in val_name:
+                    match_type = True
+
+                if 'scent' in attr_name and 'unscented' in val_name:
+                    is_unscented = True
+
+                if 'volume' in attr_name:
+                    if target_vol_liters == 0.7 and '700ml' in val_clean:
+                        match_vol = True
+                    elif target_vol_liters == 4.0 and '4l' in val_clean:
+                        match_vol = True
+                    elif target_vol_liters not in [0.7, 4.0]:
+                        nums = re.findall(r"[-+]?\d*\.\d+|\d+", val_name)
+                        if nums:
+                            try:
+                                v = float(nums[0])
+                                v_l = v / 1000.0 if v >= 50 else v
+                                if abs(v_l - target_vol_liters) < 0.05:
+                                    match_vol = True
+                            except:
+                                pass
+
+            if match_type and match_vol:
+                if is_unscented:
+                    return variant.lst_price, variant
+
+                if not volume_match:
+                    volume_match = variant
+
+        if volume_match:
+            return volume_match.lst_price, volume_match
+
+        return 0.0, None
+
+    @api.depends('external_id', 'generic_product_type', 'volume_liters')
     def _compute_ecommerce_data(self):
-        base_url = self.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        # Filtro de subindustrias permitidas
+        allowed_subindustries = ['Home', 'Automotive', 'Pets']
 
         for record in self:
-            found_product = None
+            found_object = None
+            final_price = 0.0
 
-            my_product = record._get_product_template_from_ext_id(record.external_id)
-            if my_product:
-                found_product = my_product
+            # 1. Intentar buscar el producto propio
+            my_object = record._get_product_from_ext_id(record.external_id)
 
-            if (not found_product or found_product.list_price == 0.0) and record.generic_product_type:
+            if my_object:
+                p, v_obj = record._get_variant_price(my_object, record.volume_liters)
+                if p > 0:
+                    final_price = p
+                    found_object = v_obj if v_obj else my_object
 
-                siblings = self.search([
+            # 2. INTELIGENCIA DE PRECIOS
+            if final_price == 0.0 and record.generic_product_type:
+
+                base_domain = [
                     ('generic_product_type', '=', record.generic_product_type),
                     ('id', '!=', record.id),
-                    ('external_id', '!=', False)
-                ])
+                    ('external_id', '!=', False),
+                    ('type_of_product_id.subindustry_id.name', 'in', allowed_subindustries)
+                ]
 
+                # A) Match Exacto de Volumen (Busca registros master con el mismo volumen)
+                siblings = self.search(base_domain + [('volume_liters', '=', record.volume_liters)])
                 for sibling in siblings:
-                    sibling_product = record._get_product_template_from_ext_id(sibling.external_id)
-                    if sibling_product and sibling_product.list_price > 0:
-                        found_product = sibling_product
+                    sib_obj = record._get_product_from_ext_id(sibling.external_id)
+                    p, v_obj = record._get_variant_price(sib_obj, record.volume_liters)
+                    if p > 0:
+                        final_price = p
+                        found_object = v_obj
                         break
 
-                        # 3. Construcción del HTML
-            if found_product:
-                price = found_product.list_price
-                currency_symbol = found_product.currency_id.symbol or '$'
+                # B) Volúmenes Grandes (Busca registros master grandes)
+                if final_price == 0.0 and record.volume_liters >= 3.5:
+                    siblings_large = self.search(base_domain + [('volume_liters', '>=', 3.5)],
+                                                 order='volume_liters desc')
+                    for sibling in siblings_large:
+                        sib_obj = record._get_product_from_ext_id(sibling.external_id)
+                        p, v_obj = record._get_variant_price(sib_obj, sibling.volume_liters)
+                        if p > 0:
+                            final_price = p
+                            found_object = v_obj
+                            break
 
-                # URL al backend
-                url = f"/web#id={found_product.id}&model=product.template&view_type=form"
+                # C) Búsqueda Cruzada: Buscar en hermanos pequeños si tienen variante grande
+                if final_price == 0.0 and record.volume_liters >= 3.5:
+                    siblings_small = self.search(base_domain + [('volume_liters', '<', 3.5)])
 
-                price_text = f"{currency_symbol} {price:,.2f}"
+                    # C-1) Buscar variante EXACTA (ej. 20L) dentro de productos pequeños
+                    for sibling in siblings_small:
+                        sib_obj = record._get_product_from_ext_id(sibling.external_id)
+                        p, v_obj = record._get_variant_price(sib_obj, record.volume_liters)
+                        if p > 0:
+                            final_price = p
+                            found_object = v_obj
+                            break
 
-                # Estilo simple: Verde, Negrita, Tamaño normal, Sin flecha.
+                    # C-2) [NUEVO] Si busco algo muy grande (> 4.0L, ej 8.4L o 20L) y falló lo anterior,
+                    # intento buscar la variante de 4.0L como punto medio antes de caer al 700ml.
+                    if final_price == 0.0 and record.volume_liters > 4.0:
+                        for sibling in siblings_small:
+                            sib_obj = record._get_product_from_ext_id(sibling.external_id)
+                            p, v_obj = record._get_variant_price(sib_obj, 4.0)
+                            if p > 0:
+                                final_price = p
+                                found_object = v_obj
+                                break
+
+                # D) Fallback a 700ml (0.7L)
+                if final_price == 0.0:
+                    siblings_small = self.search(base_domain + [('volume_liters', '=', 0.7)])
+                    for sibling in siblings_small:
+                        sib_obj = record._get_product_from_ext_id(sibling.external_id)
+                        p, v_obj = record._get_variant_price(sib_obj, 0.7)
+                        if p > 0:
+                            final_price = p
+                            found_object = v_obj
+                            break
+
+            # 3. Construcción del HTML
+            if found_object and final_price > 0:
+                currency_symbol = found_object.currency_id.symbol or '$'
+
+                model_name = found_object._name
+                res_id = found_object.id
+                url = f"/web#id={res_id}&model={model_name}&view_type=form"
+
+                price_text = f"{currency_symbol} {final_price:,.2f}"
+
                 html_content = f"""
                         <a href="{url}" target="_blank" 
                            style="color: #28a745; font-weight: bold; text-decoration: none;">
@@ -172,7 +312,6 @@ class ProductMaster(models.Model):
                     """
                 record.ecommerce_data_html = Markup(html_content)
             else:
-                # Texto gris simple si no hay precio
                 record.ecommerce_data_html = Markup('<span style="color: #6c757d;">$ 0.00</span>')
 
     # =========================================================

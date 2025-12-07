@@ -43,14 +43,15 @@
                                         <field name="dilution_rate"/>
                                     </group>
                                 </group>
-                                <group string="Description">
-                                    <field name="description" nolabel="1"/>
-                                </group>
-                                <group string="Notes">
-                                     <field name="notes" nolabel="1"/>
-                                </group>
-                                 <group string="Links">
-                                    <field name="link_to_product_mockup"/>
+                                <separator string="Description"/>
+                                <field name="description" nolabel="1" placeholder="Product description..."/>
+
+                                <separator string="Notes"/>
+                                <field name="notes" nolabel="1" placeholder="Internal notes..."/>
+
+                                <separator string="Links"/>
+                                <group>
+                                    <field name="link_to_product_mockup" widget="url"/>
                                 </group>
                             </page>
                             <page string="Costs">
@@ -80,6 +81,9 @@
 
                                     <group string="E-commerce Reference">
                                         <field name="ecommerce_data_html" nolabel="1" colspan="2" readonly="1"/>
+                                        <div colspan="2" class="text-muted" style="font-size: 0.75rem; font-style: italic; margin-top: -5px; margin-bottom: 10px; padding-left: 2px;">
+                                            <i class="fa fa-mouse-pointer"/> Click on the price to view product specifications
+                                        </div>
                                     </group>
 
                                     <group string="AI Suggestion">
@@ -109,15 +113,21 @@
 
                                         <div style="margin-top:4px; margin-bottom:8px;">
                                             <div class="small">Margin: <field name="margin_tier_spark" widget="percentage" class="oe_inline"/></div>
-                                            <div class="small">P/L: <field name="pl_tier_spark" widget="monetary" class="oe_inline"/></div>
+                                            <div class="small">Price per L: <field name="pl_tier_spark" widget="monetary" class="oe_inline"/></div>
                                         </div>
 
                                         <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
                                             High Volume / Retail<br/>
-                                            700 mL/Rags: 1-144 units<br/>
-                                            4 L: 1-24 units<br/>
+                                            700 mL/Rags: 5-144 units<br/>
+                                            4 L: 4-24 units<br/>
                                             20 L: 1-5 units<br/>
                                             Box 700 mL: 1-12 units
+                                        </div>
+
+                                        <div style="font-size: 0.7rem; line-height: 1.3; margin-top: 8px; padding-top: 4px; border-top: 1px dashed #ccc; color: #dc3545;">
+                                            <strong>If quantity is lower:</strong><br/>
+                                            Use <b>E-commerce Price</b><br/>
+                                            (700mL &lt; 5, 4L &lt; 4)
                                         </div>
                                     </group>
 
@@ -126,7 +136,7 @@
 
                                         <div style="margin-top:4px; margin-bottom:8px;">
                                             <div class="small">Margin: <field name="margin_tier_flow" widget="percentage" class="oe_inline"/></div>
-                                            <div class="small">P/L: <field name="pl_tier_flow" widget="monetary" class="oe_inline"/></div>
+                                            <div class="small">Price per L: <field name="pl_tier_flow" widget="monetary" class="oe_inline"/></div>
                                         </div>
 
                                         <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
@@ -143,7 +153,7 @@
 
                                         <div style="margin-top:4px; margin-bottom:8px;">
                                             <div class="small">Margin: <field name="margin_tier_cycle" widget="percentage" class="oe_inline"/></div>
-                                            <div class="small">P/L: <field name="pl_tier_cycle" widget="monetary" class="oe_inline"/></div>
+                                            <div class="small">Price per L: <field name="pl_tier_cycle" widget="monetary" class="oe_inline"/></div>
                                         </div>
 
                                         <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
@@ -160,7 +170,7 @@
 
                                         <div style="margin-top:4px; margin-bottom:8px;">
                                             <div class="small">Margin: <field name="margin_tier_stream" widget="percentage" class="oe_inline"/></div>
-                                            <div class="small">P/L: <field name="pl_tier_stream" widget="monetary" class="oe_inline"/></div>
+                                            <div class="small">Price per L: <field name="pl_tier_stream" widget="monetary" class="oe_inline"/></div>
                                         </div>
 
                                         <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4;">
@@ -177,7 +187,7 @@
 
                                         <div style="margin-top:4px; margin-bottom:8px;">
                                             <div class="small" style="color:#1a73e8;">Margin: <field name="margin_tier_source" widget="percentage" class="oe_inline"/></div>
-                                            <div class="small" style="color:#1a73e8;">P/L: <field name="pl_tier_source" widget="monetary" class="oe_inline"/></div>
+                                            <div class="small" style="color:#1a73e8;">Price per L: <field name="pl_tier_source" widget="monetary" class="oe_inline"/></div>
                                         </div>
 
                                         <div class="text-muted" style="font-size: 0.7rem; line-height: 1.4; color:blue;">
