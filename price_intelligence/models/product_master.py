@@ -80,7 +80,8 @@ class ProductMaster(models.Model):
         readonly=True
     )
     description = fields.Text(string='Description')
-    dilution_rate = fields.Char(string='Dilution Rate')
+    dilution_rate = fields.Float(string='Dilution Rate', digits=(12, 2),
+                                 help="Factor to multiply the liquid cost. Leave at 0.0 or 1.0 to apply no change.")
 
     bottle_cost = fields.Float(string='Bottle', required=True)
     label_cost = fields.Float(string='Label', required=True)
@@ -232,10 +233,12 @@ class ProductMaster(models.Model):
 
                 base_domain = [
                     ('generic_product_type', '=', record.generic_product_type),
-                    ('id', '!=', record.id),
                     ('external_id', '!=', False),
                     ('type_of_product_id.subindustry_id.name', 'in', allowed_subindustries)
                 ]
+
+                if isinstance(record.id, int):
+                    base_domain.append(('id', '!=', record.id))
 
                 # A) Match Exacto de Volumen (Busca registros master con el mismo volumen)
                 siblings = self.search(base_domain + [('volume_liters', '=', record.volume_liters)])
@@ -369,14 +372,21 @@ class ProductMaster(models.Model):
 
     # --- FUNCIONES COMPUTE ---
 
-    @api.depends('formula_code', 'formula_code.price_per_liter', 'volume_liters')
+    @api.depends('formula_code', 'formula_code.price_per_liter', 'volume_liters', 'dilution_rate')
     def _compute_liquid_cost(self):
         for record in self:
+            # A. Calculamos el Costo Base (Fórmula * Litros)
+            base_cost = 0.0
             if record.formula_code and record.volume_liters > 0:
                 cost_liter = record.formula_code.price_per_liter
-                record.liquid_cost = cost_liter * record.volume_liters
+                base_cost = cost_liter * record.volume_liters
+
+            # B. Aplicamos el Dilution Rate
+            # Regla: Si es mayor a 0, multiplicamos. Si es 0, se queda igual.
+            if record.dilution_rate > 0:
+                record.liquid_cost = base_cost * record.dilution_rate
             else:
-                record.liquid_cost = 0.0
+                record.liquid_cost = base_cost
 
     @api.depends('bottle_cost', 'label_cost', 'liquid_cost', 'microfibers_cost',
                  'plastic_bag_cost', 'labor_cost', 'shipping_cost', 'other_costs')
