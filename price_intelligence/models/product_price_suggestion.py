@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields
+from odoo import models, fields, api
 
 class ProductPriceSuggestion(models.Model):
     _name = 'product.price.suggestion'
@@ -23,3 +23,29 @@ class ProductPriceSuggestion(models.Model):
     market_min_found = fields.Float(string='Market Min Found')
     market_max_found = fields.Float(string='Market Max Found')
     competitors_count = fields.Integer(string='Competitors Count')
+
+    @api.model
+    def create(self, vals):
+        # 1. Crear la sugerencia normalmente
+        record = super(ProductPriceSuggestion, self).create(vals)
+
+        # 2. Buscar si existe un Producto Maestro con ese ID
+        if record.product_id_str:
+            master_products = self.env['product.master'].search([
+                ('product_id', '=', record.product_id_str)
+            ])
+
+            # 3. Forzar el recálculo de precios en los productos encontrados
+            for product in master_products:
+                product._compute_pricing_list()
+
+                # Opcional: También despertar a los hermanos (por si afecta a un 4L o 20L indirectamente)
+                # Esto cubre casos complejos de jerarquía
+                siblings = self.env['product.master'].search([
+                    ('generic_product_type', '=', product.generic_product_type),
+                    ('id', '!=', product.id)
+                ])
+                for sib in siblings:
+                    sib._compute_pricing_list()
+
+        return record
