@@ -26,26 +26,31 @@ class ProductPriceSuggestion(models.Model):
 
     @api.model
     def create(self, vals):
-        # 1. Crear la sugerencia normalmente
+        # 1. Crear la sugerencia
         record = super(ProductPriceSuggestion, self).create(vals)
 
-        # 2. Buscar si existe un Producto Maestro con ese ID
+        # 2. Buscar si existe un Producto Maestro
         if record.product_id_str:
             master_products = self.env['product.master'].search([
                 ('product_id', '=', record.product_id_str)
             ])
 
-            # 3. Forzar el recálculo de precios en los productos encontrados
-            for product in master_products:
-                product._compute_pricing_list()
+            # 3. SOLUCIÓN: Usar write() para disparar el recálculo completo y limpio
+            if master_products:
+                master_products.write({
+                    'ai_last_updated': fields.Datetime.now()
+                })
 
-                # Opcional: También despertar a los hermanos (por si afecta a un 4L o 20L indirectamente)
-                # Esto cubre casos complejos de jerarquía
+                # Opcional: Despertar a los hermanos (Logic remains similar but using write)
+                # Nota: Si los hermanos dependen de este producto, su lógica debería manejarlo,
+                # si no, puedes iterar y hacer write en ellos también.
                 siblings = self.env['product.master'].search([
-                    ('generic_product_type', '=', product.generic_product_type),
-                    ('id', '!=', product.id)
+                    ('generic_product_type', '=', master_products[0].generic_product_type),
+                    ('id', 'not in', master_products.ids)
                 ])
-                for sib in siblings:
-                    sib._compute_pricing_list()
+                if siblings:
+                    siblings.write({
+                        'ai_last_updated': fields.Datetime.now()
+                    })
 
         return record

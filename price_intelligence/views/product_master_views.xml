@@ -7,6 +7,7 @@
             <field name="arch" type="xml">
                 <form string="Master Product">
                     <sheet>
+                        <field name="is_ai_pricing_active" invisible="1"/>
                         <group>
                             <group>
                                 <field name="product_name"/>
@@ -103,6 +104,18 @@
                                     <strong> Safety Notice:</strong>
                                     High margin detected. If the Total Margin (Base + Tier Extra) exceeds 100%,
                                     the system will cap it at <strong>99%</strong> to ensure price calculation validity.
+                                </div>
+
+                                <div class="alert alert-info text-center" role="alert"
+                                     style="margin-bottom: 10px; background-color: #e2e3e5; border-color: #d6d8db; color: #383d41;"
+                                     invisible="is_ai_pricing_active == True or unit_cost_sar == 0">
+                                    <i class="fa fa-info-circle"/>
+                                    <strong> Notice: AI Pricing Not Applied.</strong><br/>
+                                    The system is using the <b>Standard Pricing Strategy</b> (Cost + Fixed Margin).<br/>
+                                    <small>
+                                        Reasons: The 0.7L reference product has no AI prediction, the prediction is out of market range,
+                                        or the profit margin is too low (&lt;30%).
+                                    </small>
                                 </div>
 
                                 <separator string="Calculated Pricing Tiers (SAR)"/>

@@ -106,6 +106,15 @@ class ProductMaster(models.Model):
         help="Price fetched from Odoo Ecommerce with direct link to product form. If not found, infers product with same category."
     )
 
+    ai_last_updated = fields.Datetime(string='Last AI Update Trigger')
+
+    is_ai_pricing_active = fields.Boolean(
+        string='Is AI Pricing Active',
+        compute='_compute_pricing_list',
+        store=True,
+        help="Technical field to indicate if the current pricing is based on AI or Traditional rules."
+    )
+
     def _get_product_from_ext_id(self, ext_id):
         """Busca el registro en Odoo (Template o Product) y valida activo/publicado."""
         if not ext_id:
@@ -429,21 +438,10 @@ class ProductMaster(models.Model):
         return self.search(domain, limit=1)
 
     def _get_ai_suggestion(self, volume_liters):
-        """
-        Busca una sugerencia de IA válida para este producto.
-        Retorna: (price, valid_bool)
-        Valida:
-        1. Existencia de sugerencia.
-        2. Rango de Mercado (min/max).
-        3. Margen Mínimo (30%) Gatekeeper.
-        """
         self.ensure_one()
-
-        # Necesitamos el product_id (string) para buscar en la tabla de sugerencias
         if not self.product_id:
             return 0.0, False
 
-        # Buscar la sugerencia más reciente
         suggestion = self.env['product.price.suggestion'].search([
             ('product_id_str', '=', self.product_id)
         ], limit=1, order='last_update_date desc')
@@ -453,27 +451,25 @@ class ProductMaster(models.Model):
 
         price = suggestion.suggested_price
 
-        # 1. Validación de Precio Positivo
+        # 1. Validación Básica
         if price <= 0:
             return 0.0, False
 
-        # 2. Validación de Rango de Mercado
-        # Si min/max son 0, asumimos que no hay datos de mercado validos para restringir,
-        # pero según tu regla estricta, debe estar en rango. Asumiremos que si hay sugerencia, hay rango.
+        # 2. VALIDACIÓN DE RANGOS DE MERCADO (CRÍTICO)
+        # Si el precio está fuera de rango, la predicción NO ES ACEPTADA.
         if suggestion.market_min_found > 0 and price < suggestion.market_min_found:
-            return 0.0, False
+            return 0.0, False  # Rechazada por estar muy barata
+
         if suggestion.market_max_found > 0 and price > suggestion.market_max_found:
-            return 0.0, False
+            return 0.0, False  # Rechazada por estar muy cara
 
-        # 3. Validación de Margen Mínimo (30%) - GATEKEEPER
-        if self.unit_cost_sar <= 0:
-            # Si no hay costo, no podemos validar margen. Por seguridad retornamos False.
-            return 0.0, False
+        # 3. Validación de Margen Mínimo (Safety Net)
+        if self.unit_cost_sar > 0:
+            margin = 1.0 - (self.unit_cost_sar / price)
+            if margin < 0.30:
+                return 0.0, False  # Rechazada por margen riesgoso
 
-        margin = 1.0 - (self.unit_cost_sar / price)
-        if margin < 0.30:
-            return 0.0, False
-
+        # Si pasa todo, es una predicción ACEPTADA
         return price, True
 
     @api.depends('unit_cost_sar', 'volume_liters', 'type_of_product_id',
@@ -482,11 +478,14 @@ class ProductMaster(models.Model):
                  'type_of_product_id.variance_box',
                  'type_of_product_id.variance_4l',
                  'type_of_product_id.variance_20l',
-                 'ai_predicted_price')
+                 'ai_predicted_price',
+                 'ai_last_updated')
     def _compute_pricing_list(self):
         for record in self:
             cost = record.unit_cost_sar
             vol = record.volume_liters or 1.0
+
+            record.is_ai_pricing_active = False
 
             # Limpiar valores previos
             record.price_tier_spark = 0.0
@@ -536,6 +535,8 @@ class ProductMaster(models.Model):
                 use_smart_mode = True
             else:
                 use_smart_mode = False
+
+            record.is_ai_pricing_active = use_smart_mode
 
             # =========================================================
             # PASO 2: CALCULAR PRECIOS (Dos Ramas)
@@ -730,6 +731,7 @@ class ProductMaster(models.Model):
                         add_m = record.type_of_product_id.variance_20l
                 record.base_prediction_margin = base + add_m
 
+    @api.depends('product_id', 'ai_last_updated')
     def _compute_ai_predicted_price(self):
         for record in self:
             record.ai_predicted_price = 0.0
