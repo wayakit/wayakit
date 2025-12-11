@@ -115,6 +115,10 @@ class ProductMaster(models.Model):
         help="Technical field to indicate if the current pricing is based on AI or Traditional rules."
     )
 
+    ai_market_min = fields.Float(string='Market Min', compute='_compute_ai_predicted_price')
+    ai_market_max = fields.Float(string='Market Max', compute='_compute_ai_predicted_price')
+    is_box_8_4 = fields.Boolean(compute='_compute_is_box_8_4', store=True)
+
     def _get_product_from_ext_id(self, ext_id):
         """Busca el registro en Odoo (Template o Product) y valida activo/publicado."""
         if not ext_id:
@@ -731,11 +735,13 @@ class ProductMaster(models.Model):
                         add_m = record.type_of_product_id.variance_20l
                 record.base_prediction_margin = base + add_m
 
-    @api.depends('product_id', 'ai_last_updated')
+    @api.depends('product_id', 'ai_last_updated', 'unit_cost_sar')
     def _compute_ai_predicted_price(self):
         for record in self:
             record.ai_predicted_price = 0.0
             record.ai_predicted_margin = 0.0
+            record.ai_market_min = 0.0
+            record.ai_market_max = 0.0
 
             if not record.product_id:
                 continue
@@ -746,6 +752,8 @@ class ProductMaster(models.Model):
 
             if suggestion:
                 record.ai_predicted_price = suggestion.suggested_price
+                record.ai_market_min = suggestion.market_min_found
+                record.ai_market_max = suggestion.market_max_found
 
                 if suggestion.suggested_price > 0:
                     current_profit = suggestion.suggested_price - record.unit_cost_sar
@@ -767,3 +775,9 @@ class ProductMaster(models.Model):
                       ] + domain
 
         return self._search(domain, limit=limit, order=order, access_rights_uid=name_get_uid)
+
+    @api.depends('volume_liters')
+    def _compute_is_box_8_4(self):
+        for record in self:
+            # Detectar rango 8.0 - 9.0
+            record.is_box_8_4 = (8.0 <= record.volume_liters <= 9.0)

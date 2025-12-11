@@ -8,6 +8,7 @@
                 <form string="Master Product">
                     <sheet>
                         <field name="is_ai_pricing_active" invisible="1"/>
+                        <field name="is_box_8_4" invisible="1"/>
                         <group>
                             <group>
                                 <field name="product_name"/>
@@ -94,6 +95,13 @@
                                             <span class="text-muted pl-2">Margin:</span>
                                             <field name="ai_predicted_margin" widget="percentage" decoration-bf="1"/>
                                         </div>
+                                        <label for="ai_market_min" string="Market Range"/>
+                                        <div class="o_row" style="font-size: 0.85rem;">
+                                            <span class="text-muted mr-1">Min:</span>
+                                            <field name="ai_market_min" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                            <span class="text-muted mr-1">Max:</span>
+                                            <field name="ai_market_max" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                        </div>
                                     </group>
                                 </group>
 
@@ -116,6 +124,13 @@
                                         Reasons: The 0.7L reference product has no AI prediction, the prediction is out of market range,
                                         or the profit margin is too low (&lt;30%).
                                     </small>
+                                </div>
+                                <div class="alert alert-info text-center" role="alert"
+                                     style="margin-bottom: 10px; background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460;"
+                                     invisible="not is_box_8_4">
+                                    <i class="fa fa-cubes"/>
+                                    <strong> Box Presentation (8.4L):</strong>
+                                    Price and Margin are inherited directly from the <strong>0.7L reference product</strong> (x12 multiplier).
                                 </div>
 
                                 <separator string="Calculated Pricing Tiers (SAR)"/>
