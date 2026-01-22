@@ -106,6 +106,19 @@ class ProductMaster(models.Model):
         help="Price fetched from Odoo Ecommerce with direct link to product form. If not found, infers product with same category."
     )
 
+    ai_last_updated = fields.Datetime(string='Last AI Update Trigger')
+
+    is_ai_pricing_active = fields.Boolean(
+        string='Is AI Pricing Active',
+        compute='_compute_pricing_list',
+        store=True,
+        help="Technical field to indicate if the current pricing is based on AI or Traditional rules."
+    )
+
+    ai_market_min = fields.Float(string='Market Min', compute='_compute_ai_predicted_price')
+    ai_market_max = fields.Float(string='Market Max', compute='_compute_ai_predicted_price')
+    is_box_8_4 = fields.Boolean(compute='_compute_is_box_8_4', store=True)
+
     def _get_product_from_ext_id(self, ext_id):
         """Busca el registro en Odoo (Template o Product) y valida activo/publicado."""
         if not ext_id:
@@ -403,110 +416,332 @@ class ProductMaster(models.Model):
                     record.other_costs
             )
 
+    def _get_sibling_record(self, target_vol):
+        """Ayuda a encontrar el registro hermano (mismo tipo) con otro volumen."""
+        self.ensure_one()
+        if not self.generic_product_type:
+            return None
+
+        # Tolerancia para búsqueda de volumen (float)
+        domain = [
+            ('generic_product_type', '=', self.generic_product_type),
+            ('volume_liters', '>=', target_vol - 0.05),
+            ('volume_liters', '<=', target_vol + 0.05),
+            # Asegurar que buscamos en la misma subindustria para evitar cruces raros
+            ('type_of_product_id', '!=', False)
+        ]
+
+        # CORRECCIÓN NEWID: Solo excluir self.id si es un entero real (ya guardado en DB)
+        if self.id and isinstance(self.id, int):
+            domain.append(('id', '!=', self.id))
+
+        # Si la clasificación es importante, filtrar también por subindustria si aplica
+        if self.type_of_product_id.subindustry_id:
+            domain.append(('type_of_product_id.subindustry_id', '=', self.type_of_product_id.subindustry_id.id))
+
+        return self.search(domain, limit=1)
+
+    def _get_ai_suggestion(self, volume_liters):
+        self.ensure_one()
+        if not self.product_id:
+            return 0.0, False
+
+        suggestion = self.env['product.price.suggestion'].search([
+            ('product_id_str', '=', self.product_id)
+        ], limit=1, order='last_update_date desc')
+
+        if not suggestion:
+            return 0.0, False
+
+        price = suggestion.suggested_price
+
+        # 1. Validación Básica
+        if price <= 0:
+            return 0.0, False
+
+        # 2. VALIDACIÓN DE RANGOS DE MERCADO (CRÍTICO)
+        # Si el precio está fuera de rango, la predicción NO ES ACEPTADA.
+        if suggestion.market_min_found > 0 and price < suggestion.market_min_found:
+            return 0.0, False  # Rechazada por estar muy barata
+
+        if suggestion.market_max_found > 0 and price > suggestion.market_max_found:
+            return 0.0, False  # Rechazada por estar muy cara
+
+        # 3. Validación de Margen Mínimo (Safety Net)
+        if self.unit_cost_sar > 0:
+            margin = 1.0 - (self.unit_cost_sar / price)
+            if margin < 0.30:
+                return 0.0, False  # Rechazada por margen riesgoso
+
+        # Si pasa todo, es una predicción ACEPTADA
+        return price, True
+
     @api.depends('unit_cost_sar', 'volume_liters', 'type_of_product_id',
                  'manual_base_margin',
                  'type_of_product_id.base_margin_07',
                  'type_of_product_id.variance_box',
                  'type_of_product_id.variance_4l',
-                 'type_of_product_id.variance_20l')
+                 'type_of_product_id.variance_20l',
+                 'ai_predicted_price',
+                 'ai_last_updated')
     def _compute_pricing_list(self):
         for record in self:
             cost = record.unit_cost_sar
-            vol = record.volume_liters or 1.0  # Evitar división por cero en P/L
+            vol = record.volume_liters or 1.0
 
-            # 1. CALCULAR EL MARGEN OBJETIVO (Antes de revisar costos)
-            # Esto arregla que aparezca en 0 cuando no hay costos
-            base = record.type_of_product_id.base_margin_07 if record.type_of_product_id else 0.0
+            record.is_ai_pricing_active = False
 
-            added_margin = 0.0
-            if record.type_of_product_id and record.volume_liters > 0:
-                if 8.0 <= record.volume_liters <= 9.0:
-                    added_margin = record.type_of_product_id.variance_box
-                elif 3.5 <= record.volume_liters <= 5.0:
-                    added_margin = record.type_of_product_id.variance_4l
-                elif record.volume_liters >= 18.0:
-                    added_margin = record.type_of_product_id.variance_20l
+            # Limpiar valores previos
+            record.price_tier_spark = 0.0
+            record.price_tier_flow = 0.0
+            record.price_tier_cycle = 0.0
+            record.price_tier_stream = 0.0
+            record.price_tier_source = 0.0
 
-            effective_margin = base + added_margin
-            record.base_prediction_margin = effective_margin
-
-            # Si no hay costo, precios en 0, pero el margen ya se calculó arriba
+            # Si no hay costo, no podemos calcular nada con seguridad
             if not cost:
-                record.price_tier_spark = 0.0
-                record.price_tier_flow = 0.0
-                record.price_tier_cycle = 0.0
-                record.price_tier_stream = 0.0
-                record.price_tier_source = 0.0
-                # Reset detalles
-                record.margin_tier_spark = 0.0
-                record.margin_tier_flow = 0.0
-                record.margin_tier_cycle = 0.0
-                record.margin_tier_stream = 0.0
-                record.margin_tier_source = 0.0
+                # Resetear metadata visual
+                record.margin_tier_spark = 0.0;
                 record.pl_tier_spark = 0.0
+                record.margin_tier_flow = 0.0;
                 record.pl_tier_flow = 0.0
+                record.margin_tier_cycle = 0.0;
                 record.pl_tier_cycle = 0.0
+                record.margin_tier_stream = 0.0;
                 record.pl_tier_stream = 0.0
+                record.margin_tier_source = 0.0;
                 record.pl_tier_source = 0.0
+                record.base_prediction_margin = 0.0
                 continue
 
-            # 2. Definir Extras por Tier
-            if (0.6 <= record.volume_liters <= 0.8) or (8.0 <= record.volume_liters <= 9.0):
-                extras = [0.25, 0.15, 0.10, 0.05]
-            elif 3.5 <= record.volume_liters <= 5.0:
-                extras = [0.08, 0.06, 0.04, 0.02]
-            else:  # 20L y default
-                extras = [0.04, 0.03, 0.02, 0.01]
+            # =========================================================
+            # PASO 1: EVALUAR "CONDICIÓN MADRE" (El Gatekeeper 0.7L)
+            # =========================================================
+            use_smart_mode = False
 
-            def calc_tier_data(c, m_eff, m_extra, volume):
-                total_margin = m_eff + m_extra
+            # Identificar el registro de 0.7L (puede ser self o un hermano)
+            rec_07 = None
+            if abs(vol - 0.7) < 0.05:
+                rec_07 = record
+            else:
+                rec_07 = record._get_sibling_record(0.7)
 
-                # SAFETY CAP: Si pasa de 99%, lo topamos a 99%
-                if total_margin >= 0.99:
-                    total_margin = 0.99
+            # Validar IA del 0.7L
+            price_ai_07 = 0.0
+            has_valid_ai_07 = False
 
-                # Fórmula: Costo / (1 - Margen)
-                # Con el tope, el denominador mínimo es 0.01 (Costo * 100)
-                price = c / (1.0 - total_margin)
+            if rec_07:
+                # Checa existencia, rango de mercado y margen >= 30%
+                price_ai_07, has_valid_ai_07 = rec_07._get_ai_suggestion(0.7)
 
-                p_liter = price / volume if volume > 0 else 0.0
-                return price, total_margin, p_liter
+            # DECISIÓN GLOBAL: ¿Modo Inteligente o Tradicional?
+            if has_valid_ai_07:
+                use_smart_mode = True
+            else:
+                use_smart_mode = False
 
-            # 4. Calcular y Asignar Tiers
-            # Spark
-            p, m, pl = calc_tier_data(cost, effective_margin, extras[0], vol)
-            record.price_tier_spark = p
-            record.margin_tier_spark = m
-            record.pl_tier_spark = pl
+            record.is_ai_pricing_active = use_smart_mode
 
-            # Flow
-            p, m, pl = calc_tier_data(cost, effective_margin, extras[1], vol)
-            record.price_tier_flow = p
-            record.margin_tier_flow = m
-            record.pl_tier_flow = pl
+            # =========================================================
+            # PASO 2: CALCULAR PRECIOS (Dos Ramas)
+            # =========================================================
 
-            # Cycle
-            p, m, pl = calc_tier_data(cost, effective_margin, extras[2], vol)
-            record.price_tier_cycle = p
-            record.margin_tier_cycle = m
-            record.pl_tier_cycle = pl
+            tier1_price = 0.0
+            tier1_margin = 0.0
 
-            # Stream
-            p, m, pl = calc_tier_data(cost, effective_margin, extras[3], vol)
-            record.price_tier_stream = p
-            record.margin_tier_stream = m
-            record.pl_tier_stream = pl
+            # --- RAMA A: MODO TRADICIONAL (COST PLUS) ---
+            # (Se usa si falla la IA del 0.7L o su margen es < 30%)
+            if not use_smart_mode:
+                # Lógica original: Base Margin + Varianza -> Tier 5 -> Tier 1
+                base = record.type_of_product_id.base_margin_07 if record.type_of_product_id else 0.30
 
-            # Source (Sin extra)
-            p, m, pl = calc_tier_data(cost, effective_margin, 0.0, vol)
-            record.price_tier_source = p
-            record.margin_tier_source = m
-            record.pl_tier_source = pl
+                added_margin = 0.0
+                if record.type_of_product_id and vol > 0:
+                    if 8.0 <= vol <= 9.0:
+                        added_margin = record.type_of_product_id.variance_box
+                    elif 3.5 <= vol <= 5.0:
+                        added_margin = record.type_of_product_id.variance_4l
+                    elif vol >= 18.0:
+                        added_margin = record.type_of_product_id.variance_20l
 
+                effective_margin = base + added_margin  # Margen Base (Source)
+
+                # Definir Extras (Deltas hacia arriba)
+                # Tiers: Source(Base), Stream, Cycle, Flow, Spark(Top)
+                if (0.6 <= vol <= 0.8) or (8.0 <= vol <= 9.0):
+                    extras = [0.25, 0.15, 0.10, 0.05]  # [Spark, Flow, Cycle, Stream]
+                elif 3.5 <= vol <= 5.0:
+                    extras = [0.08, 0.06, 0.04, 0.02]
+                else:
+                    extras = [0.04, 0.03, 0.02, 0.01]
+
+                def calc_price_up(c, m_target):
+                    if m_target >= 0.99: m_target = 0.99
+                    return c / (1.0 - m_target)
+
+                # Calcular Tiers Ascendentes
+                record.price_tier_source = calc_price_up(cost, effective_margin)  # Base
+                record.price_tier_stream = calc_price_up(cost, effective_margin + extras[3])
+                record.price_tier_cycle = calc_price_up(cost, effective_margin + extras[2])
+                record.price_tier_flow = calc_price_up(cost, effective_margin + extras[1])
+                record.price_tier_spark = calc_price_up(cost, effective_margin + extras[0])
+
+            # --- RAMA B: MODO INTELIGENTE (TARGET PRICING) ---
+            else:
+                # Aquí calculamos el Tier 1 (Spark) primero y bajamos
+
+                # --- A. CALCULO DEL TIER 1 SEGÚN ENVASE ---
+
+                # 1. Caso 0.7L (Ya validado y obtenido en Gatekeeper)
+                if abs(vol - 0.7) < 0.05:
+                    tier1_price = price_ai_07
+
+                # 2. Caso 8.4L (La Caja) -> Copia x12
+                elif 8.0 <= vol <= 9.0:
+                    # Usamos el precio unitario del 0.7L (Tier 1) * 12
+                    tier1_price = price_ai_07 * 12.0
+
+                # 3. Caso 4L (Galón)
+                elif 3.5 <= vol <= 5.0:
+                    p_ai, valid_ai = record._get_ai_suggestion(vol)
+                    if valid_ai:
+                        # Prioridad 1: IA Propia
+                        tier1_price = p_ai
+                    else:
+                        # Fallback: Margen 0.7L + Varianza 4L
+                        # Margen real del 0.7L (Tier 1 AI)
+                        m_07 = 1.0 - (rec_07.unit_cost_sar / price_ai_07)
+                        variance = record.type_of_product_id.variance_4l if record.type_of_product_id else 0.15
+                        target_m = m_07 + variance
+                        if target_m >= 0.99: target_m = 0.99
+                        tier1_price = cost / (1.0 - target_m)
+
+                # 4. Caso 20L (Bidón)
+                elif vol >= 18.0:
+                    p_ai, valid_ai = record._get_ai_suggestion(vol)
+
+                    if valid_ai:
+                        # Prioridad 1: IA Propia
+                        tier1_price = p_ai
+                    else:
+                        # Buscar hermano de 4L para Prioridad 2
+                        rec_4l = record._get_sibling_record(4.0)
+
+                        # Validar si el hermano de 4L tiene IA válida (llamando a la funcion, NO asumiendo)
+                        # Ojo: aquí _get_ai_suggestion ya valida rango y margen del 4L
+                        p_ai_4l, valid_ai_4l = 0.0, False
+                        if rec_4l:
+                            p_ai_4l, valid_ai_4l = rec_4l._get_ai_suggestion(4.0)
+
+                        if valid_ai_4l:
+                            # Prioridad 2: Derivar de 4L
+                            # Margen efectivo del 4L (usando su IA)
+                            m_4l = 1.0 - (rec_4l.unit_cost_sar / p_ai_4l)
+
+                            # Calcular el "salto" de varianza.
+                            v_4l = record.type_of_product_id.variance_4l
+                            v_20l = record.type_of_product_id.variance_20l
+                            delta_variance = v_20l - v_4l
+
+                            target_m = m_4l + delta_variance
+                            if target_m >= 0.99: target_m = 0.99
+                            tier1_price = cost / (1.0 - target_m)
+                        else:
+                            # Prioridad 3: Derivar de 0.7L (Fallback final)
+                            m_07 = 1.0 - (rec_07.unit_cost_sar / price_ai_07)
+                            variance = record.type_of_product_id.variance_20l if record.type_of_product_id else 0.20
+                            target_m = m_07 + variance
+                            if target_m >= 0.99: target_m = 0.99
+                            tier1_price = cost / (1.0 - target_m)
+
+                # Default (otros tamaños raros que no son 0.7, caja, 4L ni 20L)
+                else:
+                    base = record.type_of_product_id.base_margin_07 or 0.30
+                    tier1_price = cost / (1.0 - base)
+
+                # --- B. ASIGNACIÓN DE TIER 1 Y BAJADA (TARGET PRICING) ---
+
+                # Asignar Tier 1 (Spark)
+                record.price_tier_spark = tier1_price
+
+                # Calcular margen real del Tier 1 obtenido para usar como ancla de bajada
+                if tier1_price > 0:
+                    tier1_margin = 1.0 - (cost / tier1_price)
+                else:
+                    tier1_margin = 0.0
+
+                # Definir Deltas de BAJADA (cuánto restamos al margen del Tier 1)
+                # Basado en la inversa de los extras tradicionales para mantener consistencia visual
+
+                if (0.6 <= vol <= 0.8) or (8.0 <= vol <= 9.0):
+                    # Tradicional subía: [0.25, 0.15, 0.10, 0.05] vs Base 0
+                    # Bajada desde 0.25:
+                    drops = [0.10, 0.15, 0.20, 0.25]
+                    # Spark-0.10=Flow(0.15); Spark-0.15=Cycle(0.10); Spark-0.20=Stream(0.05); Spark-0.25=Source(0)
+                elif 3.5 <= vol <= 5.0:
+                    # Tradicional subía: [0.08, 0.06, 0.04, 0.02]
+                    # Bajada desde 0.08:
+                    drops = [0.02, 0.04, 0.06, 0.08]
+                else:
+                    # Tradicional subía: [0.04, 0.03, 0.02, 0.01]
+                    # Bajada desde 0.04:
+                    drops = [0.01, 0.02, 0.03, 0.04]
+
+                def calc_price_down(c, m_top, drop):
+                    target = m_top - drop
+                    # FLOOR 30%: Si baja de 0.30, se queda forzosamente en 0.30
+                    if target < 0.30:
+                        target = 0.30
+                    return c / (1.0 - target)
+
+                record.price_tier_flow = calc_price_down(cost, tier1_margin, drops[0])
+                record.price_tier_cycle = calc_price_down(cost, tier1_margin, drops[1])
+                record.price_tier_stream = calc_price_down(cost, tier1_margin, drops[2])
+                record.price_tier_source = calc_price_down(cost, tier1_margin, drops[3])
+
+            # =========================================================
+            # CALCULO FINAL DE METADATA (Márgenes y P/L)
+            # =========================================================
+            # Esto aplica para ambas ramas (para llenar los campos informativos en la vista)
+
+            def get_meta(p, c, v):
+                if p <= 0: return 0.0, 0.0
+                m = 1.0 - (c / p)
+                pl = p / v if v > 0 else 0.0
+                return m, pl
+
+            record.margin_tier_spark, record.pl_tier_spark = get_meta(record.price_tier_spark, cost, vol)
+            record.margin_tier_flow, record.pl_tier_flow = get_meta(record.price_tier_flow, cost, vol)
+            record.margin_tier_cycle, record.pl_tier_cycle = get_meta(record.price_tier_cycle, cost, vol)
+            record.margin_tier_stream, record.pl_tier_stream = get_meta(record.price_tier_stream, cost, vol)
+            record.margin_tier_source, record.pl_tier_source = get_meta(record.price_tier_source, cost, vol)
+
+            # Guardamos el margen efectivo aplicado en 'base_prediction_margin'
+            # En modo inteligente es Spark (Tier 1), en tradicional es Source (Base) conceptualmente,
+            # pero para estandarizar guardaremos el margen del Tier 1 (Spark) si hay IA, o el calculado base si no.
+            if use_smart_mode:
+                record.base_prediction_margin = record.margin_tier_spark
+            else:
+                # En modo tradicional, el "base_prediction_margin" solía ser el margen de entrada (0.30 + var)
+                # Lo mantenemos así para referencia
+                base = record.type_of_product_id.base_margin_07 if record.type_of_product_id else 0.30
+                add_m = 0.0
+                if record.type_of_product_id and vol > 0:
+                    if 8.0 <= vol <= 9.0:
+                        add_m = record.type_of_product_id.variance_box
+                    elif 3.5 <= vol <= 5.0:
+                        add_m = record.type_of_product_id.variance_4l
+                    elif vol >= 18.0:
+                        add_m = record.type_of_product_id.variance_20l
+                record.base_prediction_margin = base + add_m
+
+    @api.depends('product_id', 'ai_last_updated', 'unit_cost_sar')
     def _compute_ai_predicted_price(self):
         for record in self:
             record.ai_predicted_price = 0.0
             record.ai_predicted_margin = 0.0
+            record.ai_market_min = 0.0
+            record.ai_market_max = 0.0
 
             if not record.product_id:
                 continue
@@ -517,6 +752,8 @@ class ProductMaster(models.Model):
 
             if suggestion:
                 record.ai_predicted_price = suggestion.suggested_price
+                record.ai_market_min = suggestion.market_min_found
+                record.ai_market_max = suggestion.market_max_found
 
                 if suggestion.suggested_price > 0:
                     current_profit = suggestion.suggested_price - record.unit_cost_sar
@@ -538,3 +775,9 @@ class ProductMaster(models.Model):
                       ] + domain
 
         return self._search(domain, limit=limit, order=order, access_rights_uid=name_get_uid)
+
+    @api.depends('volume_liters')
+    def _compute_is_box_8_4(self):
+        for record in self:
+            # Detectar rango 8.0 - 9.0
+            record.is_box_8_4 = (8.0 <= record.volume_liters <= 9.0)

@@ -27,16 +27,70 @@
             <field name="arch" type="xml">
                 <tree string="Price Suggestion History" create="false" edit="false" delete="false">
                     <field name="product_id_str"/>
+                    <field name="product_name"/>
                     <field name="product_type"/>
                     <field name="subindustry"/>
                     <field name="industry"/>
                     <field name="volume_units"/>
                     <field name="production_cost"/>
                     <field name="suggested_price"/>
+                    <field name="predicted_price_per_unit" optional="hide"/>
                     <field name="profit" widget="percentage"/>
+                    <field name="model_confidence" optional="show"/>
+                    <field name="market_min_found" optional="hide"/>
+                    <field name="market_max_found" optional="hide"/>
+                    <field name="competitors_count" optional="hide"/>
                     <field name="original_create_date" string="Suggested in"/>
                     <field name="create_date" string="Archived in"/>
                 </tree>
+            </field>
+        </record>
+
+        <record id="view_product_price_suggestion_history_form" model="ir.ui.view">
+            <field name="name">product.price.suggestion.history.form</field>
+            <field name="model">product.price.suggestion.history</field>
+            <field name="arch" type="xml">
+                 <form string="Price Suggestion History" create="false" edit="false" delete="false">
+                    <sheet>
+                        <div class="oe_title">
+                            <label for="product_name" class="oe_edit_only"/>
+                            <h1><field name="product_name" readonly="1"/></h1>
+                            <h2><field name="product_id_str"/></h2>
+                        </div>
+                        <group>
+                            <group string="Product Classification">
+                                <field name="product_type"/>
+                                <field name="generic_product_type"/>
+                                <field name="subindustry"/>
+                                <field name="industry"/>
+                                <field name="volume_units"/>
+                            </group>
+                            <group string="Price &amp; Market Intelligence">
+                                <field name="production_cost"/>
+                                <field name="suggested_price"/>
+                                <field name="predicted_price_per_unit"/>
+                                <field name="profit" widget="percentage"/>
+                                <separator string="Market Analysis"/>
+
+                                <label for="model_confidence"/>
+                                <div class="o_row">
+                                    <field name="model_confidence"/>
+                                    <span>%</span>
+                                </div>
+
+                                <field name="market_min_found"/>
+                                <field name="market_max_found"/>
+                                <field name="competitors_count"/>
+                            </group>
+                        </group>
+                        <group string="Audit Timestamps">
+                            <group>
+                                <field name="original_create_date"/>
+                                <field name="create_date" string="Archived Date"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
             </field>
         </record>
 
