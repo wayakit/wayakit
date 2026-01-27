@@ -98,6 +98,11 @@ class CompetitorProduct(models.Model):
         string="Price per Unit (SAR)",
         compute='_compute_converted_prices',
         currency_field='sar_currency_id')
+    price_unit_mxn = fields.Monetary(
+        string="Price per Unit (MXN)",
+        compute='_compute_converted_prices',
+        currency_field='mxn_currency_id')
+
     price_unit_cop = fields.Monetary(
         string="Price per Unit (COP)",
         compute='_compute_converted_prices',
@@ -108,6 +113,12 @@ class CompetitorProduct(models.Model):
         compute='_compute_converted_prices',
         currency_field='usd_currency_id',
         help="Price per Liter (if uom=mL) or per Kg (if uom=g). 0 for Units.")
+
+    price_per_liter_mxn = fields.Monetary(
+        string="Price per L/kg (MXN)",
+        compute='_compute_converted_prices',
+        currency_field='mxn_currency_id')
+
     price_per_liter_sar = fields.Monetary(
         string="Price per L/kg (SAR)",
         compute='_compute_converted_prices',
@@ -126,6 +137,7 @@ class CompetitorProduct(models.Model):
     usd_currency_id = fields.Many2one('res.currency', compute='_get_target_currencies')
     sar_currency_id = fields.Many2one('res.currency', compute='_get_target_currencies')
     cop_currency_id = fields.Many2one('res.currency', compute='_get_target_currencies')
+    mxn_currency_id = fields.Many2one('res.currency', compute='_get_target_currencies')
 
     @api.depends('pack_size', 'quantity_per_unit')
     def _compute_total_quantity(self):
@@ -143,11 +155,13 @@ class CompetitorProduct(models.Model):
         usd = Currency.search([('name', '=', 'USD')], limit=1)
         sar = Currency.search([('name', '=', 'SAR')], limit=1)
         cop = Currency.search([('name', '=', 'COP')], limit=1)
+        mxn = Currency.search([('name', '=', 'MXN')], limit=1)
 
         for rec in self:
             rec.usd_currency_id = usd or False
             rec.sar_currency_id = sar or False
             rec.cop_currency_id = cop or False
+            rec.mxn_currency_id = mxn or False
 
     @api.depends('price_source', 'currency_id', 'uom', 'total_quantity', 'date')
     def _compute_converted_prices(self):
@@ -155,12 +169,13 @@ class CompetitorProduct(models.Model):
         usd = Currency.search([('name', '=', 'USD')], limit=1)
         sar = Currency.search([('name', '=', 'SAR')], limit=1)
         cop = Currency.search([('name', '=', 'COP')], limit=1)
+        mxn = Currency.search([('name', '=', 'MXN')], limit=1)
 
         # Si no se encuentran las monedas, poner todo en 0 para evitar errores
         if not all([usd, sar, cop]):
             self.update({
-                'price_unit_usd': 0, 'price_unit_sar': 0, 'price_unit_cop': 0,
-                'price_per_liter_usd': 0, 'price_per_liter_sar': 0, 'price_per_liter_cop': 0,
+                'price_unit_usd': 0, 'price_unit_sar': 0, 'price_unit_cop': 0, 'price_unit_mxn': 0,
+                'price_per_liter_usd': 0, 'price_per_liter_sar': 0, 'price_per_liter_cop': 0, 'price_per_liter_mxn': 0,
                 'price_per_ml': 0,
             })
             return
@@ -169,9 +184,11 @@ class CompetitorProduct(models.Model):
             price_unit_usd = 0.0
             price_unit_sar = 0.0
             price_unit_cop = 0.0
+            price_unit_mxn = 0.0
             price_per_liter_usd = 0.0
             price_per_liter_sar = 0.0
             price_per_liter_cop = 0.0
+            price_per_liter_mxn = 0.0
             price_per_ml = 0.0
 
             if rec.price_source > 0 and rec.currency_id and rec.date:
@@ -182,24 +199,30 @@ class CompetitorProduct(models.Model):
                     rec.price_source, sar, rec.env.company, rec.date)
                 price_unit_cop = rec.currency_id._convert(
                     rec.price_source, cop, rec.env.company, rec.date)
+                price_unit_mxn = rec.currency_id._convert(
+                    rec.price_source, mxn, rec.env.company, rec.date)
 
                 if rec.uom in ('ml', 'g') and rec.total_quantity > 0:
                     price_per_ml_g_usd = (price_unit_usd / rec.total_quantity)
                     price_per_ml_g_sar = (price_unit_sar / rec.total_quantity)
                     price_per_ml_g_cop = (price_unit_cop / rec.total_quantity)
+                    price_per_ml_g_mxn = (price_unit_mxn / rec.total_quantity)
 
                     price_per_ml = price_per_ml_g_usd
 
                     price_per_liter_usd = price_per_ml_g_usd * 1000
                     price_per_liter_sar = price_per_ml_g_sar * 1000
                     price_per_liter_cop = price_per_ml_g_cop * 1000
+                    price_per_liter_mxn = price_per_ml_g_mxn * 1000
 
             rec.price_unit_usd = price_unit_usd
             rec.price_unit_sar = price_unit_sar
             rec.price_unit_cop = price_unit_cop
+            rec.price_unit_mxn = price_unit_mxn
             rec.price_per_liter_usd = price_per_liter_usd
             rec.price_per_liter_sar = price_per_liter_sar
             rec.price_per_liter_cop = price_per_liter_cop
+            rec.price_per_liter_mxn = price_per_liter_mxn
             rec.price_per_ml = price_per_ml
 
     @api.constrains('quantity_per_unit', 'price_source')
