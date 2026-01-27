@@ -94,11 +94,13 @@
                                 <group string="Price per Unit (Total Product)">
                                     <field name="price_unit_usd"/>
                                     <field name="price_unit_sar"/>
+                                    <field name="price_unit_mxn"/>
                                     <field name="price_unit_cop"/>
                                 </group>
                                 <group string="Price per Liter / Kg (Calculated)">
                                     <field name="price_per_liter_usd"/>
                                     <field name="price_per_liter_sar"/>
+                                    <field name="price_per_liter_mxn"/>
                                     <field name="price_per_liter_cop"/>
                                     <field name="price_per_ml" string="Price per mL/g (USD)" decoration-info="1"/>
                                 </group>
