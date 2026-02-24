@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="recom_glass_cleaning" model="product.dilution.recommendation">
+            <field name="name">Window &amp; Glass Cleaning</field>
+            <field name="dilution_rate_ml">5.0</field>
+        </record>
+
+        <record id="recom_floor_standard" model="product.dilution.recommendation">
+            <field name="name">Floor Cleaning (Standard Maintenance)</field>
+            <field name="dilution_rate_ml">20.0</field>
+        </record>
+
+        <record id="recom_high_traffic" model="product.dilution.recommendation">
+            <field name="name">High Traffic Surfaces (Deep Clean)</field>
+            <field name="dilution_rate_ml">35.0</field>
+        </record>
+
+        <record id="recom_heavy_duty" model="product.dilution.recommendation">
+            <field name="name">Heavy Duty Sanitization / Bathrooms</field>
+            <field name="dilution_rate_ml">50.0</field>
+        </record>
+
+        <record id="recom_industrial_degreaser" model="product.dilution.recommendation">
+            <field name="name">Industrial Degreasing (Kitchens)</field>
+            <field name="dilution_rate_ml">100.0</field>
+        </record>
+    </data>
+</odoo>

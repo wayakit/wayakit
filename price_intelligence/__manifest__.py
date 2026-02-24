@@ -27,6 +27,7 @@
         'views/competitor_product_views.xml',
         'views/product_price_suggestion_history_views.xml',
         'data/sampling_cost_sequence.xml',
+        'data/product_dilution_recommendation_data.xml',
         'views/sampling_cost_calculator_views.xml',
         'views/helpdesk_ticket_views.xml',
     ],

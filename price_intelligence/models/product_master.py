@@ -119,6 +119,35 @@ class ProductMaster(models.Model):
     ai_market_max = fields.Float(string='Market Max', compute='_compute_ai_predicted_price')
     is_box_8_4 = fields.Boolean(compute='_compute_is_box_8_4', store=True)
 
+    dilution_rate_ml = fields.Float(
+        string='Dilution Rate (ml/L)',
+        help="Milliliters of concentrated product needed to make 1L of ready-to-use mixture."
+    )
+
+    dilution_ratio = fields.Float(
+        string='Ratio (1:X)',
+        compute='_compute_dilution_data',
+        store=True,
+        help="Example: If 20ml/L, Ratio is 1:50 (1000/20)"
+    )
+    total_diluted_liters = fields.Float(
+        string='Total Yield (Liters)',
+        compute='_compute_dilution_data',
+        store=True,
+        help="Total liters of ready-to-use product that this container produces."
+    )
+
+    diluted_price_spark = fields.Float(string='Spark Diluted P/L', compute='_compute_dilution_data', store=True)
+    diluted_price_flow = fields.Float(string='Flow Diluted P/L', compute='_compute_dilution_data', store=True)
+    diluted_price_cycle = fields.Float(string='Cycle Diluted P/L', compute='_compute_dilution_data', store=True)
+    diluted_price_stream = fields.Float(string='Stream Diluted P/L', compute='_compute_dilution_data', store=True)
+    diluted_price_source = fields.Float(string='Source Diluted P/L', compute='_compute_dilution_data', store=True)
+
+    dilution_recommendation_id = fields.Many2one(
+        'product.dilution.recommendation',
+        string='Usage Recommendation'
+    )
+
     def _get_product_from_ext_id(self, ext_id):
         """Busca el registro en Odoo (Template o Product) y valida activo/publicado."""
         if not ext_id:
@@ -781,3 +810,37 @@ class ProductMaster(models.Model):
         for record in self:
             # Detectar rango 8.0 - 9.0
             record.is_box_8_4 = (8.0 <= record.volume_liters <= 9.0)
+
+    @api.onchange('dilution_recommendation_id')
+    def _onchange_dilution_recommendation(self):
+        """Al elegir una recomendación del dropdown, se autocompleta el campo de ml."""
+        if self.dilution_recommendation_id:
+            self.dilution_rate_ml = self.dilution_recommendation_id.dilution_rate_ml
+
+    @api.depends('dilution_rate_ml', 'volume_liters',
+                 'price_tier_spark', 'price_tier_flow', 'price_tier_cycle',
+                 'price_tier_stream', 'price_tier_source')
+    def _compute_dilution_data(self):
+        for rec in self:
+            # 1. Calcular el Ratio (Ej: 1000 / 20ml = 50)
+            if rec.dilution_rate_ml > 0:
+                rec.dilution_ratio = 1000.0 / rec.dilution_rate_ml
+            else:
+                rec.dilution_ratio = 0.0
+
+            # 2. Calcular Rendimiento Total (Ej: 4L de envase * 50 de ratio = 200 Litros diluidos)
+            rec.total_diluted_liters = rec.volume_liters * rec.dilution_ratio
+
+            # 3. Calcular Precios Diluidos (Precio del Envase / Litros Totales Diluidos)
+            if rec.total_diluted_liters > 0:
+                rec.diluted_price_spark = rec.price_tier_spark / rec.total_diluted_liters
+                rec.diluted_price_flow = rec.price_tier_flow / rec.total_diluted_liters
+                rec.diluted_price_cycle = rec.price_tier_cycle / rec.total_diluted_liters
+                rec.diluted_price_stream = rec.price_tier_stream / rec.total_diluted_liters
+                rec.diluted_price_source = rec.price_tier_source / rec.total_diluted_liters
+            else:
+                rec.diluted_price_spark = 0.0
+                rec.diluted_price_flow = 0.0
+                rec.diluted_price_cycle = 0.0
+                rec.diluted_price_stream = 0.0
+                rec.diluted_price_source = 0.0

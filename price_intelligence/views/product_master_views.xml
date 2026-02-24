@@ -228,6 +228,49 @@
                                     </group>
                                 </group>
                             </page>
+                            <page string="Dilution Analysis" name="dilution_analysis">
+                                <group>
+                                    <group string="Dilution Configuration" name="dilution_config">
+                                        <field name="dilution_recommendation_id"
+                                           options="{'no_create': True, 'no_open': True}"
+                                           placeholder="Select a use case..."/>
+                                        <field name="dilution_rate_ml"/>
+                                        <field name="dilution_ratio"/>
+                                        <field name="total_diluted_liters"/>
+                                    </group>
+                                    <group string="Price per Diluted Litre by Tier" name="diluted_prices">
+                                        <label for="diluted_price_spark" string="Spark Tier (P/L Diluted)"/>
+                                        <div class="o_row">
+                                            <field name="diluted_price_spark"/>
+                                            <span>SAR</span>
+                                        </div>
+
+                                        <label for="diluted_price_flow" string="Flow Tier (P/L Diluted)"/>
+                                        <div class="o_row">
+                                            <field name="diluted_price_flow"/>
+                                            <span>SAR</span>
+                                        </div>
+
+                                        <label for="diluted_price_cycle" string="Cycle Tier (P/L Diluted)"/>
+                                        <div class="o_row">
+                                            <field name="diluted_price_cycle"/>
+                                            <span>SAR</span>
+                                        </div>
+
+                                        <label for="diluted_price_stream" string="Stream Tier (P/L Diluted)"/>
+                                        <div class="o_row">
+                                            <field name="diluted_price_stream"/>
+                                            <span>SAR</span>
+                                        </div>
+
+                                        <label for="diluted_price_source" string="Source Tier (P/L Diluted)"/>
+                                        <div class="o_row">
+                                            <field name="diluted_price_source"/>
+                                            <span>SAR</span>
+                                        </div>
+                                    </group>
+                                </group>
+                            </page>
                         </notebook>
                     </sheet>
                 </form>
