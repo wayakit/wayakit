@@ -21,6 +21,9 @@
 #############################################################################
 import logging
 import pprint
+# I imported this library
+from odoo.addons.payment.controllers.post_processing import PaymentPostProcessing
+
 from odoo import http
 from odoo.http import request
 import ast
@@ -32,9 +35,10 @@ class PaymentMyFatoorahController(http.Controller):
     """ Instance for the myfatoorah controller """
 
     _return_url = '/payment/myfatoorah/_return_url'
-
+    # I just removed save_session from here it was core code
+    # @http.route('/payment/myfatoorah/response', type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=False)
     @http.route('/payment/myfatoorah/response', type='http', auth='public',
-                website=True, methods=['POST'], csrf=False, save_session=False)
+                website=True, methods=['POST'], csrf=False)
     def myfatoorah_payment_response(self, **data):
         """Function to get the payment response"""
 
@@ -49,9 +53,9 @@ class PaymentMyFatoorahController(http.Controller):
         }
         return request.render(
             "myfatoorah_payment_gateway.myfatoorah_payment_gateway_form", vals)
-
-    @http.route(_return_url, type='http', auth='public',
-                methods=['GET'])
+    # It is core code i just added csrf and save_Session
+    # @http.route(_return_url, type='http', auth='public', methods=['GET'])
+    @http.route(_return_url, type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=True)
     def myfatoorah_checkout(self, **data):
         """ Function to redirect to the payment checkout"""
         _logger.info("Received MyFatoorah return data:\n%s",
@@ -60,6 +64,20 @@ class PaymentMyFatoorahController(http.Controller):
             'payment.transaction'].sudo()._get_tx_from_notification_data(
             'myfatoorah', data)
         tx_sudo._handle_notification_data('myfatoorah', data)
+
+
+        # My custom code starts from here
+        PaymentPostProcessing.monitor_transaction(tx_sudo)
+        # Restore the website order + tx in session so /payment/status and /shop/payment/validate work
+        so = tx_sudo.sale_order_ids[:1]
+        if so:
+            request.session['sale_order_id'] = so.id
+            request.session['sale_last_order_id'] = so.id
+
+        # This key is commonly used by website_sale to track the last payment tx
+        request.session['__website_sale_last_tx_id'] = tx_sudo.id
+
+        # my custom code ends here
         return request.redirect('/payment/status')
 
     @http.route('/payment/myfatoorah/failed', type='http', auth='user',
