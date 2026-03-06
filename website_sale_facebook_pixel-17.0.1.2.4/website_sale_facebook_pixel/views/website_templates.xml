@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <template id="website_layout" name="Website Sale Facebook Pixel" inherit_id="website_facebook_pixel.website_layout">
+        <!-- Hide the FB Pixel script if tracking is not activated -->
+        <xpath expr="//t[@name='fbp_script']" position="attributes">
+            <attribute name="t-if">website and website.tracking_is_active and website.fbp_get_primary_key() and not editable</attribute>
+        </xpath>
+    </template>
+
+</odoo>

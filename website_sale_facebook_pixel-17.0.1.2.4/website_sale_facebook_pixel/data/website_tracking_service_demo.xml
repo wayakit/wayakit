@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <record id="tracking_service_fbp_default_demo" model="website.tracking.service">
+        <field name="website_id" ref="website.default_website"/>
+        <field name="type">fbp</field>
+        <field name="key">550099007711</field>
+        <field name="is_internal_logged" eval="True"/>
+    </record>
+
+    <record id="tracking_service_fbp_second_demo" model="website.tracking.service">
+        <field name="website_id" ref="website.website2"/>
+        <field name="type">fbp</field>
+        <field name="key">100077772222</field>
+    </record>
+
+</odoo>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="website_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.website_sale_tracking_base</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="website.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@id='website_email_marketing']" position="after">
+                <block title="Tracking" id="website_tracking_setting" invisible="not website_id">
+                    <setting id="activate_website_tracking"
+                             string="Activate Tracking"
+                             documentation="https://garazd.biz/en/odoo-website-tracking"
+                             help="Track eCommerce customer events on the website">
+                        <field name="website_tracking_is_active"/>
+                        <div class="content-group" id="tracking_settings" invisible="not website_tracking_is_active">
+                            <div class="row mt16">
+                                <div>
+                                    <field name="website_tracking_is_logged"/>
+                                    <label for="website_tracking_is_logged" string="Debug Logging"/>
+                                </div>
+                            </div>
+                            <div class="mt4">
+                                <button type="action" name="%(action_tracking_service_list)d" string="Manage Tracking Services" class="btn-link" icon="oi-arrow-right" noSaveDialog="true"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="website_sale_tracking_log_clean_up_setting"
+                             string="Clean Up Period for Internal Tracking Logs"
+                             help="Specify the period for cleaning up the tracking log sensitive data, such as payload, client IP address, and user agent.">
+                        <div class="content-group" id="tracking_log_clean_up_settings">
+                            <div class="row mt16">
+                                <label for="website_tracking_log_clean_up_period" string="Period" class="col-lg-3 o_light_label"/>
+                                <field name="website_tracking_log_clean_up_period" class="oe_inline"/>
+                                <span class="oe_inline">days</span>
+                            </div>
+                            <div class="row mt8">
+                                <field name="website_tracking_log_clean_up_unlink" class="oe_inline pe-0"/>
+                                <label for="website_tracking_log_clean_up_unlink" class="oe_inline px-0 mx-0"/>
+                            </div>
+                        </div>
+                    </setting>
+                    <setting id="website_sale_tracking_user_data_setting"
+                             string="Order of Customer Names"
+                             help="Define the order to divide a customer name by parts. A 'space' is used as a divider, and the first two parts are used for the first and last names.">
+                        <div class="content-group" id="tracking_user_settings">
+                            <div class="row mt16">
+                                <label for="website_tracking_user_name_order" string="Order" class="col-lg-3 o_light_label"/>
+                                <field name="website_tracking_user_name_order" widget="radio" class="oe_inline"/>
+                            </div>
+                        </div>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

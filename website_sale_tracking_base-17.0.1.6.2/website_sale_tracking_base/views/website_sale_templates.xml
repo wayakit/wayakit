@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <!-- To pass the tracking logging state to JS -->
+    <template id="layout" name="Tracker Logging Script" inherit_id="website.layout">
+        <xpath expr="//body" position="attributes">
+            <attribute name="t-att-data-log-tracking-events">website.tracking_is_active and website.tracking_is_logged</attribute>
+        </xpath>
+    </template>
+
+    <!-- To pass product IDs to JS -->
+    <template id="tracking_add_product_ids" name="Tracking Product List" inherit_id="website_sale.products">
+        <xpath expr="//div[@id='products_grid']" position="attributes">
+            <attribute name="t-att-data-tracking_product_tmpl_ids">products.ids</attribute>
+        </xpath>
+    </template>
+
+    <!-- To pass the Search Term to JS -->
+    <template id="tracking_add_search_term" name="Tracking Product Search" inherit_id="website_sale.products">
+        <xpath expr="//div[@id='products_grid']" position="attributes">
+            <attribute name="t-att-data-tracking_search_term">search</attribute>
+            <attribute name="t-att-data-tracking_category">category and category.id or 0</attribute>
+        </xpath>
+    </template>
+
+    <!-- Add the product_template ID to a single item in the product list -->
+    <template id="products_item" name="Tracking Product in the Product List" inherit_id="website_sale.products_item">
+        <xpath expr="//div[hasclass('o_wsale_product_btn')]" position="inside">
+            <input type="hidden" name="alt_product_template_id" t-att-value="product.id" />
+        </xpath>
+    </template>
+
+    <!-- Add alternative way to put product IDs on the product webpage for special cases,
+         when the standard hidden input with "product_id" is not generated.
+         For instance, when product has message "out of stock".
+    -->
+    <template id="product" name="Tracking Product Details" inherit_id="website_sale.product">
+        <!-- Put product IDs as high as possible -->
+        <xpath expr="//div[@id='product_details']" position="inside">
+            <input type="hidden" name="alt_product_id" t-att-value="product_variant.id" />
+            <input type="hidden" name="alt_product_template_id" t-att-value="product.id" />
+        </xpath>
+    </template>
+
+    <!-- Add order_id for payment form (for tracking purchase_portal event) -->
+    <template id="payment_form" inherit_id="payment.form">
+        <xpath expr="//form" position="attributes">
+            <attribute name="t-att-data-order-id">sale_order.id if sale_order else None</attribute>
+        </xpath>
+    </template>
+
+</odoo>
