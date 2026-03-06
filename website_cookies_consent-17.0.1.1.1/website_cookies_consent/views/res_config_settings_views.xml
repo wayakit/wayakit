@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="website_config_settings_view_form" model="ir.ui.view">
+        <field name="name">website.config.settings.view.form.inherit.website_cookies_consent</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="website.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//setting[@id='website_cookies_bar_setting']" position="before">
+                <setting id="website_cookies_consent_manager_setting"
+                         string="Consent Manager"
+                         help="Specify what Cookie Consent Manager should be used on the current website">
+                    <div class="content-group">
+                        <div class="row mt16">
+                            <field name="website_cookies_consent_manager" widget="radio"/>
+                        </div>
+                    </div>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
