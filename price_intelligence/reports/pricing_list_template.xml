@@ -1,0 +1,72 @@
+<odoo>
+    <template id="pricing_list_template">
+        <t t-call="web.html_container">
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="mb-4 text-primary">Pricing List</h2>
+
+                    <div class="row mb-4">
+                        <div class="col-6">
+                            <strong>Pricing Tier: </strong>
+                            <span class="badge text-bg-info fs-6 text-uppercase">
+                                <t t-esc="selected_tier or 'Standard'"/>
+                            </span>
+                        </div>
+                        <div class="col-6 text-end">
+                            <strong>Date of Issue: </strong>
+                            <span t-esc="print_date" t-options='{"widget": "date"}'/>
+                        </div>
+                    </div>
+
+                    <table class="table table-sm table-striped table-bordered mt-4">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" width="15%">ID</th>
+                                <th width="50%">Product</th>
+                                <th class="text-center" width="15%">Tier</th>
+                                <th class="text-end" width="20%">Price</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="docs" t-as="o">
+                                <tr>
+                                    <td class="text-center"><t t-esc="o.product_id"/></td>
+                                    <td><t t-esc="o.product_name"/></td>
+
+                                    <td class="text-center text-capitalize">
+                                        <t t-esc="selected_tier"/>
+                                    </td>
+
+                                    <td class="text-end fw-bold">
+                                        <t t-if="selected_tier == 'spark'">
+                                            <t t-esc="'%.2f SAR' % o.price_tier_spark"/>
+                                        </t>
+                                        <t t-elif="selected_tier == 'flow'">
+                                            <t t-esc="'%.2f SAR' % o.price_tier_flow"/>
+                                        </t>
+                                        <t t-elif="selected_tier == 'cycle'">
+                                            <t t-esc="'%.2f SAR' % o.price_tier_cycle"/>
+                                        </t>
+                                        <t t-elif="selected_tier == 'stream'">
+                                            <t t-esc="'%.2f SAR' % o.price_tier_stream"/>
+                                        </t>
+                                        <t t-elif="selected_tier == 'source'">
+                                            <t t-esc="'%.2f SAR' % o.price_tier_source"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+
+                    <div class="mt-5" style="page-break-inside: avoid;">
+                        <p class="text-muted" style="font-size: 12px;">
+                            <em>* Prices are shown in Saudi Riyal (SAR). This pricing list is subject to change without prior notice. Please contact your sales representative for more details or to request a formal quotation.</em>
+                        </p>
+                    </div>
+
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

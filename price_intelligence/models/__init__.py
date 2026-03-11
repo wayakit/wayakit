@@ -10,3 +10,4 @@ from . import product_formula_code
 from . import sampling_cost_calculator
 from . import helpdesk_ticket
 from . import product_dilution_recommendation
+from . import report_pricing_list
