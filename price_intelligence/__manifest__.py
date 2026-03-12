@@ -15,6 +15,8 @@
     'license': 'LGPL-3',
     'depends': ['base', 'sales_team', 'helpdesk'],
     'data': [
+        'reports/pricing_list_template.xml',
+        'reports/pricing_list_action.xml',
         'security/price_intelligence_security.xml',
         'security/ir.model.access.csv',
         'views/menus.xml',
@@ -25,6 +27,7 @@
         'data/product_industry_data.xml',
         'data/product_subindustry_data.xml',
         'views/competitor_product_views.xml',
+        'wizard/pricing_list_wizard_view.xml',
         'views/product_price_suggestion_history_views.xml',
         'data/sampling_cost_sequence.xml',
         'data/product_dilution_recommendation_data.xml',

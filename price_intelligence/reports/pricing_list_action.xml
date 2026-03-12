@@ -1,0 +1,10 @@
+<odoo>
+    <record id="report_pricing_list_action" model="ir.actions.report">
+        <field name="name">Pricing List PDF</field>
+        <field name="model">product.master</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">price_intelligence.pricing_list_template</field>
+        <field name="report_file">price_intelligence.pricing_list_template</field>
+        <field name="print_report_name">'Pricing_List_' + (object.display_name or '')</field>
+    </record>
+</odoo>
