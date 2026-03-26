@@ -1,5 +1,5 @@
 from odoo import models, fields, api
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class MrpBom(models.Model):
@@ -25,6 +25,15 @@ class MrpBom(models.Model):
             'plm_custom.group_plm_confidential'
         ),
     )
+
+    ph_range = fields.Char(string='pH Range', help='E.g. 5.5 - 6.5')
+    plm_color = fields.Char(string='Color', help='Color of the final product.')
+    general_instructions = fields.Html(string='General Instructions')  # Html permite negritas, listas, etc.
+
+    # NUEVOS CAMPOS: Sample Size
+    sample_size = fields.Float(string='Sample Size', default=100.0, required=True)
+    sample_uom_id = fields.Many2one('uom.uom', string='Sample UoM', required=True,
+                                    default=lambda self: self.env.ref('uom.product_uom_gram', raise_if_not_found=False))
 
     @api.depends_context('uid')
     def _compute_is_plm_confidential_bom(self):
@@ -134,6 +143,27 @@ class MrpBomLine(models.Model):
         store=False,
     )
 
+    # 1. Nuevo campo para el porcentaje
+    component_percentage = fields.Float(
+        string='Percentage (%)',
+        digits=(6, 4),  # Permite decimales precisos como 33.3333%
+        default=0.0
+    )
+
+    # 2. Restricción estricta de 0 a 100
+    @api.constrains('component_percentage')
+    def _check_component_percentage(self):
+        for line in self:
+            if line.component_percentage < 0.0 or line.component_percentage > 100.0:
+                raise ValidationError("PLM Restriction: The percentage must be between 0 and 100.")
+
+    @api.onchange('component_percentage', 'bom_id.sample_size')
+    def _onchange_component_percentage(self):
+        for line in self:
+            if line.component_percentage > 0 and line.bom_id.sample_size > 0:
+                # Calcula la cantidad real basada en el Sample Size
+                line.product_qty = (line.bom_id.sample_size * line.component_percentage) / 100.0
+
     @api.depends(
         'product_id',
         'product_id.product_tmpl_id.synonym_name',
@@ -175,7 +205,6 @@ class MrpBomLine(models.Model):
         if self._is_plm_standard_user():
             raise AccessError("PLM Restriction: Standard users cannot delete BoM components.")
         return super().unlink()
-
 
 # ---------------------------------------------------------
 # RESTRICCIONES DE PRODUCTOS (Heredado aquí para no tocar Custom 1)
