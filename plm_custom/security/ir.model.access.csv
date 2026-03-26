@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_template_plm_confidential,product.template.plm.confidential,product.model_product_template,plm_custom.group_plm_confidential,1,1,1,1
+access_product_template_plm_standard,product.template.plm.standard,product.model_product_template,plm_custom.group_plm_standard,1,0,0,0

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================
+         FORMULARIO: nombre real vs synonym + ocultar pestaña Purchase
+    ============================================================ -->
+    <record id="view_product_template_form_plm_custom" model="ir.ui.view">
+        <field name="name">product.template.form.plm.custom</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Campos técnicos invisibles -->
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="is_plm_component" invisible="1"/>
+                <field name="is_plm_confidential" invisible="1"/>
+            </xpath>
+
+            <!-- Nombre real: oculto para Standard cuando es PLM Component -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="invisible">is_plm_component and not is_plm_confidential</attribute>
+                <attribute name="required">not is_plm_component or is_plm_confidential</attribute>
+            </xpath>
+
+            <!-- Synonym Name: dentro del oe_title, justo después de name,
+                 visible solo cuando es PLM Component.
+                 Para Standard aparece en lugar del nombre real (que está oculto).
+                 Para Confidential aparece debajo como campo secundario. -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="synonym_name"
+                       string="Synonym Name"
+                       placeholder="Enter synonym / codified name..."
+                       class="w-100"
+                       invisible="not is_plm_component"/>
+            </xpath>
+
+            <!-- Ocultar pestaña Purchase para usuarios no confidenciales -->
+            <xpath expr="//page[@name='purchase']" position="attributes">
+                <attribute name="invisible">is_plm_component and not is_plm_confidential</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+
+    <!-- ============================================================
+         LISTA para PLM Standard: muestra synonym_name en lugar de name
+         priority=20 para que tenga precedencia sobre la vista base
+    ============================================================ -->
+    <record id="view_product_template_list_standard" model="ir.ui.view">
+        <field name="name">product.template.list.plm.standard</field>
+        <field name="model">product.template</field>
+        <field name="priority">5</field>
+        <field name="groups_id" eval="[(6, 0, [ref('plm_custom.group_plm_standard')])]"/>
+        <field name="arch" type="xml">
+            <tree string="Components">
+                <field name="synonym_name" string="Name"/>
+                <field name="categ_id" string="Category"/>
+                <field name="uom_id" string="Unit of Measure"/>
+                <field name="active" column_invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================
+         KANBAN: reemplaza 'name' con display_name_plm (sin duplicar)
+    ============================================================ -->
+    <record id="view_product_template_kanban_plm_custom" model="ir.ui.view">
+        <field name="name">product.template.kanban.plm.custom</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_kanban_view"/>
+        <field name="arch" type="xml">
+
+            <!-- Inyectar los campos técnicos que necesita el template -->
+            <xpath expr="//field[@name='name']" position="before">
+                <field name="display_name_plm"/>
+                <field name="is_plm_component"/>
+            </xpath>
+
+            <!-- Ocultar el name original para no mostrarlo en la tarjeta -->
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+
+    <!-- ============================================================
+         BÚSQUEDA para PLM Standard: busca por synonym_name
+    ============================================================ -->
+    <record id="view_product_template_search_standard" model="ir.ui.view">
+        <field name="name">product.template.search.plm.standard</field>
+        <field name="model">product.template</field>
+        <field name="priority">5</field>
+        <field name="groups_id" eval="[(6, 0, [ref('plm_custom.group_plm_standard')])]"/>
+        <field name="arch" type="xml">
+            <search string="Search Components">
+                <field name="synonym_name"
+                       string="Name (Synonym)"
+                       filter_domain="[('synonym_name', 'ilike', self)]"/>
+                <filter string="Has Synonym" name="has_synonym"
+                        domain="[('synonym_name', '!=', False),
+                                 ('synonym_name', '!=', '')]"/>
+                <filter string="PLM Components" name="plm_components"
+                        domain="[('is_plm_component', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+
+    <!-- ============================================================
+         BÚSQUEDA para PLM Confidential: añade synonym como campo adicional
+    ============================================================ -->
+    <record id="view_product_template_search_confidential" model="ir.ui.view">
+        <field name="name">product.template.search.plm.confidential</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="synonym_name" string="Synonym"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

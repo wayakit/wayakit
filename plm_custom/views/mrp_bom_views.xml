@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_mrp_bom_form_plm_custom" model="ir.ui.view">
+        <field name="name">mrp.bom.form.plm.custom</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='bom_line_ids']" position="before">
+                <field name="is_plm_confidential_bom" invisible="1"/>
+            </xpath>
+
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_id']"
+                   position="before">
+                <field name="component_display_name"
+                       string="Component"
+                       readonly="1"
+                       column_invisible="parent.is_plm_confidential_bom"/>
+            </xpath>
+
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_id']"
+                   position="attributes">
+                <attribute name="column_invisible">not parent.is_plm_confidential_bom</attribute>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="mrp.action_report_bom_structure" model="ir.actions.report">
+        <field name="groups_id" eval="[(6, 0, [ref('plm_custom.group_plm_confidential')])]"/>
+    </record>
+
+</odoo>
