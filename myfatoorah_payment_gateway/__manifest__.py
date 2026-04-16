@@ -36,6 +36,7 @@
         'data/payment_provider_data.xml',
         'views/payment_template.xml',
         'views/myfatoorah_payment_template.xml',
+        'views/apple_pay_templates.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
