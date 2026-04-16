@@ -1,43 +1,71 @@
 /** @odoo-module **/
 
-function insertApplePayButton() {
-    const paymentOption = document.querySelector('li[name="o_payment_option"]');
-    if (!paymentOption) {
-        return;
+import publicWidget from "@web/legacy/js/public/public_widget";
+
+publicWidget.registry.MyFatoorahApplePay = publicWidget.Widget.extend({
+    selector: '.oe_website_sale',
+
+    start: function () {
+        this.insertApplePayButton();
+        return this._super.apply(this, arguments);
+    },
+
+    insertApplePayButton: function () {
+        if (document.getElementById('mf_apple_pay_wrapper')) {
+            return;
+        }
+
+        const $payNowBtn = this.$('button[name="o_payment_submit_button"]');
+
+        if (!$payNowBtn.length) {
+            setTimeout(() => this.insertApplePayButton(), 500);
+            return;
+        }
+
+        const html = `
+            <div id="mf_apple_pay_wrapper" class="mb-3 mt-2">
+                <button type="button"
+                        id="mf_apple_pay_btn"
+                        class="btn btn-dark w-100 d-flex align-items-center justify-content-center"
+                        style="min-height:48px; border-radius:6px; background-color:#000 !important; color:#fff !important; font-weight:bold; border:none;">
+                    <span style="font-size:22px; line-height:1;"></span>
+                    <span class="ms-2">Pay with Apple Pay</span>
+                </button>
+                <div class="text-center my-2 text-muted small">—— OR ——</div>
+            </div>
+        `;
+
+        $payNowBtn.before(html);
+
+        this.$('#mf_apple_pay_btn').on('click', this._onApplePayClick.bind(this));
+    },
+
+    _onApplePayClick: async function (ev) {
+        ev.preventDefault();
+
+        const $btn = $(ev.currentTarget);
+        const originalHtml = $btn.html();
+
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+
+        try {
+            const response = await fetch('/payment/myfatoorah/applepay/pay', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+
+            const data = await response.json();
+
+            if (data && data.success) {
+                window.location.href = data.redirect_url;
+            } else {
+                throw new Error(data ? data.message : "MyFatoorah: Failed to generate link.");
+            }
+        } catch (error) {
+            console.error("Apple Pay Error:", error);
+            alert(error.message || "An error occurred.");
+            $btn.prop('disabled', false).html(originalHtml);
+        }
     }
-
-    if (document.getElementById('mf_apple_pay_wrapper')) {
-        return;
-    }
-
-    const li = document.createElement('li');
-    li.id = 'mf_apple_pay_wrapper';
-    li.className = 'list-group-item py-3';
-
-    li.innerHTML = `
-        <button type="button"
-                id="mf_apple_pay_btn"
-                class="btn btn-dark w-100 d-flex align-items-center justify-content-center"
-                style="min-height:48px; border-radius:6px; font-weight:600;">
-            <span style="font-size:18px; line-height:1;"></span>
-            <span class="ms-2">Pay with Apple Pay</span>
-        </button>
-    `;
-
-    paymentOption.parentNode.insertBefore(li, paymentOption);
-}
-
-function waitForPaymentOptions() {
-    insertApplePayButton();
-
-    const observer = new MutationObserver(() => {
-        insertApplePayButton();
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-    });
-}
-
-document.addEventListener('DOMContentLoaded', waitForPaymentOptions);
+});
