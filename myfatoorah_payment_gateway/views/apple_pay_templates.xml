@@ -2,19 +2,19 @@
 <odoo>
 
     <template id="myfatoorah_apple_pay_button_checkout"
-              inherit_id="website_sale.payment"
+              inherit_id="payment.checkout"
               name="MyFatoorah Apple Pay Button Checkout">
 
-        <xpath expr="//div[@id='o_payment_form_pay']" position="before">
-            <div id="mf_apple_pay_wrapper" class="mb-3">
+        <xpath expr="//li[@name='o_payment_option'][1]" position="before">
+            <li class="list-group-item py-3" id="mf_apple_pay_wrapper">
                 <button type="button"
                         id="mf_apple_pay_btn"
                         class="btn btn-dark w-100 d-flex align-items-center justify-content-center"
-                        style="min-height:48px;border-radius:6px;font-weight:600;">
-                    <span style="font-size:18px;line-height:1;"></span>
+                        style="min-height:48px; border-radius:6px; font-weight:600;">
+                    <span style="font-size:18px; line-height:1;"></span>
                     <span class="ms-2">Pay with Apple Pay</span>
                 </button>
-            </div>
+            </li>
         </xpath>
 
     </template>
