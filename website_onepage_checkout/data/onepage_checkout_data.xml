@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ── Billing Default Fields ─────────────────────────────── -->
+        <record id="billing_field_street" model="billing.default.fields">
+            <field name="name">Street and Number</field>
+            <field name="field_name">street</field>
+        </record>
+        <record id="billing_field_phone" model="billing.default.fields">
+            <field name="name">Phone</field>
+            <field name="field_name">phone</field>
+        </record>
+        <record id="billing_field_city" model="billing.default.fields">
+            <field name="name">City</field>
+            <field name="field_name">city</field>
+        </record>
+        <record id="billing_field_zip" model="billing.default.fields">
+            <field name="name">Zip / Postal Code</field>
+            <field name="field_name">zip</field>
+        </record>
+        <record id="billing_field_state" model="billing.default.fields">
+            <field name="name">State / Province</field>
+            <field name="field_name">state_id</field>
+        </record>
+
+        <!-- ── Shipping Default Fields ────────────────────────────── -->
+        <record id="shipping_field_street" model="shipping.default.fields">
+            <field name="name">Street and Number</field>
+            <field name="field_name">street</field>
+        </record>
+        <record id="shipping_field_phone" model="shipping.default.fields">
+            <field name="name">Phone</field>
+            <field name="field_name">phone</field>
+        </record>
+        <record id="shipping_field_city" model="shipping.default.fields">
+            <field name="name">City</field>
+            <field name="field_name">city</field>
+        </record>
+        <record id="shipping_field_zip" model="shipping.default.fields">
+            <field name="name">Zip / Postal Code</field>
+            <field name="field_name">zip</field>
+        </record>
+        <record id="shipping_field_state" model="shipping.default.fields">
+            <field name="name">State / Province</field>
+            <field name="field_name">state_id</field>
+        </record>
+
+        <!-- ── Default Config ─────────────────────────────────────── -->
+        <record id="default_onepage_checkout_config" model="onepage.checkout.config">
+            <field name="name">Default Onepage Checkout Configuration</field>
+            <field name="billing_panel" eval="True"/>
+            <field name="shipping_panel" eval="True"/>
+            <field name="delivery_panel" eval="True"/>
+            <field name="payment_panel" eval="True"/>
+            <field name="billing_label">Billing Information</field>
+            <field name="shipping_label">Shipping Information</field>
+            <field name="delivery_label">Delivery Method</field>
+            <field name="payment_label">Order Preview and Payment Option</field>
+            <field name="for_all_website" eval="True"/>
+            <field name="is_active" eval="True"/>
+        </record>
+
+    </data>
+</odoo>

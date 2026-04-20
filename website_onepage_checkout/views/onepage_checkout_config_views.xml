@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ── Form View ──────────────────────────────────────────────── -->
+    <record id="view_onepage_checkout_config_form" model="ir.ui.view">
+        <field name="name">onepage.checkout.config.form</field>
+        <field name="model">onepage.checkout.config</field>
+        <field name="arch" type="xml">
+            <form string="Onepage Checkout Configuration">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="toggle_is_active" type="object"
+                                class="oe_stat_button" icon="fa-check"
+                                title="Toggle Active Status">
+                            <field name="is_active" widget="boolean_button"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Configuration Name"/></h1>
+                    </div>
+                    <group string="ONEPAGE CHECKOUT CONFIGURATION">
+                        <field name="billing_panel" readonly="1"
+                               help="Billing Information panel is always enabled on the checkout page."/>
+                        <field name="billing_label"
+                               invisible="not billing_panel"/>
+                        <field name="shipping_panel"
+                               help="Enable or disable the Shipping Information panel on the checkout page."/>
+                        <field name="shipping_label"
+                               invisible="not shipping_panel"/>
+                        <field name="delivery_panel"
+                               help="Enable or disable the Delivery Method panel on the checkout page."/>
+                        <field name="delivery_label"
+                               invisible="not delivery_panel"/>
+                        <field name="payment_panel" readonly="1"
+                               help="Payment panel is always enabled on the checkout page."/>
+                        <field name="payment_label"
+                               invisible="not payment_panel"/>
+                    </group>
+                    <group string="OTHER SETTING">
+                        <field name="wk_billing_required"
+                               widget="many2many_tags"
+                               help="Select the fields that must be filled for the billing address."/>
+                        <field name="wk_shipping_required"
+                               widget="many2many_tags"
+                               help="Select the fields that must be filled for the shipping address."/>
+                        <field name="for_all_website"
+                               help="If checked, this configuration applies to all websites. Otherwise, select a specific website."/>
+                        <field name="website_id"
+                               invisible="for_all_website"
+                               required="not for_all_website"
+                               help="Select the website this configuration applies to."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ── Tree View ──────────────────────────────────────────────── -->
+    <record id="view_onepage_checkout_config_tree" model="ir.ui.view">
+        <field name="name">onepage.checkout.config.tree</field>
+        <field name="model">onepage.checkout.config</field>
+        <field name="arch" type="xml">
+            <tree string="Onepage Checkout Configurations">
+                <field name="name"/>
+                <field name="billing_panel"/>
+                <field name="shipping_panel"/>
+                <field name="delivery_panel"/>
+                <field name="payment_panel"/>
+                <field name="is_active"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ── Action ─────────────────────────────────────────────────── -->
+    <record id="action_onepage_checkout_config" model="ir.actions.act_window">
+        <field name="name">Onepage Checkout Configuration</field>
+        <field name="res_model">onepage.checkout.config</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Onepage Checkout Configuration
+            </p>
+        </field>
+    </record>
+
+    <!-- ── Override webkul settings: add "Configuration" link ─────── -->
+    <record id="config_webkul_onepage_checkout" model="ir.ui.view">
+        <field name="name">Webkul Settings - Onepage Checkout Config Link</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="website_webkul_addons.config_webkul_website_addons_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//td[@name='module_website_onepage_checkout']" position="replace">
+                <td name="module_website_onepage_checkout">
+                    <button name="%(action_onepage_checkout_config)d"
+                            type="action"
+                            string="Configuration"
+                            class="btn btn-link"/>
+                </td>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
