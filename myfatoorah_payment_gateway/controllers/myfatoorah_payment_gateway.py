@@ -174,6 +174,10 @@ class PaymentMyFatoorahController(http.Controller):
             initiate_response = requests.post(
                 initiate_url, headers=headers, data=initiate_payload, timeout=60
             )
+
+            _logger.info("InitiatePayment status code: %s", initiate_response.status_code)
+            _logger.info("InitiatePayment response text: %s", initiate_response.text)
+
             initiate_response.raise_for_status()
             initiate_data = initiate_response.json()
 
@@ -260,3 +264,43 @@ class PaymentMyFatoorahController(http.Controller):
         except Exception as e:
             _logger.exception("Apple Pay creation failed: %s", e)
             return {'success': False, 'message': str(e)}
+
+    @http.route('/payment/myfatoorah/applepay/register_domain', type='json', auth='user', website=True, csrf=False)
+    def register_apple_pay_domain(self, **kwargs):
+        provider = request.env['payment.provider'].sudo().search(
+            [('code', '=', 'myfatoorah')], limit=1
+        )
+        if not provider:
+            return {'success': False, 'message': 'MyFatoorah provider not found.'}
+
+        if not provider.myfatoorah_token:
+            return {'success': False, 'message': 'MyFatoorah token is missing.'}
+
+        domain_name = request.httprequest.host.split(':')[0]
+
+        url = f"{provider._myfatoorah_get_api_url()}v2/RegisterApplePayDomain"
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {provider.myfatoorah_token}',
+        }
+        payload = json.dumps({
+            "DomainName": domain_name,
+        })
+
+        response = requests.post(url, headers=headers, data=payload, timeout=60)
+
+        _logger.info("RegisterApplePayDomain status code: %s", response.status_code)
+        _logger.info("RegisterApplePayDomain response text: %s", response.text)
+
+        try:
+            result = response.json()
+        except Exception:
+            result = {'raw_text': response.text}
+
+        return {
+            'success': response.ok and result.get('IsSuccess'),
+            'status_code': response.status_code,
+            'result': result,
+            'domain_name': domain_name,
+        }
