@@ -276,7 +276,12 @@ class PaymentMyFatoorahController(http.Controller):
         if not provider.myfatoorah_token:
             return {'success': False, 'message': 'MyFatoorah token is missing.'}
 
-        domain_name = request.httprequest.host.split(':')[0]
+        # MODIFICATION: Check if domain_name was passed in the fetch params
+        # This allows you to override the long .dev.odoo.com URL from the console
+        domain_name = kwargs.get('domain_name') or request.httprequest.host.split(':')[0]
+
+        # MODIFICATION: Clean the domain string to ensure no protocols or spaces
+        domain_name = domain_name.replace('https://', '').replace('http://', '').strip().lower()
 
         url = f"{provider._myfatoorah_get_api_url()}v2/RegisterApplePayDomain"
         headers = {
@@ -284,6 +289,7 @@ class PaymentMyFatoorahController(http.Controller):
             'Accept': 'application/json',
             'Authorization': f'Bearer {provider.myfatoorah_token}',
         }
+
         payload = json.dumps({
             "DomainName": domain_name,
         })
@@ -302,5 +308,5 @@ class PaymentMyFatoorahController(http.Controller):
             'success': response.ok and result.get('IsSuccess'),
             'status_code': response.status_code,
             'result': result,
-            'domain_name': domain_name,
+            'domain_name': domain_name,  # This will now show the domain actually sent to MyFatoorah
         }
