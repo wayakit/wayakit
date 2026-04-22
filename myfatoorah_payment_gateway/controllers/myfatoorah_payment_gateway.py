@@ -40,20 +40,37 @@ class PaymentMyFatoorahController(http.Controller):
     # @http.route('/payment/myfatoorah/response', type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=False)
     @http.route('/payment/myfatoorah/response', type='http', auth='public',
                 website=True, methods=['POST'], csrf=False)
+    # def myfatoorah_payment_response(self, **data):
+    #     """Function to get the payment response"""
+    #
+    #     payment_data = ast.literal_eval(data["data"])
+    #     vals = {
+    #         'customer': payment_data["CustomerName"],
+    #         'currency': payment_data["DisplayCurrencyIso"],
+    #         'mobile': payment_data["CustomerMobile"],
+    #         'invoice_amount': payment_data["InvoiceValue"],
+    #         'address': payment_data["CustomerAddress"]["Address"],
+    #         'payment_url': payment_data["InvoiceURL"],
+    #     }
+    #     return request.render(
+    #         "myfatoorah_payment_gateway.myfatoorah_payment_gateway_form", vals)
+    @http.route('/payment/myfatoorah/response', type='http', auth='public',
+                website=True, methods=['POST'], csrf=False)
     def myfatoorah_payment_response(self, **data):
-        """Function to get the payment response"""
+        """Function to get the payment response and redirect immediately"""
 
+        # Parse the incoming data
         payment_data = ast.literal_eval(data["data"])
-        vals = {
-            'customer': payment_data["CustomerName"],
-            'currency': payment_data["DisplayCurrencyIso"],
-            'mobile': payment_data["CustomerMobile"],
-            'invoice_amount': payment_data["InvoiceValue"],
-            'address': payment_data["CustomerAddress"]["Address"],
-            'payment_url': payment_data["InvoiceURL"],
-        }
-        return request.render(
-            "myfatoorah_payment_gateway.myfatoorah_payment_gateway_form", vals)
+
+        # Extract the payment URL from the data
+        payment_url = payment_data.get("InvoiceURL")
+
+        if payment_url:
+            # Redirect directly to the external payment page
+            return request.redirect(payment_url, local=False)
+        else:
+            # Fallback to the failed template if no URL is present
+            return request.render("myfatoorah_payment_gateway.myfatoorah_payment_gateway_failed_form")
     # It is core code i just added csrf and save_Session
     # @http.route(_return_url, type='http', auth='public', methods=['GET'])
     @http.route(_return_url, type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=True)
