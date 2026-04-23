@@ -284,46 +284,46 @@ class PaymentMyFatoorahController(http.Controller):
 
     @http.route('/payment/myfatoorah/applepay/register_domain', type='json', auth='user', website=True, csrf=False)
     def register_apple_pay_domain(self, **kwargs):
-        provider = request.env['payment.provider'].sudo().search(
-            [('code', '=', 'myfatoorah')], limit=1
-        )
-        if not provider:
-            return {'success': False, 'message': 'MyFatoorah provider not found.'}
+        provider = request.env['payment.provider'].sudo().search([('code', '=', 'myfatoorah')], limit=1)
 
-        if not provider.myfatoorah_token:
-            return {'success': False, 'message': 'MyFatoorah token is missing.'}
+        if not provider or not provider.myfatoorah_token:
+            _logger.error("MyFatoorah Apple Pay: Provider or Token missing.")
+            return {'success': False, 'message': 'Provider or Token missing.'}
 
-        # MODIFICATION: Check if domain_name was passed in the fetch params
-        # This allows you to override the long .dev.odoo.com URL from the console
-        domain_name = kwargs.get('domain_name') or request.httprequest.host.split(':')[0]
-
-        # MODIFICATION: Clean the domain string to ensure no protocols or spaces
-        domain_name = domain_name.replace('https://', '').replace('http://', '').strip().lower()
+        raw_domain = kwargs.get('domain_name') or request.httprequest.host
+        domain_name = raw_domain.split('//')[-1].split(':')[0].split('/')[0].lower().strip()
 
         url = f"{provider._myfatoorah_get_api_url()}v2/RegisterApplePayDomain"
         headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
             'Authorization': f'Bearer {provider.myfatoorah_token}',
         }
-
-        payload = json.dumps({
-            "DomainName": domain_name,
-        })
-
-        response = requests.post(url, headers=headers, data=payload, timeout=60)
-
-        _logger.info("RegisterApplePayDomain status code: %s", response.status_code)
-        _logger.info("RegisterApplePayDomain response text: %s", response.text)
+        payload = {"DomainName": domain_name}
 
         try:
+            response = requests.post(url, json=payload, timeout=30)
+            response.raise_for_status()
             result = response.json()
-        except Exception:
-            result = {'raw_text': response.text}
+
+            # LOGIC: Check if the API returned a failure
+            if not result.get('IsSuccess'):
+                # This logs the specific reason MyFatoorah rejected the domain
+                error_msg = result.get('Message') or result.get('ValidationErrors') or 'Unknown API Error'
+                _logger.error(
+                    "MyFatoorah Apple Pay Registration Failed for domain [%s]. Reason: %s",
+                    domain_name, error_msg
+                )
+            else:
+                _logger.info("MyFatoorah Apple Pay: Domain [%s] registered successfully.", domain_name)
+
+        except requests.exceptions.RequestException as e:
+            _logger.error("MyFatoorah Apple Pay: Connection error during registration: %s", str(e))
+            return {'success': False, 'message': f'API Connection Error: {str(e)}'}
+        except Exception as e:
+            _logger.error("MyFatoorah Apple Pay: Unexpected error: %s", str(e))
+            return {'success': False, 'message': 'Invalid response from MyFatoorah'}
 
         return {
-            'success': response.ok and result.get('IsSuccess'),
-            'status_code': response.status_code,
+            'success': result.get('IsSuccess', False),
             'result': result,
-            'domain_name': domain_name,  # This will now show the domain actually sent to MyFatoorah
+            'domain_sent': domain_name
         }
