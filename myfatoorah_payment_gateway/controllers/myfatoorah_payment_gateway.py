@@ -295,6 +295,8 @@ class PaymentMyFatoorahController(http.Controller):
 
         url = f"{provider._myfatoorah_get_api_url()}v2/RegisterApplePayDomain"
         headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'Authorization': f'Bearer {provider.myfatoorah_token}',
         }
         payload = {"DomainName": domain_name}
