@@ -100,13 +100,13 @@
         </field>
     </record>
 
-    <record id="view_company_form_inherit" model="ir.ui.view">
+   <record id="view_company_form_inherit" model="ir.ui.view">
     <field name="name">res.company.form.inherit.website.filter</field>
     <field name="model">res.company</field>
     <field name="inherit_id" ref="base.view_company_form"/>
     <field name="arch" type="xml">
-        <xpath expr="//group[@name='social_group']" position="after">
-            <group string="Website Address Filtering">
+        <xpath expr="//field[@name='currency_id']" position="after">
+            <group string="Website Address Filtering" name="website_address_filter" colspan="2">
                 <field name="filter_website_addresses"/>
                 <field name="allowed_address_company_id"
                        invisible="not filter_website_addresses"
@@ -114,5 +114,5 @@
             </group>
         </xpath>
     </field>
-    </record>
+</record>
 </odoo>
