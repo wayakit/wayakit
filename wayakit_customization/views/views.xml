@@ -27,6 +27,19 @@
                 </field>
             </record>
 
+            <record id="view_company_form_inherit" model="ir.ui.view">
+        <child id="model">res.company</child>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='social_group']" position="after">
+                <group string="Website Address Filtering">
+                    <field name="filter_website_addresses"/>
+                    <field name="allowed_address_company_id"
+                           attrs="{'invisible': [('filter_website_addresses', '=', False)]}"/>
+                </group>
+            </xpath>
+            </field>
+        </record>
 
             <record id="view_appointment_type_form_inherit" model="ir.ui.view">
                 <field name="name">appointment.type.form.inherit</field>
