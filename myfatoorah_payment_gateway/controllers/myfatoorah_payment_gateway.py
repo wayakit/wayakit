@@ -226,6 +226,10 @@ class PaymentMyFatoorahController(http.Controller):
             execute_url = f"{provider._myfatoorah_get_api_url()}v2/ExecutePayment"
             response = requests.post(execute_url, headers=headers,
                                      json=execute_payload, timeout=30)
+
+            # Temporarily log full error body from MyFatoorah
+            _logger.error("ExecutePayment raw response: %s", response.text)
+
             response.raise_for_status()
             result = response.json()
 
