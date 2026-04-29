@@ -12,10 +12,3 @@ class ResCompany(models.Model):
     description = fields.Text(string='Description')
     terms_and_conditions_url = fields.Char(string='Terms and Conditions Url')
     countery_constraint=fields.Boolean(string='Countery Constraint')
-    filter_website_addresses = fields.Boolean(string="Filter Website Addresses")
-    allowed_address_company_id = fields.Many2one(
-        'res.partner',
-        string="Allowed Address Company",
-        domain="[('is_company', '=', True)]",
-        help="If 'Filter Website Addresses' is checked, only addresses belonging to this company will show."
-    )
