@@ -276,7 +276,6 @@ class PaymentMyFatoorahController(http.Controller):
             # STEP 11: Mark transaction as pending in Odoo and commit
             # Then return the URL to frontend JS which does window.location.href
             # ----------------------------------------------------------------
-            tx._set_pending()
             request.env.cr.commit()
 
             return {'success': True, 'redirect_url': invoice_url}
