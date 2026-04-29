@@ -158,9 +158,18 @@ class PaymentMyFatoorahController(http.Controller):
             ], limit=1)
 
             if not tx:
+                # ----------------------------------------------------------------
+                # Odoo 17 requires payment_method_id when creating a transaction
+                # Fetch the payment method linked to the MyFatoorah provider
+                # ----------------------------------------------------------------
+                payment_method = request.env['payment.method'].sudo().search([
+                    ('provider_ids', 'in', provider.id),
+                ], limit=1)
+
                 tx = request.env['payment.transaction'].sudo().create({
                     'provider_id': provider.id,
                     'provider_code': 'myfatoorah',
+                    'payment_method_id': payment_method.id,  # Required in Odoo 17
                     'reference': order.name,
                     'amount': order.amount_total,
                     'currency_id': order.currency_id.id,
@@ -275,6 +284,7 @@ class PaymentMyFatoorahController(http.Controller):
         except Exception as e:
             _logger.exception("Apple Pay payment failed: %s", e)
             return {'success': False, 'message': str(e)}
+
     @http.route('/payment/myfatoorah/applepay/register_domain', type='json', auth='user', website=True, csrf=False)
     def register_apple_pay_domain(self, **kwargs):
         provider = request.env['payment.provider'].sudo().search([('code', '=', 'myfatoorah')], limit=1)
