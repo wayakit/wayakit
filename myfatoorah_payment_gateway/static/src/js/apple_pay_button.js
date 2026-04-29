@@ -42,39 +42,40 @@ publicWidget.registry.MyFatoorahApplePay = publicWidget.Widget.extend({
     },
 
     _onApplePayClick: async function (ev) {
-        ev.preventDefault();
+    ev.preventDefault();
+    ev.stopPropagation(); // ADD THIS — prevents Odoo form submission
 
-        const $btn = $(ev.currentTarget);
-        const originalHtml = $btn.html();
+    const $btn = $(ev.currentTarget);
+    const originalHtml = $btn.html();
 
-        // Show spinner while waiting for backend response
-        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+    // Also disable the main PAY NOW button to prevent double submission
+    $('button[name="o_payment_submit_button"]').prop('disabled', true);
 
-        try {
-            const response = await fetch('/payment/myfatoorah/applepay/pay', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // Odoo json-rpc route requires params wrapper
-                body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} }),
-            });
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
 
-            const data = await response.json();
+    try {
+        const response = await fetch('/payment/myfatoorah/applepay/pay', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} }),
+        });
 
-            // Odoo type='json' routes wrap response inside data.result
-            const result = data.result;
+        const data = await response.json();
+        const result = data.result;
 
-            if (result && result.success) {
-                // Redirect to MyFatoorah hosted Apple Pay page
-                window.location.href = result.redirect_url;
-            } else {
-                throw new Error(result ? result.message : 'MyFatoorah: Failed to generate link.');
-            }
-
-        } catch (error) {
-            console.error('Apple Pay Error:', error);
-            alert(error.message || 'An error occurred.');
-            // Restore button on failure
-            $btn.prop('disabled', false).html(originalHtml);
+        if (result && result.success) {
+            // Redirect to MyFatoorah Apple Pay page
+            window.location.href = result.redirect_url;
+        } else {
+            throw new Error(result ? result.message : 'MyFatoorah: Failed to generate link.');
         }
+
+    } catch (error) {
+        console.error('Apple Pay Error:', error);
+        alert(error.message || 'An error occurred.');
+        // Re-enable both buttons on failure
+        $btn.prop('disabled', false).html(originalHtml);
+        $('button[name="o_payment_submit_button"]').prop('disabled', false);
     }
+}
 });
