@@ -197,7 +197,20 @@ class PaymentMyFatoorahController(http.Controller):
             error_url = request.httprequest.host_url.rstrip('/') + '/payment/myfatoorah/failed'
 
             # ----------------------------------------------------------------
-            # STEP 6: Build ExecutePayment payload
+            # STEP 6: Clean phone number to max 11 digits (MyFatoorah requirement)
+            # Strips country code, spaces, dashes, and leading + sign
+            # ----------------------------------------------------------------
+            raw_phone = order.partner_id.mobile or order.partner_id.phone or '0500000000'
+            phone = raw_phone.replace(' ', '').replace('-', '')
+            if phone.startswith('+'):
+                phone = phone[1:]
+            country_code = str(order.partner_id.country_id.phone_code or '')
+            if country_code and phone.startswith(country_code):
+                phone = phone[len(country_code):]
+            phone = phone[-11:]  # MyFatoorah max length is 11 digits
+
+            # ----------------------------------------------------------------
+            # STEP 7: Build ExecutePayment payload
             # PaymentMethodId 11 = Apple Pay (confirmed from InitiatePayment logs)
             # We skip InitiatePayment entirely since we already know the ID
             # ----------------------------------------------------------------
@@ -205,8 +218,8 @@ class PaymentMyFatoorahController(http.Controller):
                 "PaymentMethodId": 11,  # Apple Pay method ID (code: 'ap')
                 "CustomerName": tx.partner_name or "Customer",
                 "DisplayCurrencyIso": tx.currency_id.name,
-                "MobileCountryCode": str(order.partner_id.country_id.phone_code or '966'),
-                "CustomerMobile": order.partner_id.mobile or order.partner_id.phone or '0000000000',
+                "MobileCountryCode": country_code or '966',
+                "CustomerMobile": phone,
                 "CustomerEmail": tx.partner_email or '',
                 "InvoiceValue": tx.amount,
                 "CallBackUrl": callback_url,
@@ -217,7 +230,7 @@ class PaymentMyFatoorahController(http.Controller):
             }
 
             # ----------------------------------------------------------------
-            # STEP 7: Call MyFatoorah ExecutePayment API
+            # STEP 8: Call MyFatoorah ExecutePayment API
             # This creates the invoice on MyFatoorah side and returns a PaymentURL
             # provider._myfatoorah_get_api_url() returns:
             #   → https://apitest.myfatoorah.com/ (if provider state = Test)
@@ -227,16 +240,13 @@ class PaymentMyFatoorahController(http.Controller):
             response = requests.post(execute_url, headers=headers,
                                      json=execute_payload, timeout=30)
 
-            # Temporarily log full error body from MyFatoorah
-            _logger.error("ExecutePayment raw response: %s", response.text)
+            _logger.info("ExecutePayment raw response: %s", response.text)
 
             response.raise_for_status()
             result = response.json()
 
-            _logger.info("MyFatoorah Apple Pay ExecutePayment response: %s", result)
-
             # ----------------------------------------------------------------
-            # STEP 8: Check if MyFatoorah successfully created the invoice
+            # STEP 9: Check if MyFatoorah successfully created the invoice
             # ----------------------------------------------------------------
             if not result.get('IsSuccess'):
                 return {
@@ -245,7 +255,7 @@ class PaymentMyFatoorahController(http.Controller):
                 }
 
             # ----------------------------------------------------------------
-            # STEP 9: Extract the PaymentURL from the response
+            # STEP 10: Extract the PaymentURL from the response
             # This is the MyFatoorah hosted page where Apple Pay sheet opens
             # JS will redirect the customer to this URL
             # ----------------------------------------------------------------
@@ -254,7 +264,7 @@ class PaymentMyFatoorahController(http.Controller):
                 return {'success': False, 'message': 'No PaymentURL returned.'}
 
             # ----------------------------------------------------------------
-            # STEP 10: Mark transaction as pending in Odoo and commit
+            # STEP 11: Mark transaction as pending in Odoo and commit
             # Then return the URL to frontend JS which does window.location.href
             # ----------------------------------------------------------------
             tx._set_pending()
@@ -265,7 +275,6 @@ class PaymentMyFatoorahController(http.Controller):
         except Exception as e:
             _logger.exception("Apple Pay payment failed: %s", e)
             return {'success': False, 'message': str(e)}
-
     @http.route('/payment/myfatoorah/applepay/register_domain', type='json', auth='user', website=True, csrf=False)
     def register_apple_pay_domain(self, **kwargs):
         provider = request.env['payment.provider'].sudo().search([('code', '=', 'myfatoorah')], limit=1)
