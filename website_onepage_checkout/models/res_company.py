@@ -3,10 +3,11 @@ from odoo import models, fields
 
 class ResCompany(models.Model):
     _inherit = 'res.company'
+
     filter_website_addresses = fields.Boolean(string="Filter Website Addresses")
-    allowed_address_company_id = fields.Many2one(
-        'res.partner',
-        string="Allowed Address Company",
-        domain="[('is_company', '=', True)]",
-        help="If 'Filter Website Addresses' is checked, only addresses belonging to this company will show."
+    # This is the selection field for all countries
+    allowed_country_id = fields.Many2one(
+        'res.country',
+        string="Allowed Country",
+        help="Only addresses from this country will show on the checkout page."
     )

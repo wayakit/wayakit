@@ -106,13 +106,12 @@
     <field name="inherit_id" ref="base.view_company_form"/>
     <field name="arch" type="xml">
         <xpath expr="//field[@name='currency_id']" position="after">
-            <group string="Website Address Filtering" name="website_address_filter" colspan="2">
-                <field name="filter_website_addresses"/>
-                <field name="allowed_address_company_id"
-                       invisible="not filter_website_addresses"
-                       domain="[('is_company', '=', True)]"/>
-            </group>
-        </xpath>
+    <group string="Website Address Filtering" name="website_address_filter">
+        <field name="filter_website_addresses"/>
+        <field name="allowed_country_id"
+               invisible="not filter_website_addresses"/>
+    </group>
+</xpath>
     </field>
 </record>
 </odoo>
