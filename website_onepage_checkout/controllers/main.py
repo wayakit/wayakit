@@ -85,12 +85,12 @@ class WebsiteSaleOnepage(WebsiteSale):
         # ─── WEBSITE LEVEL COUNTRY FILTER ───
         # Logic: If current website has the filter active, remove addresses not matching the country
         current_web = request.website
-        if current_web.filter_website_addresses and current_web.allowed_country_id:
-            allowed_cid = current_web.allowed_country_id.id
+        if current_web.filter_website_addresses and current_web.allowed_country_ids:
+            allowed_ids = current_web.allowed_country_ids.ids
             if values.get('shippings'):
-                values['shippings'] = [p for p in values['shippings'] if p.country_id.id == allowed_cid]
+                values['shippings'] = [p for p in values['shippings'] if p.country_id.id in allowed_ids]
             if values.get('billings'):
-                values['billings'] = [p for p in values['billings'] if p.country_id.id == allowed_cid]
+                values['billings'] = [p for p in values['billings'] if p.country_id.id in allowed_ids]
 
         payment_values = self._get_shop_payment_values(order_sudo, **post)
         values.update(payment_values)
@@ -115,11 +115,12 @@ class WebsiteSaleOnepage(WebsiteSale):
         if hasattr(response, 'qcontext'):
             current_web = request.website
             # Logic: Force the country dropdown to show only the selected country from Website settings
-            if current_web.filter_website_addresses and current_web.allowed_country_id:
-                allowed_country = current_web.allowed_country_id
-                response.qcontext['countries'] = allowed_country
-                response.qcontext['states'] = allowed_country.state_ids
-                response.qcontext['country_id'] = allowed_country.id
+            if current_web.filter_website_addresses and current_web.allowed_country_ids:
+                allowed_countries = current_web.allowed_country_ids
+                response.qcontext['countries'] = allowed_countries
+                response.qcontext['states'] = allowed_countries.mapped('state_ids')
+                if len(allowed_countries) == 1:
+                    response.qcontext['country_id'] = allowed_countries.id
         return response
 
     # ── AJAX Methods ──────────────────────────────────────────────────

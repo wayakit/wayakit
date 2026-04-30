@@ -109,9 +109,10 @@
         <xpath expr="//field[@name='karma_profile_min']" position="after">
             <group string="Address Filtering" name="address_filtering">
                 <field name="filter_website_addresses"/>
-                <field name="allowed_country_id"
+                <field name="allowed_country_ids"
+                       widget="many2many_tags"
                        invisible="not filter_website_addresses"
-                       domain="[('address_view_id', '=', False)]"/> <!-- Ensures standard country selection -->
+                       domain="[('address_view_id', '=', False)]"/>
             </group>
         </xpath>
     </field>
