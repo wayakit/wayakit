@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mrp_bom_form_plm_custom" model="ir.ui.view">
+        <field name="name">mrp.bom.form.plm.custom</field>
+        <field name="model">mrp.bom</field>
+        <field name="inherit_id" ref="mrp.mrp_bom_form_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='product_tmpl_id']" position="after">
+                <label for="sample_size" string="Sample Size"/>
+                <div class="o_row">
+                    <field name="sample_size"/>
+                    <field name="sample_uom_id" options="{'no_open': True, 'no_create': True}"/>
+                </div>
+                <field name="ph_range" placeholder="e.g. 5.5 - 6.5"/>
+                <field name="plm_color" placeholder="e.g. Opaque White"/>
+            </xpath>
+
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_qty']" position="before">
+                <field name="component_percentage" string="%" sum="Total %"/>
+            </xpath>
+
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_qty']" position="attributes">
+                <attribute name="readonly">1</attribute>
+                <attribute name="force_save">1</attribute>
+                <attribute name="sum">Total Qty</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='bom_line_ids']" position="before">
+                <field name="is_plm_confidential_bom" invisible="1"/>
+            </xpath>
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_id']" position="before">
+                <field name="component_display_name" string="Component" readonly="1" column_invisible="parent.is_plm_confidential_bom"/>
+            </xpath>
+            <xpath expr="//field[@name='bom_line_ids']//field[@name='product_id']" position="attributes">
+                <attribute name="column_invisible">not parent.is_plm_confidential_bom</attribute>
+            </xpath>
+
+            <xpath expr="//page[@name='components']" position="after">
+                <page string="General Instructions" name="general_instructions_page">
+                    <field name="general_instructions" placeholder="Type formulation instructions, mixing steps, etc..."/>
+                </page>
+            </xpath>
+
+        </field>
+    </record>
+
+    <record id="mrp.action_report_bom_structure" model="ir.actions.report">
+        <field name="groups_id" eval="[(6, 0, [ref('plm_custom.group_plm_confidential')])]"/>
+    </record>
+</odoo>

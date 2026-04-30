@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_template_plm_confidential,product.template.plm.confidential,product.model_product_template,plm_custom.group_plm_confidential,1,1,1,1
+access_product_template_plm_standard,product.template.plm.standard,product.model_product_template,plm_custom.group_plm_standard,1,0,0,0
+access_product_product_plm_confidential,product.product.plm.confidential,product.model_product_product,plm_custom.group_plm_confidential,1,1,1,1
+access_product_product_plm_standard,product.product.plm.standard,product.model_product_product,plm_custom.group_plm_standard,1,0,0,0
+access_mrp_bom_plm_confidential,mrp.bom.plm.confidential,mrp.model_mrp_bom,plm_custom.group_plm_confidential,1,1,1,1
+access_mrp_bom_plm_standard,mrp.bom.plm.standard,mrp.model_mrp_bom,plm_custom.group_plm_standard,1,0,0,0
+access_mrp_bom_line_plm_confidential,mrp.bom.line.plm.confidential,mrp.model_mrp_bom_line,plm_custom.group_plm_confidential,1,1,1,1
+access_mrp_bom_line_plm_standard,mrp.bom.line.plm.standard,mrp.model_mrp_bom_line,plm_custom.group_plm_standard,1,0,0,0

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="module_category_plm_custom" model="ir.module.category">
+            <field name="name">PLM Custom</field>
+            <field name="description">Access control for PLM formulas and components</field>
+            <field name="sequence">100</field>
+        </record>
+
+        <record id="group_plm_standard" model="res.groups">
+            <field name="name">PLM Standard</field>
+            <field name="category_id" ref="module_category_plm_custom"/>
+            <field name="comment">Can only view synonym names. Export is disabled.</field>
+        </record>
+
+        <record id="group_plm_confidential" model="res.groups">
+            <field name="name">PLM Confidential</field>
+            <field name="category_id" ref="module_category_plm_custom"/>
+            <field name="implied_ids" eval="[(4, ref('plm_custom.group_plm_standard'))]"/>
+            <field name="comment">Can view real names, costs, suppliers and export data.</field>
+        </record>
+
+    </data>
+</odoo>
