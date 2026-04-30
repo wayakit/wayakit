@@ -1,5 +1,5 @@
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 PLM_COMPONENT_CATEGORY = 'PLM Component'
 
@@ -146,3 +146,28 @@ class ProductTemplate(models.Model):
         for record in self:
             if record.is_plm_component and not record.synonym_name:
                 raise ValidationError("PLM Restriction: A Synonym Name is strictly required for PLM Components.")
+
+
+class ProductTemplateSecurity(models.Model):
+    _inherit = 'product.template'
+
+    def write(self, vals):
+        if self._is_plm_standard_user():
+            if 'categ_id' in vals:
+                new_category = self.env['product.category'].browse(vals['categ_id'])
+                if new_category.name == PLM_COMPONENT_CATEGORY:
+                    raise AccessError(
+                        "PLM Restriction: Standard users cannot assign the 'PLM Component' category to products.")
+            for record in self:
+                if record.is_plm_component:
+                    raise AccessError(
+                        f"PLM Restriction: Standard users are not allowed to edit PLM Components ({record.display_name}).")
+        return super().write(vals)
+
+    def unlink(self):
+        if self._is_plm_standard_user():
+            for record in self:
+                if record.is_plm_component:
+                    raise AccessError(
+                        f"PLM Restriction: Standard users are not allowed to delete PLM Components ({record.display_name}).")
+        return super().unlink()
