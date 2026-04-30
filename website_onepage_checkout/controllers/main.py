@@ -20,7 +20,7 @@ class WebsiteSaleOnepage(WebsiteSale):
             ], limit=1)
         return config
 
-    # ── Override mandatory fields ──────────────────────────────────────
+    # ── Override Mandatory Fields ──────────────────────────────────────
     def _get_mandatory_fields_billing(self, country_id=False):
         config = self._get_onepage_config()
         if not config or not config.wk_billing_required:
@@ -50,88 +50,77 @@ class WebsiteSaleOnepage(WebsiteSale):
     # ── Main Checkout Logic ───────────────────────────────────────────
     @http.route()
     def checkout(self, **post):
-        config = self._get_onepage_config()  # Retrieve the custom onepage configuration
-        if not config:  # If no custom config exists
-            return super().checkout(**post)  # Fall back to the standard Odoo checkout method
+        config = self._get_onepage_config()
+        if not config:
+            return super().checkout(**post)
 
-        order_sudo = request.website.sale_get_order()  # Get the current sale order from the session
-        if not order_sudo:  # If there is no active cart
-            return request.redirect('/shop')  # Send the user back to the shop page
+        order_sudo = request.website.sale_get_order()
+        if not order_sudo:
+            return request.redirect('/shop')
 
-        request.session['sale_last_order_id'] = order_sudo.id  # Store the order ID in the session for reference
-        redirection = self.checkout_redirection(
-            order_sudo)  # Check if Odoo requires any specific redirection (e.g., empty cart)
-        if redirection:  # If a redirection is needed
-            return redirection  # Execute the redirect
+        request.session['sale_last_order_id'] = order_sudo.id
+        redirection = self.checkout_redirection(order_sudo)
+        if redirection:
+            return redirection
 
-        if order_sudo._is_public_order():  # If the user is a guest (public user)
-            return request.redirect('/shop/address?callback=/shop/checkout')  # Force them to fill an address first
+        if order_sudo._is_public_order():
+            return request.redirect('/shop/address?callback=/shop/checkout')
 
-        redirection = self.checkout_check_address(
-            order_sudo)  # Validate that the existing order has necessary address info
-        if redirection:  # If address validation fails
-            return redirection  # Redirect to the address fix page
+        redirection = self.checkout_check_address(order_sudo)
+        if redirection:
+            return redirection
 
-        if post.get('xhr'):  # If the request is an AJAX call (XMLHTTPRequest)
-            return 'ok'  # Return a simple success message
+        if post.get('xhr'):
+            return 'ok'
 
-        order_sudo._recompute_taxes()  # Recalculate taxes to ensure totals are accurate before payment
-        request.website.sale_get_order(
-            update_pricelist=True)  # Refresh the pricelist to apply any active discounts/promotions
+        order_sudo._recompute_taxes()
+        request.website.sale_get_order(update_pricelist=True)
 
-        if not order_sudo.only_services and not order_sudo.carrier_id:  # If the order needs shipping and no carrier is set
-            order_sudo._check_carrier_quotation()  # Attempt to auto-select a default delivery carrier
+        if not order_sudo.only_services and not order_sudo.carrier_id:
+            order_sudo._check_carrier_quotation()
 
-        # Get standard values
-        values = self.checkout_values(order_sudo,
-                                      **post)  # Collect standard template variables (shippings, billings, etc.)
+        # Get initial template values
+        values = self.checkout_values(order_sudo, **post)
 
-        # ─── COUNTRY FILTER LOGIC FOR SAVED CARDS ───
-        current_company = request.env.company  # Access the current company record
-        if current_company.filter_website_addresses and current_company.allowed_country_id:  # Check if our custom filter is active
-            allowed_cid = current_company.allowed_country_id.id  # Get the database ID of the allowed country
-            if values.get('shippings'):  # If there is a list of shipping addresses
-                # Keep only addresses where the country ID matches our restricted country
+        # ─── WEBSITE LEVEL COUNTRY FILTER ───
+        # Logic: If current website has the filter active, remove addresses not matching the country
+        current_web = request.website
+        if current_web.filter_website_addresses and current_web.allowed_country_id:
+            allowed_cid = current_web.allowed_country_id.id
+            if values.get('shippings'):
                 values['shippings'] = [p for p in values['shippings'] if p.country_id.id == allowed_cid]
-            if values.get('billings'):  # If there is a list of billing addresses
-                # Keep only addresses where the country ID matches our restricted country
+            if values.get('billings'):
                 values['billings'] = [p for p in values['billings'] if p.country_id.id == allowed_cid]
-        # ─────────────────────────────────────────────
 
-        payment_values = self._get_shop_payment_values(order_sudo, **post)  # Get standard payment provider data
-        values.update(payment_values)  # Merge payment data into our template values dictionary
+        payment_values = self._get_shop_payment_values(order_sudo, **post)
+        values.update(payment_values)
 
-        values.setdefault('deliveries',
-                          request.env['delivery.carrier'])  # Ensure deliveries variable exists to avoid template errors
-        values.setdefault('delivery_has_storable', False)  # Ensure storable check variable exists
-        values['display_submit_button'] = False  # Hide standard submit button (Onepage uses its own)
-        values['submit_button_label'] = _("Pay now")  # Set the text for the final payment button
-        values['config'] = config  # Pass our onepage config to the frontend template
+        values.setdefault('deliveries', request.env['delivery.carrier'])
+        values.setdefault('delivery_has_storable', False)
+        values['display_submit_button'] = False
+        values['submit_button_label'] = _("Pay now")
+        values['config'] = config
 
-        open_panel = post.get('open_panel', 'billing')  # Determine which accordion panel should be open by default
-        if open_panel not in ('billing', 'shipping'):  # Validation for the panel name
-            open_panel = 'billing'  # Default back to billing if invalid
-        values['open_panel'] = open_panel  # Pass the panel state to the template
+        open_panel = post.get('open_panel', 'billing')
+        if open_panel not in ('billing', 'shipping'):
+            open_panel = 'billing'
+        values['open_panel'] = open_panel
 
-        return request.render('website_onepage_checkout.onepage_checkout',
-                              values)  # Render the custom Onepage Checkout template
+        return request.render('website_onepage_checkout.onepage_checkout', values)
 
-    # ── Override Address Form (Country Dropdown restriction) ──────────
+    # ── Override Address Form ─────────────────────────────────────────
     @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
     def address(self, **kw):
-        response = super(WebsiteSaleOnepage, self).address(**kw)  # Call the original Odoo address method
-        if hasattr(response,
-                   'qcontext'):  # Check if the response is a rendered page (has context) rather than a redirect
-            current_company = request.env.company  # Get current company settings
-            if current_company.filter_website_addresses and current_company.allowed_country_id:  # If filtering is active
-                allowed_country = current_company.allowed_country_id  # Get the restricted country record
-
-                # Force dropdown to show ONLY the allowed country
-                response.qcontext['countries'] = allowed_country  # Limit the country dropdown list to just this one
-                response.qcontext[
-                    'states'] = allowed_country.state_ids  # Limit states/provinces to those within that country
-                response.qcontext['country_id'] = allowed_country.id  # Pre-select the allowed country in the form
-        return response  # Return the modified (or original) response
+        response = super(WebsiteSaleOnepage, self).address(**kw)
+        if hasattr(response, 'qcontext'):
+            current_web = request.website
+            # Logic: Force the country dropdown to show only the selected country from Website settings
+            if current_web.filter_website_addresses and current_web.allowed_country_id:
+                allowed_country = current_web.allowed_country_id
+                response.qcontext['countries'] = allowed_country
+                response.qcontext['states'] = allowed_country.state_ids
+                response.qcontext['country_id'] = allowed_country.id
+        return response
 
     # ── AJAX Methods ──────────────────────────────────────────────────
     @http.route('/shop/onepage/select_address', type='json', auth='public', website=True)

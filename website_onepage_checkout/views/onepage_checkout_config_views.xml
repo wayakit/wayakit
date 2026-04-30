@@ -100,18 +100,20 @@
         </field>
     </record>
 
-   <record id="view_company_form_inherit" model="ir.ui.view">
-    <field name="name">res.company.form.inherit.website.filter</field>
-    <field name="model">res.company</field>
-    <field name="inherit_id" ref="base.view_company_form"/>
+    <record id="view_website_form_inherit" model="ir.ui.view">
+    <field name="name">website.form.inherit.address.filter</field>
+    <field name="model">website</field>
+    <field name="inherit_id" ref="website.view_website_form"/>
     <field name="arch" type="xml">
-        <xpath expr="//field[@name='currency_id']" position="after">
-    <group string="Website Address Filtering" name="website_address_filter">
-        <field name="filter_website_addresses"/>
-        <field name="allowed_country_id"
-               invisible="not filter_website_addresses"/>
-    </group>
-</xpath>
+        <!-- Target the Karma field from your screenshot -->
+        <xpath expr="//field[@name='karma_profile_min']" position="after">
+            <group string="Address Filtering" name="address_filtering">
+                <field name="filter_website_addresses"/>
+                <field name="allowed_country_id"
+                       invisible="not filter_website_addresses"
+                       domain="[('address_view_id', '=', False)]"/> <!-- Ensures standard country selection -->
+            </group>
+        </xpath>
     </field>
 </record>
 </odoo>

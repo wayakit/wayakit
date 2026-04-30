@@ -18,17 +18,17 @@
 
                                 <!-- ── 1. BILLING INFORMATION ──────────── -->
                                 <t t-if="config.billing_panel">
-                                    <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'billing' else 'panel-pending'}" id="billing_panel_wrap">
+                                    <!-- <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'billing' else 'panel-pending'}" id="billing_panel_wrap"> -->
+                                    <div class="onepage-panel panel-open" id="billing_panel_wrap">
                                         <div class="onepage-panel-header"
                                              data-target="billing_content"
                                              t-att-data-open="'1' if open_panel == 'billing' else '0'">
                                             <span t-esc="config.billing_label"/>
-                                            <i t-attf-class="fa float-end onepage-chevron
-                                                             #{'fa-chevron-up' if open_panel == 'billing' else 'fa-chevron-down'}"/>
+                                            <!-- <i t-attf-class="fa float-end onepage-chevron #{'fa-chevron-up' if open_panel == 'billing' else 'fa-chevron-down'}"/> -->
+                                            <i class="fa float-end onepage-chevron fa-chevron-up"/>
                                         </div>
-                                        <div class="onepage-panel-content"
-                                             id="billing_content"
-                                             t-att-style="'' if open_panel == 'billing' else 'display:none'">
+                                        <!-- <div class="onepage-panel-content" id="billing_content" t-att-style="'' if open_panel == 'billing' else 'display:none'"> -->
+                                        <div class="onepage-panel-content" id="billing_content">
 
                                             <h3 class="text-center my-3">Billing Address</h3>
 
@@ -51,6 +51,7 @@
                                                 </div>
                                             </t>
 
+                                            <!-- Continue button removed: all panels open by default
                                             <div class="text-center my-3">
                                                 <button type="button"
                                                         class="btn btn-dark onepage-continue"
@@ -60,23 +61,24 @@
                                                     <i class="fa fa-check"/> Continue
                                                 </button>
                                             </div>
+                                            -->
                                         </div>
                                     </div>
                                 </t>
 
                                 <!-- ── 2. SHIPPING INFORMATION ─────────── -->
                                 <t t-if="not only_services and config.shipping_panel">
-                                    <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'shipping' else 'panel-pending'}" id="shipping_panel_wrap">
+                                    <!-- <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'shipping' else 'panel-pending'}" id="shipping_panel_wrap"> -->
+                                    <div class="onepage-panel panel-open" id="shipping_panel_wrap">
                                         <div class="onepage-panel-header"
                                              data-target="shipping_content"
                                              t-att-data-open="'1' if open_panel == 'shipping' else '0'">
                                             <span t-esc="config.shipping_label"/>
-                                            <i t-attf-class="fa float-end onepage-chevron
-                                                             #{'fa-chevron-up' if open_panel == 'shipping' else 'fa-chevron-down'}"/>
+                                            <!-- <i t-attf-class="fa float-end onepage-chevron #{'fa-chevron-up' if open_panel == 'shipping' else 'fa-chevron-down'}"/> -->
+                                            <i class="fa float-end onepage-chevron fa-chevron-up"/>
                                         </div>
-                                        <div class="onepage-panel-content"
-                                             id="shipping_content"
-                                             t-att-style="'' if open_panel == 'shipping' else 'display:none'">
+                                        <!-- <div class="onepage-panel-content" id="shipping_content" t-att-style="'' if open_panel == 'shipping' else 'display:none'"> -->
+                                        <div class="onepage-panel-content" id="shipping_content">
 
                                             <h3 class="text-center my-3">Shipping Address</h3>
 
@@ -106,6 +108,7 @@
                                                 </div>
                                             </t>
 
+                                            <!-- Continue button removed: all panels open by default
                                             <div class="text-center my-3">
                                                 <button type="button"
                                                         class="btn btn-dark onepage-continue"
@@ -113,23 +116,24 @@
                                                     <i class="fa fa-check"/> Continue
                                                 </button>
                                             </div>
+                                            -->
                                         </div>
                                     </div>
                                 </t>
 
                                 <!-- ── 3. DELIVERY METHOD ──────────────── -->
                                 <t t-if="delivery_has_storable and config.delivery_panel">
-                                    <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'delivery' else 'panel-pending'}" id="delivery_panel_wrap">
+                                    <!-- <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'delivery' else 'panel-pending'}" id="delivery_panel_wrap"> -->
+                                    <div class="onepage-panel panel-open" id="delivery_panel_wrap">
                                         <div class="onepage-panel-header"
                                              data-target="delivery_content"
                                              t-att-data-open="'1' if open_panel == 'delivery' else '0'">
                                             <span t-esc="config.delivery_label"/>
-                                            <i t-attf-class="fa float-end onepage-chevron
-                                                             #{'fa-chevron-up' if open_panel == 'delivery' else 'fa-chevron-down'}"/>
+                                            <!-- <i t-attf-class="fa float-end onepage-chevron #{'fa-chevron-up' if open_panel == 'delivery' else 'fa-chevron-down'}"/> -->
+                                            <i class="fa float-end onepage-chevron fa-chevron-up"/>
                                         </div>
-                                        <div class="onepage-panel-content"
-                                             id="delivery_content"
-                                             t-att-style="'' if open_panel == 'delivery' else 'display:none'">
+                                        <!-- <div class="onepage-panel-content" id="delivery_content" t-att-style="'' if open_panel == 'delivery' else 'display:none'"> -->
+                                        <div class="onepage-panel-content" id="delivery_content">
 
                                             <div t-if="deliveries" id="delivery_carrier">
                                                 <div class="card border-0" id="delivery_method">
@@ -146,6 +150,7 @@
                                                 No delivery methods available for your address.
                                             </div>
 
+                                            <!-- Continue button removed: all panels open by default
                                             <div class="text-center my-3">
                                                 <button type="button"
                                                         class="btn btn-dark onepage-continue"
@@ -153,23 +158,24 @@
                                                     <i class="fa fa-check"/> Continue
                                                 </button>
                                             </div>
+                                            -->
                                         </div>
                                     </div>
                                 </t>
 
                                 <!-- ── 4. ORDER PREVIEW &amp; PAYMENT ─────── -->
                                 <t t-if="config.payment_panel">
-                                    <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'payment' else 'panel-pending'}" id="payment_panel_wrap">
+                                    <!-- <div t-attf-class="onepage-panel #{'panel-open' if open_panel == 'payment' else 'panel-pending'}" id="payment_panel_wrap"> -->
+                                    <div class="onepage-panel panel-open" id="payment_panel_wrap">
                                         <div class="onepage-panel-header"
                                              data-target="payment_content"
                                              t-att-data-open="'1' if open_panel == 'payment' else '0'">
                                             <span t-esc="config.payment_label"/>
-                                            <i t-attf-class="fa float-end onepage-chevron
-                                                             #{'fa-chevron-up' if open_panel == 'payment' else 'fa-chevron-down'}"/>
+                                            <!-- <i t-attf-class="fa float-end onepage-chevron #{'fa-chevron-up' if open_panel == 'payment' else 'fa-chevron-down'}"/> -->
+                                            <i class="fa float-end onepage-chevron fa-chevron-up"/>
                                         </div>
-                                        <div class="onepage-panel-content"
-                                             id="payment_content"
-                                             t-att-style="'' if open_panel == 'payment' else 'display:none'">
+                                        <!-- <div class="onepage-panel-content" id="payment_content" t-att-style="'' if open_panel == 'payment' else 'display:none'"> -->
+                                        <div class="onepage-panel-content" id="payment_content">
 
                                             <!-- ── Cart lines ────────────── -->
                                             <div id="onepage_cart_lines">
