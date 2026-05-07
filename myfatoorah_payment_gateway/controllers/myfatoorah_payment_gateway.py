@@ -73,29 +73,67 @@ class PaymentMyFatoorahController(http.Controller):
             return request.render("myfatoorah_payment_gateway.myfatoorah_payment_gateway_failed_form")
     # It is core code i just added csrf and save_Session
     # @http.route(_return_url, type='http', auth='public', methods=['GET'])
-    @http.route(_return_url, type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=True)
+    # @http.route(_return_url, type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=True)
+    # def myfatoorah_checkout(self, **data):
+    #     """ Function to redirect to the payment checkout"""
+    #     _logger.info("Received MyFatoorah return data:\n%s",
+    #                  pprint.pformat(data))
+    #     tx_sudo = request.env[
+    #         'payment.transaction'].sudo()._get_tx_from_notification_data(
+    #         'myfatoorah', data)
+    #     tx_sudo._handle_notification_data('myfatoorah', data)
+    #
+    #
+    #     # My custom code starts from here
+    #     PaymentPostProcessing.monitor_transaction(tx_sudo)
+    #     # Restore the website order + tx in session so /payment/status and /shop/payment/validate work
+    #     so = tx_sudo.sale_order_ids[:1]
+    #     if so:
+    #         request.session['sale_order_id'] = so.id
+    #         request.session['sale_last_order_id'] = so.id
+    #
+    #     # This key is commonly used by website_sale to track the last payment tx
+    #     request.session['__website_sale_last_tx_id'] = tx_sudo.id
+    #
+    #     # my custom code ends here
+    #     return request.redirect('/payment/status')
+    @http.route(_return_url, type='http', auth='public', website=True,
+                methods=['GET'], csrf=False, save_session=True)
     def myfatoorah_checkout(self, **data):
-        """ Function to redirect to the payment checkout"""
-        _logger.info("Received MyFatoorah return data:\n%s",
-                     pprint.pformat(data))
-        tx_sudo = request.env[
-            'payment.transaction'].sudo()._get_tx_from_notification_data(
-            'myfatoorah', data)
-        tx_sudo._handle_notification_data('myfatoorah', data)
+        """Function to redirect to the payment checkout"""
+        _logger.info("Received MyFatoorah return data:\n%s", pprint.pformat(data))
 
+        try:
+            tx_sudo = request.env['payment.transaction'].sudo() \
+                ._get_tx_from_notification_data('myfatoorah', data)
 
-        # My custom code starts from here
-        PaymentPostProcessing.monitor_transaction(tx_sudo)
-        # Restore the website order + tx in session so /payment/status and /shop/payment/validate work
-        so = tx_sudo.sale_order_ids[:1]
-        if so:
-            request.session['sale_order_id'] = so.id
-            request.session['sale_last_order_id'] = so.id
+            # ── Restore session BEFORE handling notification ──────────────────
+            so = tx_sudo.sale_order_ids[:1]
+            if so:
+                request.session['sale_order_id'] = so.id
+                request.session['sale_last_order_id'] = so.id
+                request.session['__website_sale_last_tx_id'] = tx_sudo.id
+                # This prevents website_sale from creating a new empty cart
+                request.session['sale_order_id'] = so.id
 
-        # This key is commonly used by website_sale to track the last payment tx
-        request.session['__website_sale_last_tx_id'] = tx_sudo.id
+            tx_sudo._handle_notification_data('myfatoorah', data)
+            PaymentPostProcessing.monitor_transaction(tx_sudo)
 
-        # my custom code ends here
+            # ── Restore session AGAIN after handling (double safety) ──────────
+            if so:
+                request.session['sale_order_id'] = so.id
+                request.session['sale_last_order_id'] = so.id
+                request.session['__website_sale_last_tx_id'] = tx_sudo.id
+
+            _logger.info(
+                "MyFatoorah: TX %s state=%s, Order %s restored in session",
+                tx_sudo.reference, tx_sudo.state, so.name if so else 'N/A'
+            )
+
+        except Exception as e:
+            _logger.exception("MyFatoorah return URL error: %s", e)
+            return request.redirect('/payment/myfatoorah/failed')
+
         return request.redirect('/payment/status')
 
     @http.route('/payment/myfatoorah/failed', type='http', auth='public',
@@ -278,7 +316,8 @@ class PaymentMyFatoorahController(http.Controller):
             # ----------------------------------------------------------------
             request.env.cr.commit()
 
-            return {'success': True, 'redirect_url': invoice_url}
+            return {'success': True, 'redirect_url': invoice_url,'order_id': order.id,'order_name': order.name,}
+
 
         except Exception as e:
             _logger.exception("Apple Pay payment failed: %s", e)

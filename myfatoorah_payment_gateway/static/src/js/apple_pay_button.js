@@ -43,15 +43,15 @@ publicWidget.registry.MyFatoorahApplePay = publicWidget.Widget.extend({
 
     _onApplePayClick: async function (ev) {
     ev.preventDefault();
-    ev.stopPropagation(); // ADD THIS — prevents Odoo form submission
+    ev.stopPropagation();
 
     const $btn = $(ev.currentTarget);
     const originalHtml = $btn.html();
+    const $payNowBtn = $('button[name="o_payment_submit_button"]');
 
-    // Also disable the main PAY NOW button to prevent double submission
-    $('button[name="o_payment_submit_button"]').prop('disabled', true);
-
-    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span>');
+    $btn.prop('disabled', true)
+        .html('<span class="spinner-border spinner-border-sm"></span> Processing...');
+    $payNowBtn.prop('disabled', true);
 
     try {
         const response = await fetch('/payment/myfatoorah/applepay/pay', {
@@ -60,22 +60,30 @@ publicWidget.registry.MyFatoorahApplePay = publicWidget.Widget.extend({
             body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} }),
         });
 
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
+
         const data = await response.json();
+        console.log('MF Apple Pay Response:', data);
         const result = data.result;
 
-        if (result && result.success) {
-            // Redirect to MyFatoorah Apple Pay page
-            window.location.href = result.redirect_url;
+        if (result && result.success && result.redirect_url) {
+            // Store order info in sessionStorage as backup
+            // before leaving the page
+            if (result.order_id) {
+                sessionStorage.setItem('mf_apple_pay_order_id', result.order_id);
+            }
+            sessionStorage.setItem('mf_apple_pay_in_progress', '1');
+
+            window.top.location.href = result.redirect_url;
         } else {
-            throw new Error(result ? result.message : 'MyFatoorah: Failed to generate link.');
+            throw new Error(result?.message || 'Failed to generate payment link.');
         }
 
     } catch (error) {
         console.error('Apple Pay Error:', error);
-        alert(error.message || 'An error occurred.');
-        // Re-enable both buttons on failure
+        alert(error.message || 'An unexpected error occurred.');
         $btn.prop('disabled', false).html(originalHtml);
-        $('button[name="o_payment_submit_button"]').prop('disabled', false);
+        $payNowBtn.prop('disabled', false);
     }
 }
 });
