@@ -108,6 +108,45 @@ class WebsiteSaleOnepage(WebsiteSale):
 
         return request.render('website_onepage_checkout.onepage_checkout', values)
 
+    # @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
+    # def address(self, **kw):
+    #     response = super(WebsiteSaleOnepage, self).address(**kw)
+    #     if hasattr(response, 'qcontext'):
+    #         current_web = request.website
+    #         if current_web.filter_website_addresses and current_web.allowed_country_ids:
+    #             allowed_countries = current_web.allowed_country_ids
+    #             response.qcontext['countries'] = allowed_countries
+    #
+    #             # Determine which country is currently active
+    #             order = request.website.sale_get_order()
+    #             partner = None
+    #             mode = kw.get('mode', 'billing')
+    #             if order:
+    #                 partner = order.partner_shipping_id if mode == 'shipping' else order.partner_invoice_id
+    #
+    #             # Priority: POST param > partner's country > first allowed country
+    #             country_id = int(kw.get('country_id', 0))
+    #             if not country_id and partner and partner.country_id:
+    #                 country_id = partner.country_id.id
+    #             if not country_id and allowed_countries:
+    #                 country_id = allowed_countries[0].id  # default to first allowed
+    #
+    #             # Validate it's in the allowed list
+    #             selected_country = allowed_countries.filtered(lambda c: c.id == country_id)
+    #             if not selected_country and allowed_countries:
+    #                 selected_country = allowed_countries[0]
+    #                 country_id = selected_country.id
+    #
+    #             response.qcontext['country_id'] = country_id
+    #             response.qcontext['states'] = selected_country.state_ids if selected_country else request.env[
+    #                 'res.country.state'].browse([])
+    #
+    #             if len(allowed_countries) == 1:
+    #                 response.qcontext['country_id'] = allowed_countries[0].id
+    #                 response.qcontext['states'] = allowed_countries[0].state_ids
+    #
+    #     return response
+    # AFTER
     @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
     def address(self, **kw):
         response = super(WebsiteSaleOnepage, self).address(**kw)
@@ -117,36 +156,25 @@ class WebsiteSaleOnepage(WebsiteSale):
                 allowed_countries = current_web.allowed_country_ids
                 response.qcontext['countries'] = allowed_countries
 
-                # Determine which country is currently active
                 order = request.website.sale_get_order()
                 partner = None
                 mode = kw.get('mode', 'billing')
                 if order:
                     partner = order.partner_shipping_id if mode == 'shipping' else order.partner_invoice_id
 
-                # Priority: POST param > partner's country > first allowed country
                 country_id = int(kw.get('country_id', 0))
                 if not country_id and partner and partner.country_id:
                     country_id = partner.country_id.id
-                if not country_id and allowed_countries:
-                    country_id = allowed_countries[0].id  # default to first allowed
+                # ← REMOVED: no longer defaulting to first country
 
-                # Validate it's in the allowed list
-                selected_country = allowed_countries.filtered(lambda c: c.id == country_id)
-                if not selected_country and allowed_countries:
-                    selected_country = allowed_countries[0]
-                    country_id = selected_country.id
+                selected_country = allowed_countries.filtered(lambda c: c.id == country_id) if country_id else None
 
-                response.qcontext['country_id'] = country_id
+                response.qcontext['country_id'] = country_id  # will be 0 if nothing selected
+                # ← Empty states if no country selected
                 response.qcontext['states'] = selected_country.state_ids if selected_country else request.env[
                     'res.country.state'].browse([])
 
-                if len(allowed_countries) == 1:
-                    response.qcontext['country_id'] = allowed_countries[0].id
-                    response.qcontext['states'] = allowed_countries[0].state_ids
-
         return response
-
     # ── AJAX Methods ──────────────────────────────────────────────────
     @http.route('/shop/onepage/select_address', type='json', auth='public', website=True)
     def onepage_select_address(self, partner_id, address_type='billing', **kw):
