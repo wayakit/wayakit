@@ -108,19 +108,29 @@ class WebsiteSaleOnepage(WebsiteSale):
 
         return request.render('website_onepage_checkout.onepage_checkout', values)
 
-    # ── Override Address Form ─────────────────────────────────────────
     @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
     def address(self, **kw):
         response = super(WebsiteSaleOnepage, self).address(**kw)
         if hasattr(response, 'qcontext'):
             current_web = request.website
-            # Logic: Force the country dropdown to show only the selected country from Website settings
             if current_web.filter_website_addresses and current_web.allowed_country_ids:
                 allowed_countries = current_web.allowed_country_ids
                 response.qcontext['countries'] = allowed_countries
-                response.qcontext['states'] = allowed_countries.mapped('state_ids')
+
+                # Get the current country from the partner or the kw
+                country_id = kw.get('country_id') or response.qcontext.get('country_id')
+
+                if country_id:
+                    # Only show states for the active country
+                    selected_country = allowed_countries.filtered(lambda c: c.id == int(country_id))
+                    response.qcontext['states'] = selected_country.mapped('state_ids')
+                else:
+                    # If no country selected, provide an empty recordset for states
+                    response.qcontext['states'] = request.env['res.country.state']
+
                 if len(allowed_countries) == 1:
                     response.qcontext['country_id'] = allowed_countries.id
+                    response.qcontext['states'] = allowed_countries.mapped('state_ids')
         return response
 
     # ── AJAX Methods ──────────────────────────────────────────────────

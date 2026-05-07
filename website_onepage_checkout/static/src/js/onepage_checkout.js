@@ -11,6 +11,7 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         'click .onepage-cart-minus': '_onCartMinus',
         'click .onepage-cart-plus': '_onCartPlus',
         'click .onepage-cart-remove': '_onCartRemove',
+        'change select[name="country_id"]': '_onCountryChange',
     },
 
     init() {
@@ -278,6 +279,39 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         this._updateCartLine(lineEl, 0);
     },
 
+    // Add this method to your widget
+    _onCountryChange: function (ev) {
+        const $country = $(ev.currentTarget);
+        const countryId = $country.val();
+        const $stateSelect = this.$('select[name="state_id"]');
+
+        // Immediate visual feedback: Clear and disable if no country
+        if (!countryId) {
+            $stateSelect.html('<option value="">State / Province...</option>').parent().addClass('d-none');
+            return;
+        }
+
+        // Call Odoo's standard RPC for fetching states
+        this.rpc('/shop/country_infos/' + countryId, {
+            mode: 'shipping',
+        }).then(function (data) {
+            // Clear current options
+            $stateSelect.html('<option value="">State / Province...</option>');
+
+            if (data.states && data.states.length) {
+                data.states.forEach(state => {
+                    $stateSelect.append($('<option>', {
+                        value: state.id,
+                        text: state.name
+                    }));
+                });
+                $stateSelect.parent().removeClass('d-none');
+            } else {
+                // Hide state field if country has no states
+                $stateSelect.parent().addClass('d-none');
+            }
+        });
+    },
     // ── Address selection via AJAX ───────────────────────────────────
 
     async _onAddressCardClick(ev) {
@@ -314,3 +348,5 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
 });
 
 export default publicWidget.registry.OnepageCheckout;
+
+

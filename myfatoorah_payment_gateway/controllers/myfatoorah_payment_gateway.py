@@ -38,8 +38,8 @@ class PaymentMyFatoorahController(http.Controller):
     _return_url = '/payment/myfatoorah/_return_url'
     # I just removed save_session from here it was core code
     # @http.route('/payment/myfatoorah/response', type='http', auth='public', website=True, methods=['GET'], csrf=False, save_session=False)
-    @http.route('/payment/myfatoorah/response', type='http', auth='public',
-                website=True, methods=['POST'], csrf=False)
+    # @http.route('/payment/myfatoorah/response', type='http', auth='public',
+    #             website=True, methods=['POST'], csrf=False)
     # def myfatoorah_payment_response(self, **data):
     #     """Function to get the payment response"""
     #
