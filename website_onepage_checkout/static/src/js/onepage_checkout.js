@@ -6,7 +6,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
     selector: '#onepage_accordion',
     events: {
         'click .onepage-panel-header': '_onPanelHeaderClick',
-        // 'click .onepage-continue': '_onContinueClick',  // Removed: all panels open by default
         'click .onepage-address-card': '_onAddressCardClick',
         'click .onepage-cart-minus': '_onCartMinus',
         'click .onepage-cart-plus': '_onCartPlus',
@@ -28,7 +27,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
     // ── Sync CSS classes with panel state on first load ──────────────
 
     _syncPanelClasses() {
-        // All panels are always open — no accordion gating
         const panels = this.el.querySelectorAll('.onepage-panel');
         panels.forEach(panel => {
             const content = panel.querySelector('.onepage-panel-content');
@@ -42,25 +40,9 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
                 chevron.classList.add('fa-chevron-up');
             }
         });
-
-        // Old accordion-style sync (commented out)
-        // let foundOpen = false;
-        // panels.forEach(panel => {
-        //     const content = panel.querySelector('.onepage-panel-content');
-        //     if (content && content.style.display !== 'none') {
-        //         panel.classList.add('panel-open');
-        //         panel.classList.remove('panel-completed', 'panel-pending');
-        //         foundOpen = true;
-        //     } else if (!foundOpen) {
-        //         panel.classList.remove('panel-open', 'panel-pending');
-        //     } else {
-        //         panel.classList.add('panel-pending');
-        //         panel.classList.remove('panel-open', 'panel-completed');
-        //     }
-        // });
     },
 
-    // ── Collapse the currently open panel ────────────────────────────
+    // ── Panel Visibility Logic ───────────────────────────────────────
 
     _collapsePanel(panel) {
         const content = panel.querySelector('.onepage-panel-content');
@@ -80,8 +62,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         }
     },
 
-    // ── Open a panel, keep completed panels green ───────────────────
-
     _openPanel(contentId) {
         const target = this.el.querySelector('#' + contentId);
         if (!target) return;
@@ -89,7 +69,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         const targetPanel = target.closest('.onepage-panel');
         if (!targetPanel) return;
 
-        // Only open the target panel — do not collapse others
         target.style.display = '';
         targetPanel.classList.add('panel-open');
         targetPanel.classList.remove('panel-completed', 'panel-pending');
@@ -99,30 +78,7 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
             chevron.classList.remove('fa-chevron-down');
             chevron.classList.add('fa-chevron-up');
         }
-
         targetPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-        // Old accordion logic that closed other panels (commented out)
-        // const panels = [...this.el.querySelectorAll('.onepage-panel')];
-        // panels.forEach(panel => {
-        //     const content = panel.querySelector('.onepage-panel-content');
-        //     const header = panel.querySelector('.onepage-panel-header');
-        //     const chevron = header ? header.querySelector('.onepage-chevron') : null;
-        //     if (panel === targetPanel) {
-        //         content.style.display = '';
-        //         panel.classList.add('panel-open');
-        //         panel.classList.remove('panel-completed', 'panel-pending');
-        //         if (chevron) { chevron.classList.remove('fa-chevron-down'); chevron.classList.add('fa-chevron-up'); }
-        //     } else {
-        //         content.style.display = 'none';
-        //         if (chevron) { chevron.classList.remove('fa-chevron-up'); chevron.classList.add('fa-chevron-down'); }
-        //         if (this.completedPanels.has(panel.id)) {
-        //             panel.classList.add('panel-completed'); panel.classList.remove('panel-open', 'panel-pending');
-        //         } else {
-        //             panel.classList.add('panel-pending'); panel.classList.remove('panel-open', 'panel-completed');
-        //         }
-        //     }
-        // });
     },
 
     _onPanelHeaderClick(ev) {
@@ -130,7 +86,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         const panel = ev.currentTarget.closest('.onepage-panel');
         if (!panel) return;
 
-        // Any panel can be freely toggled — no gating on completedPanels
         if (panel.classList.contains('panel-open')) {
             this._collapsePanel(panel);
             return;
@@ -140,36 +95,9 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         if (targetId) {
             this._openPanel(targetId);
         }
-
-        // Old gated accordion logic (commented out)
-        // if (this.completedPanels.has(panel.id)) {
-        //     const targetId = ev.currentTarget.dataset.target;
-        //     if (targetId) { this._openPanel(targetId); }
-        //     return;
-        // }
-        // const panels = [...this.el.querySelectorAll('.onepage-panel')];
-        // const isLastPanel = panel === panels[panels.length - 1];
-        // const allPreviousCompleted = panels.slice(0, -1).every(p => this.completedPanels.has(p.id));
-        // if (isLastPanel && allPreviousCompleted) {
-        //     const targetId = ev.currentTarget.dataset.target;
-        //     if (targetId) { this._openPanel(targetId); }
-        // }
     },
 
-    // _onContinueClick removed: all panels open by default, no step-by-step navigation needed
-    // _onContinueClick(ev) {
-    //     ev.preventDefault();
-    //     const currentPanel = ev.currentTarget.closest('.onepage-panel');
-    //     if (currentPanel) {
-    //         this.completedPanels.add(currentPanel.id);
-    //     }
-    //     const nextPanel = ev.currentTarget.dataset.next;
-    //     if (nextPanel) {
-    //         this._openPanel(nextPanel);
-    //     }
-    // },
-
-    // ── Cart quantity AJAX updates (no page reload) ─────────────────
+    // ── Cart quantity AJAX updates ──────────────────────────────────
 
     async _updateCartLine(lineEl, newQty) {
         const lineId = parseInt(lineEl.dataset.lineId);
@@ -192,10 +120,7 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
             } else {
                 lineEl.querySelector('.onepage-cart-qty').textContent = newQty;
             }
-
-            // Fetch fresh formatted totals from server
             await this._refreshTotals();
-
         } catch (err) {
             console.error('Cart update failed:', err);
         }
@@ -206,11 +131,8 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
             const data = await this.rpc('/shop/onepage/get_totals', {});
             if (data.error) return;
 
-            // Update line prices in payment panel
             data.lines.forEach(line => {
-                const lineEl = this.el.querySelector(
-                    `.onepage-cart-line[data-line-id="${line.id}"]`
-                );
+                const lineEl = this.el.querySelector(`.onepage-cart-line[data-line-id="${line.id}"]`);
                 if (lineEl) {
                     const priceEl = lineEl.querySelector('.onepage-cart-price');
                     if (priceEl) priceEl.innerHTML = line.price_html;
@@ -219,15 +141,8 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
                 }
             });
 
-            // Update totals in payment panel
-            this._updateMonetaryFields(
-                '#payment_content', data, true
-            );
-            // Update totals in sidebar
-            this._updateMonetaryFields(
-                '.o_onepage_summary', data, false
-            );
-
+            this._updateMonetaryFields('#payment_content', data);
+            this._updateMonetaryFields('.o_onepage_summary', data);
         } catch (err) {
             console.error('Totals refresh failed:', err);
         }
@@ -243,33 +158,24 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
             const label = row.querySelector('td:first-child');
             if (!label) return;
             const text = label.textContent.trim();
-            if (text === 'Subtotal') {
-                el.innerHTML = data.subtotal_html;
-            } else if (text === 'Taxes') {
-                el.innerHTML = data.taxes_html;
-            } else if (text === 'Total') {
-                el.innerHTML = data.total_html;
-            } else if (text === 'Delivery' && data.has_delivery) {
-                el.innerHTML = data.delivery_html;
-            }
+            if (text === 'Subtotal') el.innerHTML = data.subtotal_html;
+            else if (text === 'Taxes') el.innerHTML = data.taxes_html;
+            else if (text === 'Total') el.innerHTML = data.total_html;
+            else if (text === 'Delivery' && data.has_delivery) el.innerHTML = data.delivery_html;
         });
     },
 
     _onCartMinus(ev) {
         ev.preventDefault();
         const lineEl = ev.currentTarget.closest('.onepage-cart-line');
-        const currentQty = parseInt(
-            lineEl.querySelector('.onepage-cart-qty').textContent
-        );
+        const currentQty = parseInt(lineEl.querySelector('.onepage-cart-qty').textContent);
         this._updateCartLine(lineEl, Math.max(0, currentQty - 1));
     },
 
     _onCartPlus(ev) {
         ev.preventDefault();
         const lineEl = ev.currentTarget.closest('.onepage-cart-line');
-        const currentQty = parseInt(
-            lineEl.querySelector('.onepage-cart-qty').textContent
-        );
+        const currentQty = parseInt(lineEl.querySelector('.onepage-cart-qty').textContent);
         this._updateCartLine(lineEl, currentQty + 1);
     },
 
@@ -279,25 +185,24 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         this._updateCartLine(lineEl, 0);
     },
 
-    // Add this method to your widget
+    // ── Dynamic Country/State Logic ──────────────────────────────────
+
     _onCountryChange: function (ev) {
         const $country = $(ev.currentTarget);
         const countryId = $country.val();
         const $stateSelect = this.$('select[name="state_id"]');
 
-        // Immediate visual feedback: Clear and disable if no country
+        // Immediate Fix: Clear existing options (except placeholder) so wrong states vanish instantly
+        $stateSelect.find('option:not(:first)').remove();
+
         if (!countryId) {
-            $stateSelect.html('<option value="">State / Province...</option>').parent().addClass('d-none');
+            $stateSelect.closest('.form-group').addClass('d-none');
             return;
         }
 
-        // Call Odoo's standard RPC for fetching states
         this.rpc('/shop/country_infos/' + countryId, {
             mode: 'shipping',
         }).then(function (data) {
-            // Clear current options
-            $stateSelect.html('<option value="">State / Province...</option>');
-
             if (data.states && data.states.length) {
                 data.states.forEach(state => {
                     $stateSelect.append($('<option>', {
@@ -305,13 +210,13 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
                         text: state.name
                     }));
                 });
-                $stateSelect.parent().removeClass('d-none');
+                $stateSelect.closest('.form-group').removeClass('d-none');
             } else {
-                // Hide state field if country has no states
-                $stateSelect.parent().addClass('d-none');
+                $stateSelect.closest('.form-group').addClass('d-none');
             }
         });
     },
+
     // ── Address selection via AJAX ───────────────────────────────────
 
     async _onAddressCardClick(ev) {
@@ -320,9 +225,7 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         const partnerId = parseInt(card.dataset.partnerId);
         const addressType = card.dataset.addressType;
 
-        if (!partnerId || card.classList.contains('selected')) {
-            return;
-        }
+        if (!partnerId || card.classList.contains('selected')) return;
 
         try {
             const result = await this.rpc('/shop/onepage/select_address', {
@@ -330,17 +233,11 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
                 address_type: addressType,
             });
 
-            if (result.error) {
-                console.error(result.error);
-                return;
-            }
+            if (result.error) return;
 
             const panel = card.closest('.onepage-panel');
-            panel.querySelectorAll('.onepage-address-card').forEach(c => {
-                c.classList.remove('selected');
-            });
+            panel.querySelectorAll('.onepage-address-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
-
         } catch (err) {
             console.error('Address selection failed:', err);
         }
@@ -348,5 +245,3 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
 });
 
 export default publicWidget.registry.OnepageCheckout;
-
-
