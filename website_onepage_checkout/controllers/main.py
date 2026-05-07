@@ -117,20 +117,34 @@ class WebsiteSaleOnepage(WebsiteSale):
                 allowed_countries = current_web.allowed_country_ids
                 response.qcontext['countries'] = allowed_countries
 
-                # Get the current country from the partner or the kw
-                country_id = kw.get('country_id') or response.qcontext.get('country_id')
+                # Determine which country is currently active
+                order = request.website.sale_get_order()
+                partner = None
+                mode = kw.get('mode', 'billing')
+                if order:
+                    partner = order.partner_shipping_id if mode == 'shipping' else order.partner_invoice_id
 
-                if country_id:
-                    # Only show states for the active country
-                    selected_country = allowed_countries.filtered(lambda c: c.id == int(country_id))
-                    response.qcontext['states'] = selected_country.mapped('state_ids')
-                else:
-                    # If no country selected, provide an empty recordset for states
-                    response.qcontext['states'] = request.env['res.country.state']
+                # Priority: POST param > partner's country > first allowed country
+                country_id = int(kw.get('country_id', 0))
+                if not country_id and partner and partner.country_id:
+                    country_id = partner.country_id.id
+                if not country_id and allowed_countries:
+                    country_id = allowed_countries[0].id  # default to first allowed
+
+                # Validate it's in the allowed list
+                selected_country = allowed_countries.filtered(lambda c: c.id == country_id)
+                if not selected_country and allowed_countries:
+                    selected_country = allowed_countries[0]
+                    country_id = selected_country.id
+
+                response.qcontext['country_id'] = country_id
+                response.qcontext['states'] = selected_country.state_ids if selected_country else request.env[
+                    'res.country.state'].browse([])
 
                 if len(allowed_countries) == 1:
-                    response.qcontext['country_id'] = allowed_countries.id
-                    response.qcontext['states'] = allowed_countries.mapped('state_ids')
+                    response.qcontext['country_id'] = allowed_countries[0].id
+                    response.qcontext['states'] = allowed_countries[0].state_ids
+
         return response
 
     # ── AJAX Methods ──────────────────────────────────────────────────
