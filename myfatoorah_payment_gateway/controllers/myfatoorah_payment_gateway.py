@@ -163,20 +163,32 @@ class PaymentMyFatoorahController(http.Controller):
     def myfatoorah_apple_pay_pay(self, **kwargs):
         """
         Called when customer clicks 'Pay with Apple Pay' button.
-        Flow: Get Order → Get Provider → Get/Create Transaction → ExecutePayment → Return redirect URL
+        Flow: Get Order → Get Provider → Cancel stale TX → Create fresh TX
+              → InitiatePayment (get real Apple Pay ID for SAR)
+              → ExecutePayment → Return redirect URL
         """
         try:
             # ----------------------------------------------------------------
             # STEP 1: Get the current website sale order (shopping cart)
-            # If no active cart exists, abort immediately
             # ----------------------------------------------------------------
             order = request.website.sale_get_order()
             if not order:
                 return {'success': False, 'message': 'No active cart found.'}
 
+            if not order.amount_total or order.amount_total <= 0:
+                return {'success': False, 'message': 'Order amount is zero or invalid.'}
+
+            # Force SAR — this is a Saudi-only Apple Pay integration
+            currency_iso = order.currency_id.name  # Should be 'SAR'
+            invoice_amount = round(order.amount_total, 2)
+
+            _logger.info(
+                "Apple Pay: Order=%s | Amount=%s | Currency=%s",
+                order.name, invoice_amount, currency_iso
+            )
+
             # ----------------------------------------------------------------
-            # STEP 2: Fetch the MyFatoorah payment provider from Odoo config
-            # This gives us the API token and base URL (test vs live)
+            # STEP 2: Fetch the MyFatoorah payment provider
             # ----------------------------------------------------------------
             provider = request.env['payment.provider'].sudo().search(
                 [('code', '=', 'myfatoorah')], limit=1
@@ -185,49 +197,57 @@ class PaymentMyFatoorahController(http.Controller):
                 return {'success': False, 'message': 'MyFatoorah provider or token missing.'}
 
             # ----------------------------------------------------------------
-            # STEP 3: Get existing draft/pending transaction for this order
-            # or create a new one if none exists.
-            # This transaction tracks the payment state inside Odoo.
+            # STEP 3: Cancel ALL existing draft/pending transactions for this
+            # order to avoid stale amount/currency bugs
             # ----------------------------------------------------------------
-            tx = request.env['payment.transaction'].sudo().search([
+            stale_txs = request.env['payment.transaction'].sudo().search([
                 ('provider_code', '=', 'myfatoorah'),
-                ('reference', '=', order.name),
+                ('sale_order_ids', 'in', order.id),
                 ('state', 'in', ['draft', 'pending']),
+            ])
+            if stale_txs:
+                stale_txs.write({'state': 'cancel'})
+                _logger.info("Apple Pay: Cancelled %d stale transaction(s) for order %s",
+                             len(stale_txs), order.name)
+
+            # ----------------------------------------------------------------
+            # STEP 4: Create a fresh transaction with correct amount + currency
+            # ----------------------------------------------------------------
+            payment_method = request.env['payment.method'].sudo().search([
+                ('provider_ids', 'in', provider.id),
             ], limit=1)
 
-            if not tx:
-                # ----------------------------------------------------------------
-                # Odoo 17 requires payment_method_id when creating a transaction
-                # Fetch the payment method linked to the MyFatoorah provider
-                # ----------------------------------------------------------------
-                payment_method = request.env['payment.method'].sudo().search([
-                    ('provider_ids', 'in', provider.id),
-                ], limit=1)
+            # Generate a unique reference to avoid duplicate conflicts
+            import uuid
+            unique_ref = f"{order.name}-AP-{uuid.uuid4().hex[:6].upper()}"
 
-                tx = request.env['payment.transaction'].sudo().create({
-                    'provider_id': provider.id,
-                    'provider_code': 'myfatoorah',
-                    'payment_method_id': payment_method.id,  # Required in Odoo 17
-                    'reference': order.name,
-                    'amount': order.amount_total,
-                    'currency_id': order.currency_id.id,
-                    'partner_id': order.partner_id.id,
-                    'partner_name': order.partner_id.name,
-                    'partner_email': order.partner_id.email,
-                    'partner_phone': order.partner_id.mobile or order.partner_id.phone or '',
-                    'partner_address': order.partner_id.street or '',
-                    'partner_city': order.partner_id.city or '',
-                    'partner_zip': order.partner_id.zip or '',
-                    'partner_country_id': order.partner_id.country_id.id,
-                    'partner_state_id': order.partner_id.state_id.id,
-                    'operation': 'online_redirect',
-                })
-                # Link this transaction to the sale order
-                tx.sale_order_ids = [(6, 0, [order.id])]
+            tx = request.env['payment.transaction'].sudo().create({
+                'provider_id': provider.id,
+                'provider_code': 'myfatoorah',
+                'payment_method_id': payment_method.id,
+                'reference': unique_ref,
+                'amount': invoice_amount,  # Always fresh from order
+                'currency_id': order.currency_id.id,  # Always from order
+                'partner_id': order.partner_id.id,
+                'partner_name': order.partner_id.name,
+                'partner_email': order.partner_id.email or '',
+                'partner_phone': order.partner_id.mobile or order.partner_id.phone or '',
+                'partner_address': order.partner_id.street or '',
+                'partner_city': order.partner_id.city or '',
+                'partner_zip': order.partner_id.zip or '',
+                'partner_country_id': order.partner_id.country_id.id,
+                'partner_state_id': order.partner_id.state_id.id if order.partner_id.state_id else False,
+                'operation': 'online_redirect',
+            })
+            tx.sale_order_ids = [(6, 0, [order.id])]
+
+            _logger.info(
+                "Apple Pay: Created TX ref=%s amount=%s currency=%s",
+                tx.reference, tx.amount, tx.currency_id.name
+            )
 
             # ----------------------------------------------------------------
-            # STEP 4: Prepare API headers for MyFatoorah
-            # Authorization uses the token stored in Odoo provider config
+            # STEP 5: API headers
             # ----------------------------------------------------------------
             headers = {
                 'Content-Type': 'application/json',
@@ -235,40 +255,85 @@ class PaymentMyFatoorahController(http.Controller):
                 'Authorization': f'Bearer {provider.myfatoorah_token}',
             }
 
-            # ----------------------------------------------------------------
-            # STEP 5: Build callback URLs
-            # CallBackUrl → where MyFatoorah redirects after successful payment
-            # ErrorUrl    → where MyFatoorah redirects if payment fails
-            # ----------------------------------------------------------------
-            callback_url = request.httprequest.host_url.rstrip('/') + '/payment/myfatoorah/_return_url'
-            error_url = request.httprequest.host_url.rstrip('/') + '/payment/myfatoorah/failed'
+            base_url = provider._myfatoorah_get_api_url()  # ends with /
 
             # ----------------------------------------------------------------
-            # STEP 6: Clean phone number to max 11 digits (MyFatoorah requirement)
-            # Strips country code, spaces, dashes, and leading + sign
+            # STEP 6: Call InitiatePayment to get the REAL Apple Pay method ID
+            # for SAR — never hardcode this ID, it differs per account/currency
+            # ----------------------------------------------------------------
+            initiate_payload = {
+                "InvoiceAmount": invoice_amount,
+                "CurrencyIso": currency_iso,  # "SAR"
+            }
+            initiate_resp = requests.post(
+                f"{base_url}v2/InitiatePayment",
+                headers=headers,
+                json=initiate_payload,
+                timeout=30
+            )
+            initiate_resp.raise_for_status()
+            initiate_result = initiate_resp.json()
+
+            _logger.info("InitiatePayment response: %s", initiate_result)
+
+            if not initiate_result.get('IsSuccess'):
+                return {
+                    'success': False,
+                    'message': initiate_result.get('Message') or 'InitiatePayment failed.'
+                }
+
+            # Find Apple Pay method (code = 'ap') from the returned list
+            payment_methods = initiate_result.get('Data', {}).get('PaymentMethods', [])
+            apple_pay_method = next(
+                (m for m in payment_methods if m.get('PaymentMethodCode', '').lower() == 'ap'),
+                None
+            )
+
+            if not apple_pay_method:
+                _logger.error(
+                    "Apple Pay not available for currency %s. Available methods: %s",
+                    currency_iso,
+                    [(m.get('PaymentMethodCode'), m.get('PaymentMethodId')) for m in payment_methods]
+                )
+                return {
+                    'success': False,
+                    'message': f'Apple Pay is not available for currency {currency_iso}.'
+                }
+
+            apple_pay_method_id = apple_pay_method['PaymentMethodId']
+            _logger.info(
+                "Apple Pay method ID for %s = %s", currency_iso, apple_pay_method_id
+            )
+
+            # ----------------------------------------------------------------
+            # STEP 7: Clean phone number — max 11 digits, Saudi default
             # ----------------------------------------------------------------
             raw_phone = order.partner_id.mobile or order.partner_id.phone or '0500000000'
-            phone = raw_phone.replace(' ', '').replace('-', '')
-            if phone.startswith('+'):
-                phone = phone[1:]
-            country_code = str(order.partner_id.country_id.phone_code or '')
-            if country_code and phone.startswith(country_code):
-                phone = phone[len(country_code):]
-            phone = phone[-11:]  # MyFatoorah max length is 11 digits
+            phone = raw_phone.replace(' ', '').replace('-', '').replace('+', '')
+            # Strip country code prefix if present
+            mobile_country_code = str(order.partner_id.country_id.phone_code or '966')
+            if phone.startswith(mobile_country_code):
+                phone = phone[len(mobile_country_code):]
+            phone = phone[-11:]  # Max 11 digits
 
             # ----------------------------------------------------------------
-            # STEP 7: Build ExecutePayment payload
-            # PaymentMethodId 11 = Apple Pay (confirmed from InitiatePayment logs)
-            # We skip InitiatePayment entirely since we already know the ID
+            # STEP 8: Build callback URLs
+            # ----------------------------------------------------------------
+            host = request.httprequest.host_url.rstrip('/')
+            callback_url = f"{host}/payment/myfatoorah/_return_url"
+            error_url = f"{host}/payment/myfatoorah/failed"
+
+            # ----------------------------------------------------------------
+            # STEP 9: ExecutePayment with the dynamically resolved method ID
             # ----------------------------------------------------------------
             execute_payload = {
-                "PaymentMethodId": 11,  # Apple Pay method ID (code: 'ap')
-                "CustomerName": tx.partner_name or "Customer",
-                "DisplayCurrencyIso": tx.currency_id.name,
-                "MobileCountryCode": country_code or '966',
+                "PaymentMethodId": apple_pay_method_id,  # Dynamic — not hardcoded
+                "CustomerName": tx.partner_name or order.partner_id.name or "Customer",
+                "DisplayCurrencyIso": currency_iso,  # SAR
+                "MobileCountryCode": mobile_country_code,  # e.g. "966"
                 "CustomerMobile": phone,
                 "CustomerEmail": tx.partner_email or '',
-                "InvoiceValue": tx.amount,
+                "InvoiceValue": invoice_amount,  # Always from order.amount_total
                 "CallBackUrl": callback_url,
                 "ErrorUrl": error_url,
                 "Language": "en",
@@ -276,24 +341,22 @@ class PaymentMyFatoorahController(http.Controller):
                 "SourceInfo": "Odoo Website Apple Pay",
             }
 
-            # ----------------------------------------------------------------
-            # STEP 8: Call MyFatoorah ExecutePayment API
-            # This creates the invoice on MyFatoorah side and returns a PaymentURL
-            # provider._myfatoorah_get_api_url() returns:
-            #   → https://apitest.myfatoorah.com/ (if provider state = Test)
-            #   → https://api-sa.myfatoorah.com/ (if provider state = Live)
-            # ----------------------------------------------------------------
-            execute_url = f"{provider._myfatoorah_get_api_url()}v2/ExecutePayment"
-            response = requests.post(execute_url, headers=headers,
-                                     json=execute_payload, timeout=30)
+            _logger.info("ExecutePayment payload: %s", execute_payload)
 
-            _logger.info("ExecutePayment raw response: %s", response.text)
+            execute_resp = requests.post(
+                f"{base_url}v2/ExecutePayment",
+                headers=headers,
+                json=execute_payload,
+                timeout=30
+            )
 
-            response.raise_for_status()
-            result = response.json()
+            _logger.info("ExecutePayment raw response: %s", execute_resp.text)
+
+            execute_resp.raise_for_status()
+            result = execute_resp.json()
 
             # ----------------------------------------------------------------
-            # STEP 9: Check if MyFatoorah successfully created the invoice
+            # STEP 10: Validate response
             # ----------------------------------------------------------------
             if not result.get('IsSuccess'):
                 return {
@@ -301,23 +364,39 @@ class PaymentMyFatoorahController(http.Controller):
                     'message': result.get('Message') or 'ExecutePayment failed.'
                 }
 
-            # ----------------------------------------------------------------
-            # STEP 10: Extract the PaymentURL from the response
-            # This is the MyFatoorah hosted page where Apple Pay sheet opens
-            # JS will redirect the customer to this URL
-            # ----------------------------------------------------------------
             invoice_url = result.get('Data', {}).get('PaymentURL')
             if not invoice_url:
-                return {'success': False, 'message': 'No PaymentURL returned.'}
+                return {'success': False, 'message': 'No PaymentURL returned from MyFatoorah.'}
 
             # ----------------------------------------------------------------
-            # STEP 11: Mark transaction as pending in Odoo and commit
-            # Then return the URL to frontend JS which does window.location.href
+            # STEP 11: Store MyFatoorah invoice ID on transaction for webhook
+            # matching, then commit and return redirect URL to frontend JS
             # ----------------------------------------------------------------
+            mf_invoice_id = result.get('Data', {}).get('InvoiceId')
+            if mf_invoice_id:
+                tx.sudo().write({'provider_reference': str(mf_invoice_id)})
+
             request.env.cr.commit()
 
-            return {'success': True, 'redirect_url': invoice_url,'order_id': order.id,'order_name': order.name,}
+            _logger.info(
+                "Apple Pay: Success. TX=%s | InvoiceId=%s | URL=%s",
+                tx.reference, mf_invoice_id, invoice_url
+            )
 
+            return {
+                'success': True,
+                'redirect_url': invoice_url,
+                'order_id': order.id,
+                'order_name': order.name,
+            }
+
+        except requests.exceptions.Timeout:
+            _logger.error("Apple Pay: MyFatoorah API timeout")
+            return {'success': False, 'message': 'Payment gateway timed out. Please try again.'}
+
+        except requests.exceptions.RequestException as e:
+            _logger.exception("Apple Pay: API request failed: %s", e)
+            return {'success': False, 'message': 'Could not connect to payment gateway.'}
 
         except Exception as e:
             _logger.exception("Apple Pay payment failed: %s", e)
