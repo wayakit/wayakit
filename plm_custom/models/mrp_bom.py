@@ -1,6 +1,8 @@
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError
 
+PLM_COMPONENT_CATEGORY = 'PLM Component'
+
 
 class MrpBom(models.Model):
     _inherit = 'mrp.bom'
@@ -174,7 +176,7 @@ class MrpBomLine(models.Model):
         is_standard = self._is_plm_standard_user()
         for record in self:
             tmpl = record.product_id.product_tmpl_id
-            is_plm = tmpl.categ_id.name == 'PLM Component'
+            is_plm = tmpl.categ_id.name == PLM_COMPONENT_CATEGORY
             if is_standard and is_plm and tmpl.synonym_name:
                 record.component_display_name = tmpl.synonym_name
             else:
@@ -206,33 +208,3 @@ class MrpBomLine(models.Model):
             raise AccessError("PLM Restriction: Standard users cannot delete BoM components.")
         return super().unlink()
 
-# ---------------------------------------------------------
-# RESTRICCIONES DE PRODUCTOS (Heredado aquí para no tocar Custom 1)
-# ---------------------------------------------------------
-class ProductTemplateSecurity(models.Model):
-    _inherit = 'product.template'
-
-    def write(self, vals):
-        if self._is_plm_standard_user():
-            # Bloquear si intentan convertir un producto normal en PLM Component
-            if 'categ_id' in vals:
-                new_category = self.env['product.category'].browse(vals['categ_id'])
-                if new_category.name == 'PLM Component':
-                    raise AccessError(
-                        "PLM Restriction: Standard users cannot assign the 'PLM Component' category to products.")
-
-            # Bloquear si intentan editar un producto que ya es PLM Component
-            for record in self:
-                if record.is_plm_component:
-                    raise AccessError(
-                        f"PLM Restriction: Standard users are not allowed to edit PLM Components ({record.display_name}).")
-
-        return super().write(vals)
-
-    def unlink(self):
-        if self._is_plm_standard_user():
-            for record in self:
-                if record.is_plm_component:
-                    raise AccessError(
-                        f"PLM Restriction: Standard users are not allowed to delete PLM Components ({record.display_name}).")
-        return super().unlink()
