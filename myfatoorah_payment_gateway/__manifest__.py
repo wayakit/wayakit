@@ -37,6 +37,11 @@
         'views/payment_template.xml',
         'views/myfatoorah_payment_template.xml',
     ],
+    'assets': {
+        'web.assets_frontend': [
+            'myfatoorah_payment_gateway/static/src/js/apple_pay_button.js',
+        ],
+    },
     'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
     'images': ['static/description/banner.jpg'],

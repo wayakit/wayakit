@@ -36,7 +36,7 @@ class PaymentProvider(models.Model):
     def _get_payment_method_information(self):
         """ Override method to add MyFatoorah payment method information."""
         res = super()._get_payment_method_information()
-        res['mfatoorah'] = {'mode': 'unique', 'domain': [('type', '=', 'bank')]}
+        res['myfatoorah'] = {'mode': 'unique', 'domain': [('type', '=', 'bank')]}
         return res
 
     def _myfatoorah_get_api_url(self):
