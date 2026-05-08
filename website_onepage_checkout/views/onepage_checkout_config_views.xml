@@ -116,5 +116,29 @@
             </group>
         </xpath>
     </field>
+ </record>
+   <record id="website_sale_address_custom_state" model="ir.ui.view">
+    <field name="name">website_sale.address.custom.state</field>
+    <field name="inherit_id" ref="website_sale.address"/>
+    <field name="arch" type="xml">
+        <xpath expr="//div[hasclass('div_state')]" position="replace">
+            <div t-attf-class="#{error.get('state_id') and 'o_has_error'} div_state col-lg-6 mb-2"
+                 t-att-style="(not states) and 'display: none'">
+                <label class="col-form-label" for="state_id">State / Province</label>
+                <select name="state_id"
+                        t-attf-class="form-select #{error.get('state_id') and 'is-invalid' or ''}"
+                        data-init="1">
+                    <option value="">State / Province...</option>
+                    <t t-foreach="states" t-as="s">
+                        <option t-att-value="s.id"
+                                t-att-selected="s.id == ('state_id' in checkout and checkout['state_id'] != '' and int(checkout['state_id']))">
+                            <t t-esc="s.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+        </xpath>
+    </field>
 </record>
+
 </odoo>
