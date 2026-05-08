@@ -27,21 +27,36 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
     // ── Sync CSS classes with panel state on first load ──────────────
 
     _syncPanelClasses() {
+        // All panels are always open — no accordion gating
         const panels = this.el.querySelectorAll('.onepage-panel');
-        let foundOpen = false;
         panels.forEach(panel => {
             const content = panel.querySelector('.onepage-panel-content');
-            if (content && content.style.display !== 'none') {
-                panel.classList.add('panel-open');
-                panel.classList.remove('panel-completed', 'panel-pending');
-                foundOpen = true;
-            } else if (!foundOpen) {
-                panel.classList.remove('panel-open', 'panel-pending');
-            } else {
-                panel.classList.add('panel-pending');
-                panel.classList.remove('panel-open', 'panel-completed');
+            const header = panel.querySelector('.onepage-panel-header');
+            const chevron = header ? header.querySelector('.onepage-chevron') : null;
+            if (content) content.style.display = '';
+            panel.classList.add('panel-open');
+            panel.classList.remove('panel-completed', 'panel-pending');
+            if (chevron) {
+                chevron.classList.remove('fa-chevron-down');
+                chevron.classList.add('fa-chevron-up');
             }
         });
+
+        // Old accordion-style sync (commented out)
+        // let foundOpen = false;
+        // panels.forEach(panel => {
+        //     const content = panel.querySelector('.onepage-panel-content');
+        //     if (content && content.style.display !== 'none') {
+        //         panel.classList.add('panel-open');
+        //         panel.classList.remove('panel-completed', 'panel-pending');
+        //         foundOpen = true;
+        //     } else if (!foundOpen) {
+        //         panel.classList.remove('panel-open', 'panel-pending');
+        //     } else {
+        //         panel.classList.add('panel-pending');
+        //         panel.classList.remove('panel-open', 'panel-completed');
+        //     }
+        // });
     },
 
     // ── Collapse the currently open panel ────────────────────────────
@@ -67,42 +82,46 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
     // ── Open a panel, keep completed panels green ───────────────────
 
     _openPanel(contentId) {
-        const panels = [...this.el.querySelectorAll('.onepage-panel')];
         const target = this.el.querySelector('#' + contentId);
         if (!target) return;
 
         const targetPanel = target.closest('.onepage-panel');
+        if (!targetPanel) return;
 
-        panels.forEach(panel => {
-            const content = panel.querySelector('.onepage-panel-content');
-            const header = panel.querySelector('.onepage-panel-header');
-            const chevron = header ? header.querySelector('.onepage-chevron') : null;
-
-            if (panel === targetPanel) {
-                content.style.display = '';
-                panel.classList.add('panel-open');
-                panel.classList.remove('panel-completed', 'panel-pending');
-                if (chevron) {
-                    chevron.classList.remove('fa-chevron-down');
-                    chevron.classList.add('fa-chevron-up');
-                }
-            } else {
-                content.style.display = 'none';
-                if (chevron) {
-                    chevron.classList.remove('fa-chevron-up');
-                    chevron.classList.add('fa-chevron-down');
-                }
-                if (this.completedPanels.has(panel.id)) {
-                    panel.classList.add('panel-completed');
-                    panel.classList.remove('panel-open', 'panel-pending');
-                } else {
-                    panel.classList.add('panel-pending');
-                    panel.classList.remove('panel-open', 'panel-completed');
-                }
-            }
-        });
+        // Only open the target panel — do not collapse others
+        target.style.display = '';
+        targetPanel.classList.add('panel-open');
+        targetPanel.classList.remove('panel-completed', 'panel-pending');
+        const header = targetPanel.querySelector('.onepage-panel-header');
+        const chevron = header ? header.querySelector('.onepage-chevron') : null;
+        if (chevron) {
+            chevron.classList.remove('fa-chevron-down');
+            chevron.classList.add('fa-chevron-up');
+        }
 
         targetPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Old accordion logic that closed other panels (commented out)
+        // const panels = [...this.el.querySelectorAll('.onepage-panel')];
+        // panels.forEach(panel => {
+        //     const content = panel.querySelector('.onepage-panel-content');
+        //     const header = panel.querySelector('.onepage-panel-header');
+        //     const chevron = header ? header.querySelector('.onepage-chevron') : null;
+        //     if (panel === targetPanel) {
+        //         content.style.display = '';
+        //         panel.classList.add('panel-open');
+        //         panel.classList.remove('panel-completed', 'panel-pending');
+        //         if (chevron) { chevron.classList.remove('fa-chevron-down'); chevron.classList.add('fa-chevron-up'); }
+        //     } else {
+        //         content.style.display = 'none';
+        //         if (chevron) { chevron.classList.remove('fa-chevron-up'); chevron.classList.add('fa-chevron-down'); }
+        //         if (this.completedPanels.has(panel.id)) {
+        //             panel.classList.add('panel-completed'); panel.classList.remove('panel-open', 'panel-pending');
+        //         } else {
+        //             panel.classList.add('panel-pending'); panel.classList.remove('panel-open', 'panel-completed');
+        //         }
+        //     }
+        // });
     },
 
     _onPanelHeaderClick(ev) {
@@ -110,46 +129,44 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         const panel = ev.currentTarget.closest('.onepage-panel');
         if (!panel) return;
 
-        // Currently open panel — collapse it (toggle)
+        // Any panel can be freely toggled — no gating on completedPanels
         if (panel.classList.contains('panel-open')) {
             this._collapsePanel(panel);
             return;
         }
 
-        // Completed (green) panels — allow reopening
-        if (this.completedPanels.has(panel.id)) {
-            const targetId = ev.currentTarget.dataset.target;
-            if (targetId) {
-                this._openPanel(targetId);
-            }
-            return;
+        const targetId = ev.currentTarget.dataset.target;
+        if (targetId) {
+            this._openPanel(targetId);
         }
 
-        // Last panel (payment) — always allow toggle even if not in completedPanels
-        const panels = [...this.el.querySelectorAll('.onepage-panel')];
-        const isLastPanel = panel === panels[panels.length - 1];
-        const allPreviousCompleted = panels.slice(0, -1).every(
-            p => this.completedPanels.has(p.id)
-        );
-        if (isLastPanel && allPreviousCompleted) {
-            const targetId = ev.currentTarget.dataset.target;
-            if (targetId) {
-                this._openPanel(targetId);
-            }
-        }
+        // Old gated accordion logic (commented out)
+        // if (this.completedPanels.has(panel.id)) {
+        //     const targetId = ev.currentTarget.dataset.target;
+        //     if (targetId) { this._openPanel(targetId); }
+        //     return;
+        // }
+        // const panels = [...this.el.querySelectorAll('.onepage-panel')];
+        // const isLastPanel = panel === panels[panels.length - 1];
+        // const allPreviousCompleted = panels.slice(0, -1).every(p => this.completedPanels.has(p.id));
+        // if (isLastPanel && allPreviousCompleted) {
+        //     const targetId = ev.currentTarget.dataset.target;
+        //     if (targetId) { this._openPanel(targetId); }
+        // }
     },
 
-    _onContinueClick(ev) {
-        ev.preventDefault();
-        const currentPanel = ev.currentTarget.closest('.onepage-panel');
-        if (currentPanel) {
-            this.completedPanels.add(currentPanel.id);
-        }
-        const nextPanel = ev.currentTarget.dataset.next;
-        if (nextPanel) {
-            this._openPanel(nextPanel);
-        }
-    },
+    // _onContinueClick removed: all panels open by default, no step-by-step navigation needed
+    // _onContinueClick(ev) {
+    //     ev.preventDefault();
+    //     const currentPanel = ev.currentTarget.closest('.onepage-panel');
+    //     if (currentPanel) {
+    //         this.completedPanels.add(currentPanel.id);
+    //     }
+    //     const nextPanel = ev.currentTarget.dataset.next;
+    //     if (nextPanel) {
+    //         this._openPanel(nextPanel);
+    //     }
+    // },
 
     // ── Cart quantity AJAX updates (no page reload) ─────────────────
 
@@ -260,7 +277,6 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
         const lineEl = ev.currentTarget.closest('.onepage-cart-line');
         this._updateCartLine(lineEl, 0);
     },
-
     // ── Address selection via AJAX ───────────────────────────────────
 
     async _onAddressCardClick(ev) {
@@ -297,3 +313,5 @@ publicWidget.registry.OnepageCheckout = publicWidget.Widget.extend({
 });
 
 export default publicWidget.registry.OnepageCheckout;
+
+

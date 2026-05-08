@@ -20,39 +20,34 @@ class WebsiteSaleOnepage(WebsiteSale):
             ], limit=1)
         return config
 
-    # ── Override mandatory fields based on config ──────────────────────
+    # ── Override Mandatory Fields ──────────────────────────────────────
     def _get_mandatory_fields_billing(self, country_id=False):
         config = self._get_onepage_config()
         if not config or not config.wk_billing_required:
             return super()._get_mandatory_fields_billing(country_id)
-
         req = list(config.wk_billing_required.mapped('field_name'))
-
         if country_id:
             country = request.env['res.country'].browse(country_id)
             if country.state_required and 'state_id' not in req:
                 req.append('state_id')
             if country.zip_required and 'zip' not in req:
                 req.append('zip')
-
         return req
 
     def _get_mandatory_fields_shipping(self, country_id=False):
         config = self._get_onepage_config()
         if not config or not config.wk_shipping_required:
             return super()._get_mandatory_fields_shipping(country_id)
-
         req = list(config.wk_shipping_required.mapped('field_name'))
-
         if country_id:
             country = request.env['res.country'].browse(country_id)
             if country.state_required and 'state_id' not in req:
                 req.append('state_id')
             if country.zip_required and 'zip' not in req:
                 req.append('zip')
-
         return req
 
+    # ── Main Checkout Logic ───────────────────────────────────────────
     @http.route()
     def checkout(self, **post):
         config = self._get_onepage_config()
@@ -62,8 +57,8 @@ class WebsiteSaleOnepage(WebsiteSale):
         order_sudo = request.website.sale_get_order()
         if not order_sudo:
             return request.redirect('/shop')
-        request.session['sale_last_order_id'] = order_sudo.id
 
+        request.session['sale_last_order_id'] = order_sudo.id
         redirection = self.checkout_redirection(order_sudo)
         if redirection:
             return redirection
@@ -78,104 +73,135 @@ class WebsiteSaleOnepage(WebsiteSale):
         if post.get('xhr'):
             return 'ok'
 
-        # ── Replicate native /shop/confirm_order + /shop/payment logic ──
-        # 1. Recompute taxes (native confirm_order does this)
         order_sudo._recompute_taxes()
-
-        # 2. Update pricelist (native confirm_order does this)
         request.website.sale_get_order(update_pricelist=True)
 
-        # 3. Auto-select delivery carrier if not set (native shop_payment does this)
         if not order_sudo.only_services and not order_sudo.carrier_id:
             order_sudo._check_carrier_quotation()
 
-        # ── Collect template values ──────────────────────────────────────
+        # Get initial template values
         values = self.checkout_values(order_sudo, **post)
 
-        # _get_shop_payment_values already populates:
-        # - payment_methods_sudo, tokens_sudo, errors
-        # - deliveries, delivery_has_storable (when enabled_delivery)
-        # - transaction_route, landing_route, access_token
+        # ─── WEBSITE LEVEL COUNTRY FILTER ───
+        # Logic: If current website has the filter active, remove addresses not matching the country
+        current_web = request.website
+        if current_web.filter_website_addresses and current_web.allowed_country_ids:
+            allowed_ids = current_web.allowed_country_ids.ids
+            if values.get('shippings'):
+                values['shippings'] = [p for p in values['shippings'] if p.country_id.id in allowed_ids]
+            if values.get('billings'):
+                values['billings'] = [p for p in values['billings'] if p.country_id.id in allowed_ids]
+
         payment_values = self._get_shop_payment_values(order_sudo, **post)
         values.update(payment_values)
 
-        # Ensure delivery variables exist even when delivery is disabled
         values.setdefault('deliveries', request.env['delivery.carrier'])
         values.setdefault('delivery_has_storable', False)
-
-        # Payment button is rendered OUTSIDE payment.form (native pattern)
         values['display_submit_button'] = False
         values['submit_button_label'] = _("Pay now")
-
         values['config'] = config
+
         open_panel = post.get('open_panel', 'billing')
         if open_panel not in ('billing', 'shipping'):
             open_panel = 'billing'
         values['open_panel'] = open_panel
 
-        return request.render(
-            'website_onepage_checkout.onepage_checkout', values,
-        )
+        return request.render('website_onepage_checkout.onepage_checkout', values)
 
-    # ── AJAX: select an existing address without page-reload ─────────
-    @http.route(
-        '/shop/onepage/select_address',
-        type='json', auth='public', website=True,
-    )
+    # @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
+    # def address(self, **kw):
+    #     response = super(WebsiteSaleOnepage, self).address(**kw)
+    #     if hasattr(response, 'qcontext'):
+    #         current_web = request.website
+    #         if current_web.filter_website_addresses and current_web.allowed_country_ids:
+    #             allowed_countries = current_web.allowed_country_ids
+    #             response.qcontext['countries'] = allowed_countries
+    #
+    #             # Determine which country is currently active
+    #             order = request.website.sale_get_order()
+    #             partner = None
+    #             mode = kw.get('mode', 'billing')
+    #             if order:
+    #                 partner = order.partner_shipping_id if mode == 'shipping' else order.partner_invoice_id
+    #
+    #             # Priority: POST param > partner's country > first allowed country
+    #             country_id = int(kw.get('country_id', 0))
+    #             if not country_id and partner and partner.country_id:
+    #                 country_id = partner.country_id.id
+    #             if not country_id and allowed_countries:
+    #                 country_id = allowed_countries[0].id  # default to first allowed
+    #
+    #             # Validate it's in the allowed list
+    #             selected_country = allowed_countries.filtered(lambda c: c.id == country_id)
+    #             if not selected_country and allowed_countries:
+    #                 selected_country = allowed_countries[0]
+    #                 country_id = selected_country.id
+    #
+    #             response.qcontext['country_id'] = country_id
+    #             response.qcontext['states'] = selected_country.state_ids if selected_country else request.env[
+    #                 'res.country.state'].browse([])
+    #
+    #             if len(allowed_countries) == 1:
+    #                 response.qcontext['country_id'] = allowed_countries[0].id
+    #                 response.qcontext['states'] = allowed_countries[0].state_ids
+    #
+    #     return response
+    # AFTER
+    @http.route(['/shop/address'], type='http', methods=['GET', 'POST'], auth="public", website=True, sitemap=False)
+    def address(self, **kw):
+        response = super(WebsiteSaleOnepage, self).address(**kw)
+        if hasattr(response, 'qcontext'):
+            current_web = request.website
+            if current_web.filter_website_addresses and current_web.allowed_country_ids:
+                allowed_countries = current_web.allowed_country_ids
+                response.qcontext['countries'] = allowed_countries
+
+                order = request.website.sale_get_order()
+                partner = None
+                mode = kw.get('mode', 'billing')
+                if order:
+                    partner = order.partner_shipping_id if mode == 'shipping' else order.partner_invoice_id
+
+                country_id = int(kw.get('country_id', 0))
+                if not country_id and partner and partner.country_id:
+                    country_id = partner.country_id.id
+                # ← REMOVED: no longer defaulting to first country
+
+                selected_country = allowed_countries.filtered(lambda c: c.id == country_id) if country_id else None
+
+                response.qcontext['country_id'] = country_id  # will be 0 if nothing selected
+                # ← Empty states if no country selected
+                response.qcontext['states'] = selected_country.state_ids if selected_country else request.env[
+                    'res.country.state'].browse([])
+
+        return response
+    # ── AJAX Methods ──────────────────────────────────────────────────
+    @http.route('/shop/onepage/select_address', type='json', auth='public', website=True)
     def onepage_select_address(self, partner_id, address_type='billing', **kw):
         order = request.website.sale_get_order()
         if not order:
             return {'error': _('No active order found.')}
-
         partner = request.env['res.partner'].sudo().browse(int(partner_id))
         if not partner.exists():
             return {'error': _('Address not found.')}
-
         if address_type == 'billing':
             order.partner_invoice_id = partner.id
         else:
             order.partner_shipping_id = partner.id
-
-        # Recompute taxes at order level (not line level)
         order._recompute_taxes()
+        return {'success': True, 'partner_id': partner.id}
 
-        return {
-            'success': True,
-            'partner_id': partner.id,
-        }
-
-    # ── AJAX: get formatted order totals for inline update ───────────
-    @http.route(
-        '/shop/onepage/get_totals',
-        type='json', auth='public', website=True,
-    )
+    @http.route('/shop/onepage/get_totals', type='json', auth='public', website=True)
     def onepage_get_totals(self, **kw):
         order = request.website.sale_get_order()
-        if not order:
-            return {'error': 'No order'}
-
-        # Native _cart_update removes delivery line on every qty change.
-        # Re-add it by recalculating the carrier quotation.
+        if not order: return {'error': 'No order'}
         if not order.only_services:
             order._check_carrier_quotation()
-
-        # Ensure taxes are fresh before returning values
         order._recompute_taxes()
-
         Monetary = request.env['ir.qweb.field.monetary']
-        fmt = lambda val: Monetary.value_to_html(
-            val, {'display_currency': order.currency_id},
-        )
-
-        lines = []
-        for line in order.order_line:
-            if not line.is_delivery:
-                lines.append({
-                    'id': line.id,
-                    'qty': int(line.product_uom_qty),
-                    'price_html': fmt(line.price_subtotal),
-                })
-
+        fmt = lambda val: Monetary.value_to_html(val, {'display_currency': order.currency_id})
+        lines = [{'id': l.id, 'qty': int(l.product_uom_qty), 'price_html': fmt(l.price_subtotal)}
+                 for l in order.order_line if not l.is_delivery]
         return {
             'lines': lines,
             'delivery_html': fmt(order.amount_delivery) if order.carrier_id else '',

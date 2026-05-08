@@ -100,4 +100,45 @@
         </field>
     </record>
 
+    <record id="view_website_form_inherit" model="ir.ui.view">
+    <field name="name">website.form.inherit.address.filter</field>
+    <field name="model">website</field>
+    <field name="inherit_id" ref="website.view_website_form"/>
+    <field name="arch" type="xml">
+        <!-- Target the Karma field from your screenshot -->
+        <xpath expr="//field[@name='karma_profile_min']" position="after">
+            <group string="Address Filtering" name="address_filtering">
+                <field name="filter_website_addresses"/>
+                <field name="allowed_country_ids"
+                       widget="many2many_tags"
+                       invisible="not filter_website_addresses"/>
+            </group>
+        </xpath>
+    </field>
+ </record>
+
+ <record id="website_sale_address_custom_state" model="ir.ui.view">
+    <field name="name">website_sale.address.custom.state</field>
+    <field name="inherit_id" ref="website_sale.address"/>
+    <field name="arch" type="xml">
+        <xpath expr="//div[@t-att-style[contains(., 'country.state_ids')]]" position="replace">
+            <div t-attf-class="#{error.get('state_id') and 'o_has_error'} div_state col-lg-6 mb-2"
+                 t-att-style="(not states) and 'display: none'">
+                <label class="col-form-label" for="state_id">State / Province</label>
+                <select name="state_id"
+                        t-attf-class="form-select #{error.get('state_id') and 'is-invalid' or ''}"
+                        data-init="1">
+                    <option value="">State / Province...</option>
+                    <t t-foreach="states" t-as="s">
+                        <option t-att-value="s.id"
+                                t-att-selected="s.id == ('state_id' in checkout and checkout['state_id'] != '' and int(checkout['state_id']))">
+                            <t t-esc="s.name"/>
+                        </option>
+                    </t>
+                </select>
+            </div>
+        </xpath>
+    </field>
+</record>
+
 </odoo>
