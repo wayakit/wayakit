@@ -95,7 +95,7 @@
                 </script>
             </xpath>
         </template>
-        <template id="lang_selector_ksa" inherit_id="website.layout" active="True">
+        <template id="lang_selector_ksa" inherit_id="website.template_header_hamburger" active="True">
             <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]/li[hasclass('o_wsale_my_cart')]" position="before">
                 <t t-call="website.lang_selector"/>
             </xpath>
