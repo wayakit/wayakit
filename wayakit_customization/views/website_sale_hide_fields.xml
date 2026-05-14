@@ -96,7 +96,6 @@
             </xpath>
         </template>
         <template id="lang_selector_ksa" inherit_id="website.layout" active="True">
-            <!-- Selector desktop -->
             <xpath expr="//header[@id='top']" position="inside">
                 <t t-if="website.name == 'KSA Website' and len(website.language_ids) > 1">
                     <style>
@@ -107,14 +106,14 @@
                             z-index: 1000;
                         }
                         @media (max-width: 992px) {
-                            #ksa_lang_selector {
-                                display: none !important;
-                            }
+                            #ksa_lang_selector { display: none !important; }
                         }
                     </style>
+
+                    <!-- Desktop -->
                     <div id="ksa_lang_selector">
                         <div class="js_language_selector dropdown d-print-none">
-                            <button type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="btn border-0 dropdown-toggle btn-outline-secondary">
+                            <button type="button" data-bs-toggle="dropdown" class="btn border-0 dropdown-toggle btn-outline-secondary">
                                 <span t-esc="request.env['res.lang']._lang_get(request.lang.code).name"/>
                             </button>
                             <div role="menu" class="dropdown-menu dropdown-menu-end">
@@ -129,29 +128,37 @@
                             </div>
                         </div>
                     </div>
-                </t>
-            </xpath>
 
-            <!-- Selector móvil dentro del offcanvas hamburguesa -->
-            <xpath expr="//div[@id='top_menu_collapse']//ul[hasclass('navbar-nav','gap-2')]" position="before">
-                <t t-if="website.name == 'KSA Website' and len(website.language_ids) > 1">
-                    <li class="d-lg-none mt-2 border-top pt-2">
-                        <div class="js_language_selector dropup dropdown d-print-none">
-                            <button type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="btn btn-outline-secondary d-flex align-items-center w-100 px-2">
-                                <span class="me-auto small" t-esc="request.env['res.lang']._lang_get(request.lang.code).name"/>
-                            </button>
-                            <div role="menu" class="dropdown-menu w-100">
-                                <t t-foreach="website.language_ids" t-as="lg">
-                                    <a t-attf-class="dropdown-item js_change_lang#{' active' if lg.code == request.lang.code else ''}"
-                                       role="menuitem"
-                                       t-att-href="'/' + lg.url_code + request.httprequest.path"
-                                       t-att-data-url_code="lg.url_code">
-                                        <span class="small" t-esc="lg.name"/>
-                                    </a>
-                                </t>
+                    <!-- Mobile: inyectado via JS -->
+                    <div id="ksa_lang_mobile_tpl" style="display:none;">
+                        <li class="mt-2 border-top pt-2 w-100">
+                            <div class="js_language_selector dropup dropdown d-print-none">
+                                <button type="button" data-bs-toggle="dropdown" class="btn btn-outline-secondary d-flex align-items-center w-100 px-2">
+                                    <span class="me-auto small" t-esc="request.env['res.lang']._lang_get(request.lang.code).name"/>
+                                </button>
+                                <div role="menu" class="dropdown-menu w-100">
+                                    <t t-foreach="website.language_ids" t-as="lg">
+                                        <a t-attf-class="dropdown-item js_change_lang#{' active' if lg.code == request.lang.code else ''}"
+                                           role="menuitem"
+                                           t-att-href="'/' + lg.url_code + request.httprequest.path"
+                                           t-att-data-url_code="lg.url_code">
+                                            <span class="small" t-esc="lg.name"/>
+                                        </a>
+                                    </t>
+                                </div>
                             </div>
-                        </div>
-                    </li>
+                        </li>
+                    </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var tpl = document.querySelector('#ksa_lang_mobile_tpl li');
+                            var mobileUl = document.querySelector('#top_menu_collapse_mobile .offcanvas-body .navbar-nav.gap-2');
+                            if (tpl and mobileUl) {
+                                mobileUl.insertBefore(tpl.cloneNode(true), mobileUl.firstChild);
+                            }
+                        });
+                    </script>
                 </t>
             </xpath>
         </template>
