@@ -96,7 +96,7 @@
             </xpath>
         </template>
         <template id="lang_selector_ksa" inherit_id="website.layout" active="True">
-            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]/li[hasclass('o_wsale_my_cart')]" position="before" optional="True">
+            <xpath expr="//header[@id='top']" position="inside">
                 <t t-if="website.name == 'KSA Website'">
                     <t t-call="website.lang_selector"/>
                 </t>
