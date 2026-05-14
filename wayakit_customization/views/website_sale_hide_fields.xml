@@ -105,7 +105,7 @@
                             right: 250px;
                             z-index: 1000;
                         }
-                        @media (max-width: 992px) {
+                        @media (max-width: 998px) {
                             #ksa_lang_selector { display: none !important; }
                         }
                     </style>
@@ -153,8 +153,8 @@
                     <script>
                         document.addEventListener('DOMContentLoaded', function() {
                             var tpl = document.querySelector('#ksa_lang_mobile_tpl li');
-                            var mobileUl = document.querySelector('#top_menu_collapse_mobile .offcanvas-body .navbar-nav.gap-2');
-                            if (tpl and mobileUl) {
+                            var mobileUl = document.querySelector('#top_menu_collapse_mobile .navbar-nav.gap-2');
+                            if (tpl &amp;&amp; mobileUl) {
                                 mobileUl.insertBefore(tpl.cloneNode(true), mobileUl.firstChild);
                             }
                         });
