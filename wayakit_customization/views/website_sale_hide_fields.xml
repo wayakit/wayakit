@@ -98,7 +98,7 @@
         <template id="lang_selector_ksa" inherit_id="website.layout" active="True">
             <xpath expr="//header[@id='top']" position="inside">
                 <t t-if="website.name == 'KSA Website' and len(website.language_ids) > 1">
-                    <div style="position:absolute; top:15px; right:120px; z-index:1000;">
+                    <div style="position:absolute; top:10px; right:180px; z-index:1000;">
                         <div class="js_language_selector dropdown d-print-none">
                             <button type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="btn border-0 dropdown-toggle btn-outline-secondary">
                                 <span t-esc="request.env['res.lang']._lang_get(request.lang.code).name"/>
