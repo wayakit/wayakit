@@ -96,7 +96,7 @@
             </xpath>
         </template>
         <template id="lang_selector_header" inherit_id="website.layout">
-            <xpath expr="//div[hasclass('o_header_standard')]" position="inside">
+            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]" position="before">
                 <t t-call="website.lang_selector"/>
             </xpath>
         </template>
