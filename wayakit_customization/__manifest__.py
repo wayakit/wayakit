@@ -17,10 +17,10 @@
     # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '0.6',
+    'version': '0.7',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence'],
+    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website'],
 
     # always loaded
     'data': [
