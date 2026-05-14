@@ -96,8 +96,10 @@
             </xpath>
         </template>
         <template id="lang_selector_header" inherit_id="website.layout">
-            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]" position="before">
-                <t t-call="website.lang_selector"/>
+            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]/li[hasclass('o_wsale_my_cart')]" position="before">
+                <li data-name="Language Selector" class="o_header_language_selector">
+                    <t t-call="website.lang_selector"/>
+                </li>
             </xpath>
         </template>
     </data>
