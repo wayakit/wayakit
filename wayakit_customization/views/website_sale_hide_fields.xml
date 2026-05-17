@@ -162,5 +162,17 @@
                 </t>
             </xpath>
         </template>
+        <template id="fix_l10n_mx_invoicing_button"
+                  inherit_id="l10n_mx_edi_website_sale.l10n_mx_edi_invoicing_info">
+            <xpath expr="//input[@name='csrf_token']" position="after">
+                <div class="d-flex justify-content-end mt-3">
+                    <button type="submit"
+                            class="btn btn-primary a-submit">
+                        Continuar al pago
+                        <i class="fa fa-angle-right ms-2"/>
+                    </button>
+                </div>
+            </xpath>
+        </template>
     </data>
 </odoo>
