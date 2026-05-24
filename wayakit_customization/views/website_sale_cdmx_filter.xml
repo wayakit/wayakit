@@ -1,17 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-
-        <!--
-            WAYAKIT MX — Restrict shipping states to CDMX only.
-            Filters both the RPC response (via controller override) and
-            the rendered <select> DOM (via JS below).
-            Only active when website.name == 'WAYAKIT MX'.
-
-            Solo se muestra id=493 (Ciudad de México, CMX - estándar ISO).
-            Los ids 1391 y 1684 se mantienen válidos en el controller
-            para no romper órdenes históricas.
-        -->
         <template id="wayakit_mx_cdmx_filter" inherit_id="website_sale.address" active="True">
             <xpath expr="//form" position="inside">
                 <t t-if="website.name == 'WAYAKIT MX'">
@@ -20,7 +9,6 @@
                     (function() {
                         'use strict';
 
-                        // Único ID visible en el dropdown: Ciudad de México (CMX, estándar ISO)
                         var CDMX_STATE_ID = 493;
 
                         function isCDMX(optionValue) {
@@ -29,15 +17,17 @@
 
                         function filterStatesToCDMX() {
                             var stateSelect = document.getElementById('state_id');
-                            if (!stateSelect) { return; }
+                            if (!stateSelect) { return false; }
 
                             var options = Array.from(stateSelect.options);
-                            var cdmxOption = null;
 
+                            // Si todavía no tiene opciones cargadas, esperar
+                            var realOptions = options.filter(function(o) { return o.value !== ''; });
+                            if (realOptions.length === 0) { return false; }
+
+                            var cdmxOption = null;
                             options.forEach(function(opt) {
-                                if (opt.value === '') {
-                                    return;
-                                }
+                                if (opt.value === '') { return; }
                                 if (isCDMX(opt.value)) {
                                     cdmxOption = opt;
                                 } else {
@@ -45,18 +35,18 @@
                                 }
                             });
 
-                            // Auto-seleccionar Ciudad de México
                             if (cdmxOption) {
                                 cdmxOption.selected = true;
                                 stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
                             }
 
-                            // Deshabilitar visualmente el select (solo hay una opción)
                             stateSelect.style.pointerEvents = 'none';
                             stateSelect.style.backgroundColor = '#e9ecef';
+
+                            return true;
                         }
 
-                        // Interceptar fetch para filtrar la respuesta de country_infos
+                        // Interceptar fetch ANTES de que Odoo lo use
                         var _originalFetch = window.fetch;
                         window.fetch = function(url, fetchOptions) {
                             return _originalFetch.apply(this, arguments).then(function(response) {
@@ -81,10 +71,19 @@
                             });
                         };
 
-                        // Ejecutar en DOMContentLoaded y observar cambios dinámicos
-                        document.addEventListener('DOMContentLoaded', function() {
-                            filterStatesToCDMX();
+                        // Polling: intentar cada 200ms hasta que el select exista y tenga opciones
+                        var attempts = 0;
+                        var maxAttempts = 50; // 10 segundos máximo
+                        var interval = setInterval(function() {
+                            attempts++;
+                            var done = filterStatesToCDMX();
+                            if (done || attempts >= maxAttempts) {
+                                clearInterval(interval);
+                            }
+                        }, 200);
 
+                        // También observar el DOM para re-filtrar si el select se re-renderiza
+                        document.addEventListener('DOMContentLoaded', function() {
                             var observer = new MutationObserver(function(mutations) {
                                 mutations.forEach(function(mutation) {
                                     mutation.addedNodes.forEach(function(node) {
@@ -104,7 +103,6 @@
                                     }
                                 });
                             });
-
                             observer.observe(document.body, { childList: true, subtree: true });
                         });
 
@@ -114,6 +112,5 @@
                 </t>
             </xpath>
         </template>
-
     </data>
 </odoo>
