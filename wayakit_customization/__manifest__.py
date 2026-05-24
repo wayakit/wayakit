@@ -17,7 +17,7 @@
     # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '1.0.9',
+    'version': '1.0.10',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale'],
@@ -29,6 +29,7 @@
         'views/views.xml',
         'views/templates.xml',
         'views/ir_cron.xml',
+        'views/website_sale_cdmx_filter.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

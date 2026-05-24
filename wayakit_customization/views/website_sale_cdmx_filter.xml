@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!--
+            WAYAKIT MX — Restrict shipping states to CDMX only.
+            Filters both the RPC response (via controller override) and
+            the rendered <select> DOM (via JS below).
+            Only active when website.name == 'WAYAKIT MX'.
+        -->
+        <template id="wayakit_mx_cdmx_filter" inherit_id="website_sale.address" active="True">
+            <xpath expr="//form" position="inside">
+                <t t-if="website.name == 'WAYAKIT MX'">
+                    <script type="text/javascript">
+                    //<![CDATA[
+                    (function() {
+                        'use strict';
+
+                        // Nombres que representan CDMX en esta instancia
+                        var CDMX_NAMES = ['Ciudad de México', 'CDMX'];
+
+                        function isCDMX(optionText) {
+                            var text = optionText.trim();
+                            for (var i = 0; i < CDMX_NAMES.length; i++) {
+                                if (text === CDMX_NAMES[i]) { return true; }
+                            }
+                            return false;
+                        }
+
+                        function filterStatesToCDMX() {
+                            var stateSelect = document.getElementById('state_id');
+                            if (!stateSelect) { return; }
+
+                            var options = Array.from(stateSelect.options);
+                            var firstCDMX = null;
+
+                            options.forEach(function(opt) {
+                                if (opt.value === '') {
+                                    // Mantener placeholder vacío
+                                    return;
+                                }
+                                if (isCDMX(opt.text)) {
+                                    if (!firstCDMX) { firstCDMX = opt; }
+                                } else {
+                                    stateSelect.removeChild(opt);
+                                }
+                            });
+
+                            // Auto-seleccionar el primer CDMX encontrado
+                            if (firstCDMX) {
+                                firstCDMX.selected = true;
+                                stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+
+                            // Deshabilitar el select si solo queda una opción real
+                            var realOptions = Array.from(stateSelect.options).filter(function(o) {
+                                return o.value !== '';
+                            });
+                            if (realOptions.length <= 1) {
+                                stateSelect.style.pointerEvents = 'none';
+                                stateSelect.style.backgroundColor = '#e9ecef';
+                            }
+                        }
+
+                        // Interceptar fetch para filtrar la respuesta de country_infos
+                        // (fallback por si el controller override no aplica en algún caso)
+                        var _originalFetch = window.fetch;
+                        window.fetch = function(url, options) {
+                            return _originalFetch.apply(this, arguments).then(function(response) {
+                                var urlStr = typeof url === 'string' ? url : (url.url || '');
+                                if (urlStr.indexOf('country_infos') !== -1) {
+                                    return response.json().then(function(data) {
+                                        if (data &amp;&amp; Array.isArray(data.states)) {
+                                            data.states = data.states.filter(function(s) {
+                                                // s = [id, name, code]
+                                                return isCDMX(s[1]);
+                                            });
+                                        }
+                                        return new Response(JSON.stringify(data), {
+                                            status: response.status,
+                                            statusText: response.statusText,
+                                            headers: { 'Content-Type': 'application/json' }
+                                        });
+                                    });
+                                }
+                                return response;
+                            });
+                        };
+
+                        // Ejecutar en DOMContentLoaded y observar cambios dinámicos
+                        document.addEventListener('DOMContentLoaded', function() {
+                            filterStatesToCDMX();
+
+                            var observer = new MutationObserver(function(mutations) {
+                                mutations.forEach(function(mutation) {
+                                    mutation.addedNodes.forEach(function(node) {
+                                        if (node.nodeType !== 1) { return; }
+                                        var sel = node.id === 'state_id'
+                                            ? node
+                                            : (node.querySelector &amp;&amp; node.querySelector('#state_id'));
+                                        if (sel) { filterStatesToCDMX(); }
+                                    });
+                                    if (mutation.target &amp;&amp; mutation.target.id === 'state_id') {
+                                        filterStatesToCDMX();
+                                    }
+                                });
+                            });
+
+                            observer.observe(document.body, { childList: true, subtree: true });
+                        });
+
+                    }());
+                    //]]>
+                    </script>
+                </t>
+            </xpath>
+        </template>
+
+    </data>
+</odoo>
