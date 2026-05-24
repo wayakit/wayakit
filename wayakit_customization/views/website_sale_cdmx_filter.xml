@@ -36,7 +36,6 @@
 
                             options.forEach(function(opt) {
                                 if (opt.value === '') {
-                                    // Mantener placeholder vacío
                                     return;
                                 }
                                 if (isCDMX(opt.value)) {
@@ -58,18 +57,18 @@
                         }
 
                         // Interceptar fetch para filtrar la respuesta de country_infos
-                        // (fallback por si el controller override no aplica en algún caso)
                         var _originalFetch = window.fetch;
-                        window.fetch = function(url, options) {
+                        window.fetch = function(url, fetchOptions) {
                             return _originalFetch.apply(this, arguments).then(function(response) {
                                 var urlStr = typeof url === 'string' ? url : (url.url || '');
                                 if (urlStr.indexOf('country_infos') !== -1) {
                                     return response.json().then(function(data) {
-                                        if (data &amp;&amp; Array.isArray(data.states)) {
-                                            // s = [id, name, code] — filtrar por ID
-                                            data.states = data.states.filter(function(s) {
-                                                return s[0] === CDMX_STATE_ID;
-                                            });
+                                        if (data) {
+                                            if (Array.isArray(data.states)) {
+                                                data.states = data.states.filter(function(s) {
+                                                    return s[0] === CDMX_STATE_ID;
+                                                });
+                                            }
                                         }
                                         return new Response(JSON.stringify(data), {
                                             status: response.status,
@@ -90,13 +89,18 @@
                                 mutations.forEach(function(mutation) {
                                     mutation.addedNodes.forEach(function(node) {
                                         if (node.nodeType !== 1) { return; }
-                                        var sel = node.id === 'state_id'
-                                            ? node
-                                            : (node.querySelector &amp;&amp; node.querySelector('#state_id'));
+                                        var sel = null;
+                                        if (node.id === 'state_id') {
+                                            sel = node;
+                                        } else if (node.querySelector) {
+                                            sel = node.querySelector('#state_id');
+                                        }
                                         if (sel) { filterStatesToCDMX(); }
                                     });
-                                    if (mutation.target &amp;&amp; mutation.target.id === 'state_id') {
-                                        filterStatesToCDMX();
+                                    if (mutation.target) {
+                                        if (mutation.target.id === 'state_id') {
+                                            filterStatesToCDMX();
+                                        }
                                     }
                                 });
                             });
