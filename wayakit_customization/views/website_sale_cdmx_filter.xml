@@ -7,6 +7,10 @@
             Filters both the RPC response (via controller override) and
             the rendered <select> DOM (via JS below).
             Only active when website.name == 'WAYAKIT MX'.
+
+            Solo se muestra id=493 (Ciudad de México, CMX - estándar ISO).
+            Los ids 1391 y 1684 se mantienen válidos en el controller
+            para no romper órdenes históricas.
         -->
         <template id="wayakit_mx_cdmx_filter" inherit_id="website_sale.address" active="True">
             <xpath expr="//form" position="inside">
@@ -16,15 +20,11 @@
                     (function() {
                         'use strict';
 
-                        // Nombres que representan CDMX en esta instancia
-                        var CDMX_NAMES = ['Ciudad de México', 'CDMX'];
+                        // Único ID visible en el dropdown: Ciudad de México (CMX, estándar ISO)
+                        var CDMX_STATE_ID = 493;
 
-                        function isCDMX(optionText) {
-                            var text = optionText.trim();
-                            for (var i = 0; i < CDMX_NAMES.length; i++) {
-                                if (text === CDMX_NAMES[i]) { return true; }
-                            }
-                            return false;
+                        function isCDMX(optionValue) {
+                            return parseInt(optionValue) === CDMX_STATE_ID;
                         }
 
                         function filterStatesToCDMX() {
@@ -32,34 +32,29 @@
                             if (!stateSelect) { return; }
 
                             var options = Array.from(stateSelect.options);
-                            var firstCDMX = null;
+                            var cdmxOption = null;
 
                             options.forEach(function(opt) {
                                 if (opt.value === '') {
                                     // Mantener placeholder vacío
                                     return;
                                 }
-                                if (isCDMX(opt.text)) {
-                                    if (!firstCDMX) { firstCDMX = opt; }
+                                if (isCDMX(opt.value)) {
+                                    cdmxOption = opt;
                                 } else {
                                     stateSelect.removeChild(opt);
                                 }
                             });
 
-                            // Auto-seleccionar el primer CDMX encontrado
-                            if (firstCDMX) {
-                                firstCDMX.selected = true;
+                            // Auto-seleccionar Ciudad de México
+                            if (cdmxOption) {
+                                cdmxOption.selected = true;
                                 stateSelect.dispatchEvent(new Event('change', { bubbles: true }));
                             }
 
-                            // Deshabilitar el select si solo queda una opción real
-                            var realOptions = Array.from(stateSelect.options).filter(function(o) {
-                                return o.value !== '';
-                            });
-                            if (realOptions.length <= 1) {
-                                stateSelect.style.pointerEvents = 'none';
-                                stateSelect.style.backgroundColor = '#e9ecef';
-                            }
+                            // Deshabilitar visualmente el select (solo hay una opción)
+                            stateSelect.style.pointerEvents = 'none';
+                            stateSelect.style.backgroundColor = '#e9ecef';
                         }
 
                         // Interceptar fetch para filtrar la respuesta de country_infos
@@ -71,9 +66,9 @@
                                 if (urlStr.indexOf('country_infos') !== -1) {
                                     return response.json().then(function(data) {
                                         if (data &amp;&amp; Array.isArray(data.states)) {
+                                            // s = [id, name, code] — filtrar por ID
                                             data.states = data.states.filter(function(s) {
-                                                // s = [id, name, code]
-                                                return isCDMX(s[1]);
+                                                return s[0] === CDMX_STATE_ID;
                                             });
                                         }
                                         return new Response(JSON.stringify(data), {
