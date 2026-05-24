@@ -1,49 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <!-- Method 1: Using CSS to hide the fields completely -->
-        <template id="custom_css_hide_fields" inherit_id="website.layout">
-            <xpath expr="//head" position="inside">
-                <style>
-                    /* Hide company name field and its container */
-                    div:has(> input[name="company_name"]),
-                    div:has(> div > input[name="company_name"]),
-                    .form-group:has(input[name="company_name"]),
-                    [class*="col"]:has(input[name="company_name"]) {
-                        display: none !important;
-                    }
-
-                    /* Hide VAT field and its container */
-                    div:has(> input[name="vat"]),
-                    div:has(> div > input[name="vat"]),
-                    .form-group:has(input[name="vat"]),
-                    [class*="col"]:has(input[name="vat"]) {
-                        display: none !important;
-                    }
-
-                    /* Alternative selectors if :has is not supported */
-                    input[name="company_name"],
-                    input[name="vat"],
-                    label[for="company_name"],
-                    label[for="vat"] {
-                        display: none !important;
-                    }
-
-                    /* Hide parent containers by targeting common patterns */
-                    .checkout_autoformat input[name="company_name"],
-                    .checkout_autoformat input[name="vat"] {
-                        display: none !important;
-                    }
-
-                    /* Hide the entire row if it only contains these fields */
-                    .row:has(> [class*="col"]:only-child input[name="company_name"]),
-                    .row:has(> [class*="col"]:only-child input[name="vat"]) {
-                        display: none !important;
-                    }
-                </style>
-            </xpath>
-        </template>
-
         <!-- Method 2: JavaScript solution for complete removal -->
         <template id="custom_js_hide_fields" inherit_id="website_sale.address">
             <xpath expr="//form" position="inside">
@@ -165,15 +122,22 @@
         <template id="custom_css_hide_fields" inherit_id="website.layout">
             <xpath expr="//head" position="inside">
                 <style>
+                    /* Hide company name and VAT */
                     .checkout_autoformat input[name="company_name"],
                     .checkout_autoformat input[name="vat"],
                     .checkout_autoformat label[for="company_name"],
                     .checkout_autoformat label[for="vat"] {
                         display: none !important;
                     }
-
                     .checkout_autoformat div:has(> input[name="company_name"]),
                     .checkout_autoformat div:has(> input[name="vat"]) {
+                        display: none !important;
+                    }
+
+                    /* Hide Apple Pay button (MyFatoorah) */
+                    #mf_apple_pay_btn,
+                    #mf_apple_pay_btn + hr,
+                    #mf_apple_pay_btn ~ .o_express_checkout_separator {
                         display: none !important;
                     }
                 </style>
