@@ -134,10 +134,11 @@
                         display: none !important;
                     }
 
-                    /* Hide Apple Pay button (MyFatoorah) */
+                    /* Hide Apple Pay button and its OR separator (MyFatoorah) */
                     #mf_apple_pay_btn,
+                    #mf_apple_pay_btn + div,
                     #mf_apple_pay_btn + hr,
-                    #mf_apple_pay_btn ~ .o_express_checkout_separator {
+                    div:has(> #mf_apple_pay_btn) + div.text-center {
                         display: none !important;
                     }
                 </style>
