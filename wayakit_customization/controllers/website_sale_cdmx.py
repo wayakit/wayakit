@@ -17,6 +17,7 @@ class WebsiteSaleCDMXFilter(WebsiteSale):
         website=True,
     )
     def country_infos(self, country, mode, **kw):
+        """Filtra estados en el dropdown dinámico (cuando el usuario cambia el país)."""
         result = super().country_infos(country, mode, **kw)
 
         website = request.website
@@ -30,3 +31,33 @@ class WebsiteSaleCDMXFilter(WebsiteSale):
             ]
 
         return result
+
+    @http.route(
+        ['/shop/address'],
+        type='http',
+        methods=['GET', 'POST'],
+        auth="public",
+        website=True,
+        sitemap=False,
+    )
+    def address(self, **kw):
+        """Filtra estados en el render inicial del formulario (incluyendo ?mode=billing&partner_id=X)."""
+        response = super().address(**kw)
+
+        website = request.website
+        if not website or website.name != WAYAKIT_MX_WEBSITE_NAME:
+            return response
+
+        if request.httprequest.method != 'GET':
+            return response
+
+        try:
+            qcontext = response.qcontext
+            if qcontext and 'country_states' in qcontext:
+                qcontext['country_states'] = qcontext['country_states'].filtered(
+                    lambda s: s.id == CDMX_VISIBLE_ID
+                )
+        except AttributeError:
+            pass
+
+        return response
