@@ -32,32 +32,16 @@ class WebsiteSaleCDMXFilter(WebsiteSale):
 
         return result
 
-    @http.route(
-        ['/shop/address'],
-        type='http',
-        methods=['GET', 'POST'],
-        auth="public",
-        website=True,
-        sitemap=False,
-    )
-    def address(self, **kw):
+    def _get_country_related_render_values(self, kw, render_values):
         """Filtra estados en el render inicial del formulario (incluyendo ?mode=billing&partner_id=X)."""
-        response = super().address(**kw)
+        res = super()._get_country_related_render_values(kw, render_values)
 
         website = request.website
         if not website or website.name != WAYAKIT_MX_WEBSITE_NAME:
-            return response
+            return res
 
-        if request.httprequest.method != 'GET':
-            return response
+        res['country_states'] = res['country_states'].filtered(
+            lambda s: s.id == CDMX_VISIBLE_ID
+        )
 
-        try:
-            qcontext = response.qcontext
-            if qcontext and 'country_states' in qcontext:
-                qcontext['country_states'] = qcontext['country_states'].filtered(
-                    lambda s: s.id == CDMX_VISIBLE_ID
-                )
-        except AttributeError:
-            pass
-
-        return response
+        return res
