@@ -1,6 +1,7 @@
 /** @odoo-module **/
 
 document.addEventListener("DOMContentLoaded", function () {
+
     document.querySelectorAll('a[href="#sPopup1780331031885"], a[href="#sPopup1780329941033"]').forEach(function (link) {
         link.addEventListener("click", function (e) {
             e.preventDefault();
@@ -17,4 +18,20 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
+    document.addEventListener("click", function (e) {
+        if (e.target.closest(".js_close_popup")) {
+            var popup = e.target.closest(".s_popup");
+            if (popup) {
+                var modal = popup.querySelector(".modal");
+                if (modal) {
+                    modal.style.display = "none";
+                    modal.classList.remove("show");
+                }
+                popup.classList.add("d-none", "o_snippet_invisible");
+                popup.classList.remove("d-block");
+            }
+        }
+    });
+
 });
