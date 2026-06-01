@@ -2,6 +2,7 @@
 
 document.addEventListener("DOMContentLoaded", function () {
 
+    // Abrir popup al hacer click en imagen
     document.querySelectorAll('a[href="#sPopup1780331031885"], a[href="#sPopup1780329941033"]').forEach(function (link) {
         link.addEventListener("click", function (e) {
             e.preventDefault();
@@ -19,9 +20,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Cerrar popup - busca el s_popup visible (d-block)
     document.addEventListener("click", function (e) {
-        if (e.target.closest(".js_close_popup")) {
-            var popup = e.target.closest(".s_popup");
+        if (e.target.closest(".s_popup_close") || e.target.closest(".js_close_popup")) {
+            e.preventDefault();
+            e.stopPropagation();
+            // Buscar el popup que está abierto (d-block)
+            var popup = document.querySelector(".s_popup.d-block");
             if (popup) {
                 var modal = popup.querySelector(".modal");
                 if (modal) {
