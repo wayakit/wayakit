@@ -36,6 +36,9 @@
         'demo/demo.xml',
     ],
     'assets': {
-        'web.assets_backend': []
+        'web.assets_backend': [],
+        'website.assets_frontend': [
+                'wayakit_customization/static/src/js/popup_handler.js',
+        ],
     }
 }
