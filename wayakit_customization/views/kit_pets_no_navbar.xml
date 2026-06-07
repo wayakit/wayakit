@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <template id="kit_pets_hide_navbar" inherit_id="website.layout" active="True">
+            <xpath expr="//body" position="inside">
+                <script type="text/javascript">
+                    (function () {
+                        function ocultarNavbar() {
+                            if (window.location.href.includes("/kit-pets")) {
+                                const navbars = document.querySelectorAll(".navbar");
+                                navbars.forEach(function (navbar) {
+                                    navbar.style.setProperty("display", "none", "important");
+                                });
+                            }
+                        }
+                        document.addEventListener("DOMContentLoaded", ocultarNavbar);
+                        window.addEventListener("load", ocultarNavbar);
+                        const observer = new MutationObserver(function () {
+                            ocultarNavbar();
+                        });
+                        observer.observe(document.body, {
+                            childList: true,
+                            subtree: true
+                        });
+                    })();
+                </script>
+            </xpath>
+        </template>
+    </data>
+</odoo>
