@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
+
     <template id="assets_frontend_myfatoorah_applepay"
               inherit_id="web.assets_frontend"
               name="MyFatoorah Apple Pay Assets">
