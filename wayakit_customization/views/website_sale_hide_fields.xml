@@ -67,14 +67,6 @@
                     .checkout_autoformat div:has(> input[name="vat"]) {
                         display: none !important;
                     }
-
-                    /* Hide Apple Pay button and its OR separator (MyFatoorah) */
-                    #mf_apple_pay_btn,
-                    #mf_apple_pay_btn + div,
-                    #mf_apple_pay_btn + hr,
-                    div:has(> #mf_apple_pay_btn) + div.text-center {
-                        display: none !important;
-                    }
                 </style>
             </xpath>
         </template>
