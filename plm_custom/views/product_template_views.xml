@@ -54,7 +54,7 @@
         <field name="groups_id" eval="[(6, 0, [ref('plm_custom.group_plm_standard')])]"/>
         <field name="arch" type="xml">
             <tree string="Components">
-                <field name="synonym_name" string="Name"/>
+                <field name="display_name_plm" string="Name"/>
                 <field name="categ_id" string="Category"/>
                 <field name="uom_id" string="Unit of Measure"/>
                 <field name="active" column_invisible="1"/>

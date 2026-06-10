@@ -66,13 +66,14 @@ class ProductTemplate(models.Model):
                 limit=limit, order=order,
             )
         base_domain = list(domain or [])
-        return base_domain + [
+        search_domain = base_domain + [
             '|',
             '&', ('is_plm_component', '=', True),
                  ('synonym_name', operator, name),
             '&', ('is_plm_component', '=', False),
                  ('name', operator, name),
         ]
+        return super()._search(search_domain, limit=limit, order=order)
 
     # ── _search: intercepta TODAS las búsquedas por 'name' ────────────────
     # Es el método de más bajo nivel — se llama siempre, sin importar
