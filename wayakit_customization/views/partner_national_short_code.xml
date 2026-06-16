@@ -9,6 +9,7 @@
             <field name="arch" type="xml">
                 <xpath expr="//field[@name='vat']" position="after">
                     <field name="x_national_short_code"
+                           string="National Address Short Code"
                            placeholder="e.g. RRRD2929"/>
                 </xpath>
             </field>
