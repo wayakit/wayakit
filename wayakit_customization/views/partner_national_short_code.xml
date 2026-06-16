@@ -7,7 +7,7 @@
             <field name="inherit_id" ref="base.view_partner_form"/>
             <field name="priority">99</field>
             <field name="arch" type="xml">
-                <xpath expr="//field[@name='vat']" position="after">
+                <xpath expr="//field[@name='website']" position="after">
                     <field name="x_national_short_code"
                            string="National Address Short Code"
                            placeholder="e.g. RRRD2929"/>
