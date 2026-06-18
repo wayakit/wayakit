@@ -3,11 +3,27 @@ from odoo import http
 from odoo.http import request
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
+# Inherit from WebsiteSaleL10nMX when l10n_mx_edi_website_sale is installed
+# so WebsiteSaleCustom is more specific and wins the route dispatch over it.
+# Falls back to WebsiteSale on instances where the MX module is not installed (e.g. KSA).
+try:
+    from odoo.addons.l10n_mx_edi_website_sale.controllers.main import WebsiteSaleL10nMX as _AddressBase
+except ImportError:
+    _AddressBase = WebsiteSale
+
 WAYAKIT_MX_WEBSITE_NAME = 'WAYAKIT MX'
 CDMX_VISIBLE_ID = 493  # Ciudad de México, CMX - único visible en el dropdown
 
 
-class WebsiteSaleCustom(WebsiteSale):
+class WebsiteSaleCustom(_AddressBase):
+
+    def _l10n_mx_edi_is_extra_info_needed(self):
+        # In the One Page Checkout flow the callback points back to /shop/checkout.
+        # Skip the l10n_mx invoicing info step so the customer returns to the OPC.
+        callback = request.params.get('callback', '')
+        if request.website.name == WAYAKIT_MX_WEBSITE_NAME and '/shop/checkout' in callback:
+            return False
+        return super()._l10n_mx_edi_is_extra_info_needed()
 
     @http.route(
         ['/shop/address'],
@@ -15,26 +31,7 @@ class WebsiteSaleCustom(WebsiteSale):
         auth="public", website=True, sitemap=False
     )
     def address(self, **kw):
-        # Read callback from raw HTTP request before any controller in the MRO
-        # (e.g. l10n_mx_edi_website_sale) can overwrite kw['callback'].
-        original_callback = request.params.get('callback', '')
-
-        response = super().address(**kw)
-
-        # l10n_mx_edi_website_sale replaces callback with /shop/l10n_mx_invoicing_info
-        # for all MX orders, ignoring the One Page Checkout flow.
-        # When the original callback points back to /shop/checkout (One Page Checkout),
-        # restore the correct redirect.
-        if (
-            request.website.name == WAYAKIT_MX_WEBSITE_NAME
-            and request.httprequest.method == 'POST'
-            and '/shop/checkout' in original_callback
-            and hasattr(response, 'location')
-            and 'l10n_mx_invoicing_info' in response.location
-        ):
-            return request.redirect(original_callback)
-
-        return response
+        return super().address(**kw)
 
     @http.route(
         ['/shop/country_infos/<model("res.country"):country>'],
