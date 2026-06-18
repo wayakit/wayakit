@@ -15,16 +15,24 @@ class WebsiteSaleCustom(WebsiteSale):
         auth="public", website=True, sitemap=False
     )
     def address(self, **kw):
+        # Read callback from raw HTTP request before any controller in the MRO
+        # (e.g. l10n_mx_edi_website_sale) can overwrite kw['callback'].
+        original_callback = request.params.get('callback', '')
+
         response = super().address(**kw)
 
-        if request.website.name != WAYAKIT_MX_WEBSITE_NAME:
-            return response
-
-        # Solo en POST: interceptar redirección al checkout
-        if request.httprequest.method == 'POST':
-            if hasattr(response, 'location'):
-                if '/shop/checkout' in response.location:
-                    return request.redirect('/shop/checkout')
+        # l10n_mx_edi_website_sale replaces callback with /shop/l10n_mx_invoicing_info
+        # for all MX orders, ignoring the One Page Checkout flow.
+        # When the original callback points back to /shop/checkout (One Page Checkout),
+        # restore the correct redirect.
+        if (
+            request.website.name == WAYAKIT_MX_WEBSITE_NAME
+            and request.httprequest.method == 'POST'
+            and '/shop/checkout' in original_callback
+            and hasattr(response, 'location')
+            and 'l10n_mx_invoicing_info' in response.location
+        ):
+            return request.redirect(original_callback)
 
         return response
 
