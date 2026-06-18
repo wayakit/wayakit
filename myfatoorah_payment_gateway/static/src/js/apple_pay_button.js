@@ -6,8 +6,24 @@ publicWidget.registry.MyFatoorahApplePay = publicWidget.Widget.extend({
     selector: '.oe_website_sale',
 
     start: function () {
-        this.insertApplePayButton();
+        this._checkAndInsertApplePay();
         return this._super.apply(this, arguments);
+    },
+
+    _checkAndInsertApplePay: async function () {
+        try {
+            const response = await fetch('/payment/myfatoorah/applepay/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: {} }),
+            });
+            const data = await response.json();
+            if (data.result && data.result.show) {
+                this.insertApplePayButton();
+            }
+        } catch (e) {
+            console.error('Apple Pay check failed:', e);
+        }
     },
 
     insertApplePayButton: function () {
