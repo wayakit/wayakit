@@ -158,6 +158,19 @@ class PaymentMyFatoorahController(http.Controller):
         )
         return Response(content or '', content_type='text/plain')
 
+    @http.route('/payment/myfatoorah/applepay/check', type='json', auth='public',
+                website=True, csrf=False)
+    def myfatoorah_apple_pay_check(self, **kwargs):
+        """Check if Apple Pay should be shown on the current website.
+        Returns True only if a MyFatoorah provider exists for the same company as this website."""
+        website = request.website
+        provider = request.env['payment.provider'].sudo().search([
+            ('code', '=', 'myfatoorah'),
+            ('company_id', '=', website.company_id.id),
+            ('state', 'in', ['enabled', 'test']),
+        ], limit=1)
+        return {'show': bool(provider)}
+
     @http.route('/payment/myfatoorah/applepay/pay', type='json', auth='public',
                 website=True, csrf=False)
     def myfatoorah_apple_pay_pay(self, **kwargs):
@@ -188,10 +201,11 @@ class PaymentMyFatoorahController(http.Controller):
             )
 
             # ----------------------------------------------------------------
-            # STEP 2: Fetch the MyFatoorah payment provider
+            # STEP 2: Fetch the MyFatoorah payment provider for this website's company
             # ----------------------------------------------------------------
             provider = request.env['payment.provider'].sudo().search(
-                [('code', '=', 'myfatoorah')], limit=1
+                [('code', '=', 'myfatoorah'),
+                 ('company_id', '=', request.website.company_id.id)], limit=1
             )
             if not provider or not provider.myfatoorah_token:
                 return {'success': False, 'message': 'MyFatoorah provider or token missing.'}
