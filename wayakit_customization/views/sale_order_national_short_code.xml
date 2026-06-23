@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_order_form_national_short_code" model="ir.ui.view">
+            <field name="name">sale.order.form.national.short.code</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="priority">99</field>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='partner_id']" position="after">
+                    <field name="x_national_short_code"
+                           placeholder="e.g. RRRD2929"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
