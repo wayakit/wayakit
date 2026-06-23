@@ -2,6 +2,8 @@
 import logging
 import re
 
+from markupsafe import Markup
+
 from odoo import api, models
 from odoo.tools import html2plaintext
 
@@ -54,7 +56,7 @@ class WhatsappMessage(models.Model):
             if not partner.x_national_short_code:
                 partner.sudo().write({'x_national_short_code': short_code})
                 partner.message_post(
-                    body="✅ National Address short code captured via WhatsApp: <b>%s</b>" % short_code,
+                    body=Markup("✅ National Address short code captured via WhatsApp: <b>%s</b>") % short_code,
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
