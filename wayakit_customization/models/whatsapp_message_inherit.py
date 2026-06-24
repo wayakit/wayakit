@@ -65,17 +65,42 @@ class WhatsappMessage(models.Model):
         """Resolve the customer this inbound message belongs to.
 
         Resolution order, most reliable first:
-          1. The customer of the originating document (the sale order the
-             WhatsApp conversation was started from). This is the stable
-             account that is reused across orders, so the captured code is
-             available next time and the customer is not asked again.
-          2. The WhatsApp contact tied to the channel (``author_id``).
-          3. A phone-number lookup as a last resort.
+          1. The customer of the order the conversation was started from. The
+             real WhatsApp flow does NOT anchor the channel to the source
+             document, but the *outbound* message that "Send WhatsApp" creates
+             from a sale order keeps ``mail_message_id.model == 'sale.order'``.
+             Inbound replies share the same ``mobile_number_formatted``, so we
+             walk the most recent outbound messages for that number and take
+             the customer of the originating document. This is the stable
+             account reused across orders, so the customer is not asked again.
+          2. The originating document via the channel (kept for flows where the
+             channel *is* anchored to the source record).
+          3. The WhatsApp contact tied to the channel (``author_id``).
+          4. A phone-number lookup as a last resort.
         """
         self.ensure_one()
         mail_msg = self.mail_message_id
 
-        # 1) Anchor on the originating document via the channel.
+        # 1) Anchor on the most recent outbound WhatsApp for this number that
+        #    was sent from a document carrying a customer (e.g. a sale order).
+        if self.mobile_number_formatted:
+            outbound = self.search([
+                ('message_type', '=', 'outbound'),
+                ('mobile_number_formatted', '=', self.mobile_number_formatted),
+            ], order='id desc')
+            for out in outbound:
+                src_msg = out.mail_message_id
+                if (src_msg and src_msg.model and src_msg.res_id
+                        and src_msg.model != 'discuss.channel'):
+                    source = self.env[src_msg.model].browse(src_msg.res_id).exists()
+                    if source and 'partner_id' in source._fields and source.partner_id:
+                        _logger.info(
+                            "WhatsApp short code: resolved partner from outbound %s -> %s(%s) for message %s",
+                            out.id, src_msg.model, src_msg.res_id, self.id,
+                        )
+                        return source.partner_id
+
+        # 2) Anchor on the originating document via the channel.
         if mail_msg and mail_msg.model == 'discuss.channel' and mail_msg.res_id:
             channel = self.env['discuss.channel'].browse(mail_msg.res_id).exists()
             source_msg = channel.whatsapp_mail_message_id if channel else False
@@ -84,7 +109,7 @@ class WhatsappMessage(models.Model):
                 if source and 'partner_id' in source._fields and source.partner_id:
                     return source.partner_id
 
-        # 2) The WhatsApp contact for this conversation.
+        # 3) The WhatsApp contact for this conversation.
         if mail_msg and mail_msg.author_id:
             _logger.info(
                 "WhatsApp short code: using channel contact (no source document) for message %s",
@@ -92,7 +117,7 @@ class WhatsappMessage(models.Model):
             )
             return mail_msg.author_id
 
-        # 3) Phone-number fallback.
+        # 4) Phone-number fallback.
         if self.mobile_number_formatted:
             partner = self.env['res.partner'].search([
                 '|',
