@@ -1,8 +1,6 @@
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError
 
-PLM_COMPONENT_CATEGORY = 'PLM Component'
-
 
 class MrpBom(models.Model):
     _inherit = 'mrp.bom'
@@ -145,6 +143,39 @@ class MrpBomLine(models.Model):
         store=False,
     )
 
+    component_density = fields.Float(
+        string='Density (g/mL)',
+        related='product_id.product_tmpl_id.density',
+        readonly=True,
+    )
+
+    qty_in_grams = fields.Float(
+        string='Qty (g)',
+        compute='_compute_qty_in_grams',
+        digits=(12, 4),
+        help='Quantity converted to grams: volume in mL x density. '
+             'Only computed for lines whose UoM is a volume.',
+    )
+
+    @api.depends('product_qty', 'product_uom_id',
+                 'product_id.product_tmpl_id.density')
+    def _compute_qty_in_grams(self):
+        volume_categ = self.env.ref('uom.uom_categ_vol', raise_if_not_found=False)
+        litre = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
+        for line in self:
+            density = line.product_id.product_tmpl_id.density
+            if (
+                density
+                and litre
+                and line.product_uom_id.category_id == volume_categ
+            ):
+                qty_ml = line.product_uom_id._compute_quantity(
+                    line.product_qty, litre
+                ) * 1000.0
+                line.qty_in_grams = qty_ml * density
+            else:
+                line.qty_in_grams = 0.0
+
     # 1. Nuevo campo para el porcentaje
     component_percentage = fields.Float(
         string='Percentage (%)',
@@ -169,14 +200,14 @@ class MrpBomLine(models.Model):
     @api.depends(
         'product_id',
         'product_id.product_tmpl_id.synonym_name',
-        'product_id.product_tmpl_id.categ_id.name',
+        'product_id.product_tmpl_id.is_plm_component',
     )
     @api.depends_context('uid')
     def _compute_component_display_name(self):
         is_standard = self._is_plm_standard_user()
         for record in self:
             tmpl = record.product_id.product_tmpl_id
-            is_plm = tmpl.categ_id.name == PLM_COMPONENT_CATEGORY
+            is_plm = tmpl.is_plm_component
             if is_standard and is_plm and tmpl.synonym_name:
                 record.component_display_name = tmpl.synonym_name
             else:

@@ -1,7 +1,7 @@
 from odoo import models, fields, api
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError
 
-PLM_COMPONENT_CATEGORY = 'PLM Component'
+PLM_COMPONENT_CATEGORY = 'All / Raw Materials / Chemical'
 
 
 class ProductTemplate(models.Model):
@@ -18,11 +18,18 @@ class ProductTemplate(models.Model):
         store=True,
     )
 
-    @api.depends('categ_id', 'categ_id.name')
+    density = fields.Float(
+        string='Density (g/mL)',
+        digits=(12, 4),
+        help="Physical density from the supplier's technical data sheet. "
+             "Used to convert mL quantities to grams in BoM lines.",
+    )
+
+    @api.depends('categ_id', 'categ_id.complete_name')
     def _compute_is_plm_component(self):
         for record in self:
             record.is_plm_component = (
-                record.categ_id.name == PLM_COMPONENT_CATEGORY
+                record.categ_id.complete_name == PLM_COMPONENT_CATEGORY
             )
 
     def _is_plm_standard_user(self):
@@ -142,11 +149,9 @@ class ProductTemplate(models.Model):
             else:
                 record.display_name_plm = record.name or ''
 
-    @api.constrains('is_plm_component', 'synonym_name')
-    def _check_synonym_name_required(self):
-        for record in self:
-            if record.is_plm_component and not record.synonym_name:
-                raise ValidationError("PLM Restriction: A Synonym Name is strictly required for PLM Components.")
+    # ponytail: synonym_name constraint removed for Phase 1 (existing chemicals
+    # have no synonym yet). Restore _check_synonym_name_required in Phase 2
+    # once all synonyms are entered.
 
 
 class ProductTemplateSecurity(models.Model):
@@ -156,7 +161,7 @@ class ProductTemplateSecurity(models.Model):
         if self._is_plm_standard_user():
             if 'categ_id' in vals:
                 new_category = self.env['product.category'].browse(vals['categ_id'])
-                if new_category.name == PLM_COMPONENT_CATEGORY:
+                if new_category.complete_name == PLM_COMPONENT_CATEGORY:
                     raise AccessError(
                         "PLM Restriction: Standard users cannot assign the 'PLM Component' category to products.")
             for record in self:
