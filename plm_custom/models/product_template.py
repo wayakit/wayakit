@@ -1,7 +1,7 @@
 from odoo import models, fields, api
 from odoo.exceptions import AccessError
 
-PLM_COMPONENT_CATEGORY = 'All / Raw Materials / Chemical'
+PLM_COMPONENT_CATEGORY = 'All / Raw material / Chemical'
 
 
 class ProductTemplate(models.Model):
