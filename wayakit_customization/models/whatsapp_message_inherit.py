@@ -27,8 +27,13 @@ class WhatsappMessage(models.Model):
         return messages
 
     def _wayakit_capture_national_short_code(self):
-        """Scan inbound WhatsApp messages for a Saudi National Address short code
-        and store it on the related customer if not already set."""
+        """Scan inbound WhatsApp messages for a Saudi National Address short code,
+        store it on the related customer, and confirm back over WhatsApp.
+
+        A reply always reflects the customer's latest intent, so a new valid code
+        overwrites whatever was stored before (this is how the customer corrects a
+        wrong code). On every valid code we send an automatic WhatsApp confirmation
+        stating the stored value and how to correct it."""
         for msg in self:
             if msg.message_type != 'inbound':
                 continue
@@ -51,15 +56,46 @@ class WhatsappMessage(models.Model):
                 )
                 continue
 
-            # Write only if the partner doesn't already have a code. If they
-            # already have one, the reply is a duplicate and we leave it as-is.
-            if not partner.x_national_short_code:
+            # Overwrite on every reply: the latest code the customer sends wins
+            # (this is how the customer corrects a wrong code).
+            if partner.x_national_short_code != short_code:
                 partner.sudo().write({'x_national_short_code': short_code})
                 partner.message_post(
                     body=Markup("✅ National Address short code captured via WhatsApp: <b>%s</b>") % short_code,
                     message_type='notification',
                     subtype_xmlid='mail.mt_note',
                 )
+
+            # Confirm back to the customer over WhatsApp (within the 24h window).
+            msg._wayakit_send_short_code_confirmation(short_code)
+
+    def _wayakit_send_short_code_confirmation(self, short_code):
+        """Send an automatic WhatsApp reply confirming the stored short code.
+
+        Best-effort: a send failure must never break capture. Only valid inside
+        WhatsApp's 24h customer-service window, which always holds here because the
+        customer just messaged us. Posting to the channel with message_type
+        ``whatsapp_message`` creates an outbound message and triggers the send
+        (see ``discuss.channel.message_post``). The outbound reply is never
+        re-captured because capture only processes inbound messages."""
+        self.ensure_one()
+        mail_msg = self.mail_message_id
+        if not (mail_msg and mail_msg.model == 'discuss.channel' and mail_msg.res_id):
+            return
+        channel = self.env['discuss.channel'].browse(mail_msg.res_id).exists()
+        if not channel or channel.channel_type != 'whatsapp':
+            return
+        body = Markup(
+            "✅ We saved your National Address short code: <b>%s</b>.<br/><br/>"
+            "If this is correct, no need to reply. If it is wrong, just send the "
+            "correct code again (4 letters + 4 numbers, e.g. RRRD2929)."
+        ) % short_code
+        try:
+            channel.sudo().message_post(body=body, message_type='whatsapp_message')
+        except Exception:  # noqa: BLE001
+            _logger.exception(
+                "Failed to send WhatsApp short code confirmation (message %s)", self.id,
+            )
 
     def _wayakit_resolve_partner(self):
         """Resolve the customer this inbound message belongs to.
