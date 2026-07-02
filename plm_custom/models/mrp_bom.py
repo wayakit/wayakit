@@ -160,14 +160,13 @@ class MrpBomLine(models.Model):
     @api.depends('product_qty', 'product_uom_id',
                  'product_id.product_tmpl_id.density')
     def _compute_qty_in_grams(self):
-        volume_categ = self.env.ref('uom.uom_categ_vol', raise_if_not_found=False)
         litre = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
         for line in self:
             density = line.product_id.product_tmpl_id.density
             if (
                 density
                 and litre
-                and line.product_uom_id.category_id == volume_categ
+                and line.product_uom_id.category_id == litre.category_id
             ):
                 qty_ml = line.product_uom_id._compute_quantity(
                     line.product_qty, litre
