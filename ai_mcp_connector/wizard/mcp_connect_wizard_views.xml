@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mcp_connect_wizard_form" model="ir.ui.view">
+        <field name="name">ai.mcp.connect.wizard.form</field>
+        <field name="model">ai.mcp.connect.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Connect AI Assistant" class="o_iw_mcp_wizard">
+                <div class="o_iw_hero">
+                    <img class="o_iw_ico" src="/ai_mcp_connector/static/description/icon.png" alt="AI MCP Connector"/>
+                    <h2>Connect an AI Assistant</h2>
+                    <p>Link this Odoo to Claude, ChatGPT, Le Chat, Perplexity or Grok in three
+                       quick steps. The connection acts as
+                       <field name="user_id" readonly="1" class="o_iw_who"/>.</p>
+                </div>
+
+                <div class="o_iw_body">
+                    <div class="o_iw_step">
+                        <div class="o_iw_num">1</div>
+                        <div class="o_iw_bd">
+                            <h3>Generate your secure key</h3>
+                            <field name="api_key" password="True" nolabel="1"
+                                   placeholder="Click Generate below, or paste an existing key"/>
+                            <button name="action_generate_key" type="object"
+                                    string="Generate New API Key" class="o_iw_gen" icon="fa-key"/>
+                        </div>
+                    </div>
+
+                    <div class="o_iw_step" invisible="not connection_url">
+                        <div class="o_iw_num">2</div>
+                        <div class="o_iw_bd">
+                            <h3>Copy your connection URL</h3>
+                            <field name="connection_url" widget="CopyClipboardChar" nolabel="1" readonly="1"/>
+                        </div>
+                    </div>
+
+                    <div class="o_iw_step" invisible="not connection_url">
+                        <div class="o_iw_num">3</div>
+                        <div class="o_iw_bd">
+                            <h3>Open your assistant and paste it</h3>
+                            <p class="o_iw_hint">Open one of these, then paste the URL into the
+                               <b>Add custom connector</b> field:</p>
+                            <div class="o_iw_grid">
+                                <button name="action_open_claude" type="object"
+                                        string="Open in Claude" class="o_iw_ai o_iw_btn_claude"/>
+                                <button name="action_open_chatgpt" type="object"
+                                        string="Open in ChatGPT" class="o_iw_ai o_iw_btn_gpt"/>
+                                <button name="action_open_lechat" type="object"
+                                        string="Open in Le Chat" class="o_iw_ai o_iw_btn_lechat"/>
+                                <button name="action_open_perplexity" type="object"
+                                        string="Open in Perplexity" class="o_iw_ai o_iw_btn_perplexity"/>
+                                <button name="action_open_grok" type="object"
+                                        string="Open in Grok" class="o_iw_ai o_iw_btn_grok"/>
+                            </div>
+                            <p class="o_iw_any">
+                                <i class="fa fa-plug o_iw_plug" role="img" aria-label="Any MCP client"/>
+                                <span>Using a different AI? It works with <b>any MCP-compatible
+                                      assistant</b> &#8212; just paste the URL above into that app's
+                                      <b>custom connector</b> (or MCP server) field.</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="o_iw_note" invisible="not connection_url">
+                        <i class="fa fa-shield o_iw_sh" role="img" aria-label="Security"/>
+                        <span>Treat this URL like a password - anyone with it can act as you in
+                              Odoo. You can revoke it anytime under
+                              <b>Preferences → Account Security</b>.</span>
+                    </div>
+                </div>
+
+                <footer>
+                    <button string="Done" special="cancel" class="o_iw_done"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_mcp_connect_wizard" model="ir.actions.act_window">
+        <field name="name">Connect AI Assistant</field>
+        <field name="res_model">ai.mcp.connect.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

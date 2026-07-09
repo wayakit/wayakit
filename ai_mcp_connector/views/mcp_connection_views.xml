@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mcp_connection_list" model="ir.ui.view">
+        <field name="name">ai.mcp.connection.list</field>
+        <field name="model">res.users.apikeys</field>
+        <field name="arch" type="xml">
+            <tree string="MCP Connections" create="false" edit="false">
+                <field name="user_id"/>
+                <field name="name"/>
+                <field name="scope" optional="hide"/>
+                <field name="create_date" string="Connected On"/>
+                <field name="mcp_last_used"/>
+                <button name="action_mcp_revoke" type="object" string="Revoke"
+                        icon="fa-ban" class="text-danger"
+                        confirm="Revoke this connection? The user's Claude link stops working immediately."/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mcp_connection_form" model="ir.ui.view">
+        <field name="name">ai.mcp.connection.form</field>
+        <field name="model">res.users.apikeys</field>
+        <field name="arch" type="xml">
+            <form string="MCP Connection" create="false" edit="false">
+                <header>
+                    <button name="action_mcp_revoke" type="object" string="Revoke Connection"
+                            class="btn-danger" icon="fa-ban"
+                            confirm="Revoke this connection? The user's Claude link stops working immediately."/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="user_id"/>
+                        <field name="name"/>
+                        <field name="scope"/>
+                        <field name="create_date" string="Connected On"/>
+                        <field name="mcp_last_used"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mcp_connection_search" model="ir.ui.view">
+        <field name="name">ai.mcp.connection.search</field>
+        <field name="model">res.users.apikeys</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="user_id"/>
+                <group>
+                    <filter string="User" name="g_user" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mcp_connections" model="ir.actions.act_window">
+        <field name="name">MCP Connections</field>
+        <field name="res_model">res.users.apikeys</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">['|', ('name', '=', 'AI MCP Connector'), ('name', '=', 'IndexWorld MCP (Claude)')]</field>
+        <field name="search_view_id" ref="view_mcp_connection_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No MCP connections yet</p>
+            <p>Connections appear here when users generate a key via
+               <b>Connect AI Assistant</b>. You can revoke any of them with one click.</p>
+        </field>
+    </record>
+</odoo>

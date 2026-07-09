@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mcp_enabled_model_list" model="ir.ui.view">
+        <field name="name">ai.mcp.enabled.model.list</field>
+        <field name="model">ai.mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <tree string="MCP Enabled Models" editable="bottom">
+                <header>
+                    <button name="%(action_mcp_model_selection_wizard)d" type="action"
+                            string="Enable Multiple Models" class="btn-primary" display="always"/>
+                </header>
+                <field name="model_id" options="{'no_create': True}"/>
+                <field name="model_name"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="allow_read" widget="boolean_toggle"/>
+                <field name="allow_create" widget="boolean_toggle"/>
+                <field name="allow_write" widget="boolean_toggle"/>
+                <field name="allow_unlink" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mcp_enabled_model_form" model="ir.ui.view">
+        <field name="name">ai.mcp.enabled.model.form</field>
+        <field name="model">ai.mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <form string="MCP Model Configuration">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="model_id"/>
+                        <h1><field name="model_id" options="{'no_create': True}"/></h1>
+                        <field name="model_name" readonly="1"/>
+                    </div>
+                    <group>
+                        <group string="Allowed Operations">
+                            <field name="active"/>
+                            <field name="allow_read"/>
+                            <field name="allow_create"/>
+                            <field name="allow_write"/>
+                            <field name="allow_unlink"/>
+                        </group>
+                    </group>
+                    <group string="Notes">
+                        <field name="notes" nolabel="1" placeholder="Optional notes..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mcp_enabled_model_search" model="ir.ui.view">
+        <field name="name">ai.mcp.enabled.model.search</field>
+        <field name="model">ai.mcp.enabled.model</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="model_id"/>
+                <field name="model_name"/>
+                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Read" name="r" domain="[('allow_read', '=', True)]"/>
+                <filter string="Create" name="c" domain="[('allow_create', '=', True)]"/>
+                <filter string="Update" name="w" domain="[('allow_write', '=', True)]"/>
+                <filter string="Delete" name="u" domain="[('allow_unlink', '=', True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mcp_enabled_models" model="ir.actions.act_window">
+        <field name="name">MCP Models</field>
+        <field name="res_model">ai.mcp.enabled.model</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mcp_enabled_model_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No models exposed yet</p>
+            <p>Add a model to make it accessible through MCP, and tick which
+               operations (read / create / update / delete) you want to allow.</p>
+        </field>
+    </record>
+</odoo>

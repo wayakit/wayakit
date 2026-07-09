@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7B3FBF"/>
+      <stop offset="1" stop-color="#46197F"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="60" fill="url(#bg)"/>
+
+  <!-- connector network sitting BEHIND the text -->
+  <g stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.30">
+    <line x1="128" y1="128" x2="44" y2="50"/>
+    <line x1="128" y1="128" x2="212" y2="50"/>
+    <line x1="128" y1="128" x2="44" y2="206"/>
+    <line x1="128" y1="128" x2="212" y2="206"/>
+  </g>
+  <g fill="#ffffff" opacity="0.34">
+    <circle cx="44" cy="50" r="16"/>
+    <circle cx="212" cy="50" r="16"/>
+    <circle cx="44" cy="206" r="16"/>
+    <circle cx="212" cy="206" r="16"/>
+  </g>
+
+  <!-- "AI" in front -->
+  <text x="129" y="142" text-anchor="middle" dominant-baseline="central"
+        font-family="DejaVu Sans" font-weight="bold" font-size="118"
+        fill="#ffffff" letter-spacing="-4">AI</text>
+</svg>

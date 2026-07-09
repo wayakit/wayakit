@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mcp_enabled_model_admin,mcp.enabled.model.admin,model_ai_mcp_enabled_model,group_mcp_admin,1,1,1,1
+access_mcp_enabled_model_user,mcp.enabled.model.user,model_ai_mcp_enabled_model,group_mcp_user,1,0,0,0
+access_mcp_log_admin,mcp.log.admin,model_ai_mcp_log,group_mcp_admin,1,0,0,1
+access_mcp_connect_wizard_user,mcp.connect.wizard.user,model_ai_mcp_connect_wizard,base.group_user,1,1,1,1
+access_mcp_model_selection_wizard_admin,mcp.model.selection.wizard.admin,model_ai_mcp_model_selection_wizard,group_mcp_admin,1,1,1,1

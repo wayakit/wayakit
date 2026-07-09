@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mcp_log_list" model="ir.ui.view">
+        <field name="name">ai.mcp.log.list</field>
+        <field name="model">ai.mcp.log</field>
+        <field name="arch" type="xml">
+            <tree string="MCP Logs" create="false">
+                <field name="create_date" string="When"/>
+                <field name="event_type"/>
+                <field name="user_id"/>
+                <field name="tool_name"/>
+                <field name="model_name"/>
+                <field name="operation"/>
+                <field name="ip_address"/>
+                <field name="error_message" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_mcp_log_form" model="ir.ui.view">
+        <field name="name">ai.mcp.log.form</field>
+        <field name="model">ai.mcp.log</field>
+        <field name="arch" type="xml">
+            <form string="MCP Log" create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="event_type"/>
+                            <field name="user_id"/>
+                            <field name="ip_address"/>
+                            <field name="create_date"/>
+                        </group>
+                        <group>
+                            <field name="tool_name"/>
+                            <field name="model_name"/>
+                            <field name="operation"/>
+                            <field name="duration_ms"/>
+                        </group>
+                    </group>
+                    <group string="Error">
+                        <field name="error_message" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_mcp_log_search" model="ir.ui.view">
+        <field name="name">ai.mcp.log.search</field>
+        <field name="model">ai.mcp.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="user_id"/>
+                <field name="model_name"/>
+                <field name="tool_name"/>
+                <filter string="Auth Failures" name="authf" domain="[('event_type', '=', 'auth_failure')]"/>
+                <filter string="Permission Denied" name="permd" domain="[('event_type', '=', 'permission_denied')]"/>
+                <filter string="Errors" name="err" domain="[('event_type', '=', 'error')]"/>
+                <separator/>
+                <filter string="Today" name="today" domain="[('create_date', '>=', datetime.datetime.combine(context_today(), datetime.time(0,0,0)))]"/>
+                <group>
+                    <filter string="Event Type" name="g_event" context="{'group_by': 'event_type'}"/>
+                    <filter string="User" name="g_user" context="{'group_by': 'user_id'}"/>
+                    <filter string="Model" name="g_model" context="{'group_by': 'model_name'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mcp_logs" model="ir.actions.act_window">
+        <field name="name">MCP Logs</field>
+        <field name="res_model">ai.mcp.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_mcp_log_search"/>
+    </record>
+</odoo>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_mcp" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.ai.mcp</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="AI MCP Connector" string="AI MCP Connector" name="ai_mcp_connector"
+                     logo="/ai_mcp_connector/static/description/icon.png">
+                    <block title="MCP Server" name="mcp_server_block">
+                        <setting string="Enable MCP Server"
+                                 help="Master switch. When off, the /mcp endpoint refuses all tool calls.">
+                            <field name="ai_mcp_connector_enabled"/>
+                        </setting>
+                        <setting string="Allow Arbitrary Method Calls"
+                                 help="Let the universal call_method tool invoke any public method on enabled models. Powerful - leave off unless needed.">
+                            <field name="ai_mcp_connector_allow_method_calls"/>
+                        </setting>
+                    </block>
+                    <block title="Rate Limiting" name="mcp_rate_block">
+                        <setting string="Enable Rate Limiting"
+                                 help="Throttle each user to a maximum number of MCP requests per minute.">
+                            <field name="ai_mcp_connector_enable_rate_limiting"/>
+                        </setting>
+                        <setting string="Requests per Minute"
+                                 help="Max MCP requests per user per minute. 0 = unlimited."
+                                 invisible="not ai_mcp_connector_enable_rate_limiting">
+                            <field name="ai_mcp_connector_request_limit"/>
+                        </setting>
+                    </block>
+                    <block title="Logging" name="mcp_logging_block">
+                        <setting string="Enable Activity Logging"
+                                 help="Record authentications and model operations for auditing.">
+                            <field name="ai_mcp_connector_enable_logging"/>
+                        </setting>
+                        <setting string="Log Retention (days)"
+                                 help="Delete logs older than this many days. 0 = keep forever.">
+                            <field name="ai_mcp_connector_log_retention_days"/>
+                        </setting>
+                    </block>
+                    <block title="Connect" name="mcp_connect_block">
+                        <setting string="Models &amp; Connection">
+                            <div>
+                                <button name="%(action_mcp_enabled_models)d" type="action"
+                                        string="Configure MCP Models" class="btn-link" icon="fa-arrow-right"/>
+                            </div>
+                            <div>
+                                <button name="%(action_mcp_connect_wizard)d" type="action"
+                                        string="Connect AI Assistant" class="btn-link" icon="fa-link"/>
+                            </div>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_mcp_settings" model="ir.actions.act_window">
+        <field name="name">MCP Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'ai_mcp_connector'}</field>
+    </record>
+</odoo>

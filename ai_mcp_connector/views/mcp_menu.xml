@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_mcp_root" name="MCP Server"
+              web_icon="ai_mcp_connector,static/description/icon.png" sequence="95"
+              groups="group_mcp_user"/>
+
+    <menuitem id="menu_mcp_connect" name="Connect AI Assistant" parent="menu_mcp_root"
+              action="action_mcp_connect_wizard" sequence="5" groups="group_mcp_user"/>
+
+    <menuitem id="menu_mcp_connections" name="Connections" parent="menu_mcp_root"
+              action="action_mcp_connections" sequence="8" groups="group_mcp_admin"/>
+
+    <menuitem id="menu_mcp_models" name="MCP Models" parent="menu_mcp_root"
+              action="action_mcp_enabled_models" sequence="10" groups="group_mcp_admin"/>
+
+    <menuitem id="menu_mcp_logs" name="Logs" parent="menu_mcp_root"
+              action="action_mcp_logs" sequence="20" groups="group_mcp_admin"/>
+
+    <menuitem id="menu_mcp_settings" name="Settings" parent="menu_mcp_root"
+              action="action_mcp_settings" sequence="30" groups="group_mcp_admin"/>
+</odoo>
