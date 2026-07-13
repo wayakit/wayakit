@@ -1,0 +1,20 @@
+{
+    "name": "Trendyol Connector (MENA, FBM)",
+    "summary": "Direct Trendyol MENA integration for Wayakit: auth, product match, order import (Phase 1).",
+    "category": "Sales",
+    "version": "17.0.1.0.0",
+    "author": "Wayakit",
+    "website": "https://wayakit.com",
+    "license": "LGPL-3",
+    "depends": ["sale_management", "stock"],
+    "external_dependencies": {"python": ["requests"]},
+    "data": [
+        "security/ir.model.access.csv",
+        "data/trendyol_data.xml",
+        "views/trendyol_backend_views.xml",
+        "views/sale_order_views.xml",
+        "views/activity.xml",
+    ],
+    "application": False,
+    "installable": True,
+}

@@ -1,0 +1,74 @@
+<odoo>
+    <data>
+        <record id="trendyol_backend_form" model="ir.ui.view">
+            <field name="name">trendyol.backend.form</field>
+            <field name="model">trendyol.backend</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_test_connection" type="object" string="Test Connection" class="btn-primary"/>
+                        <button name="action_check_products" type="object" string="Check Product SKUs"/>
+                        <button name="cron_import_orders" type="object" string="Import Orders Now"/>
+                        <button name="action_register_webhook" type="object" string="Register Webhook"/>
+                        <button name="action_unregister_webhook" type="object" string="Delete Webhook"
+                                invisible="not webhook_id" confirm="Delete the webhook on Trendyol?"/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name"/></h1>
+                        </div>
+                        <group>
+                            <group string="Authentication">
+                                <field name="seller_id"/>
+                                <field name="api_key" password="True"/>
+                                <field name="api_secret" password="True"/>
+                                <field name="environment"/>
+                                <field name="base_url"/>
+                                <field name="store_front_code"/>
+                            </group>
+                            <group string="Odoo Mapping">
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="warehouse_location_id"/>
+                                <field name="marketplace_partner_id"/>
+                                <field name="last_sync_date"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="Webhook (real-time orders)">
+                                <field name="webhook_url" readonly="1"/>
+                                <field name="webhook_api_key" password="True"/>
+                                <field name="webhook_id"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="trendyol_backend_tree" model="ir.ui.view">
+            <field name="name">trendyol.backend.tree</field>
+            <field name="model">trendyol.backend</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="seller_id"/>
+                    <field name="environment"/>
+                    <field name="last_sync_date"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="trendyol_backend_action" model="ir.actions.act_window">
+            <field name="name">Trendyol Backends</field>
+            <field name="res_model">trendyol.backend</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="menu_trendyol_backend"
+                  name="Trendyol"
+                  parent="sale.menu_sale_config"
+                  action="trendyol_backend_action"
+                  sequence="90"/>
+    </data>
+</odoo>

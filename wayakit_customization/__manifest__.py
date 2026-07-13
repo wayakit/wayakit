@@ -18,7 +18,6 @@
     # for the full list
     'category': 'Uncategorized',
     'version': '1.0.10',
-
     # any module necessary for this one to work correctly
     'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'whatsapp'],
 
