@@ -261,6 +261,11 @@ class TrendyolBackend(models.Model):
             },
         }
 
+    def action_import_orders(self):
+        """Button handler: import just the selected backend(s) now."""
+        created = sum(backend._import_orders() for backend in self)
+        return self._notify(_("Imported %s new order(s).") % created)
+
     @api.model
     def cron_import_orders(self):
         for backend in self.search([("active", "=", True)]):

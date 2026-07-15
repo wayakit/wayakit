@@ -8,7 +8,7 @@
                     <header>
                         <button name="action_test_connection" type="object" string="Test Connection" class="btn-primary"/>
                         <button name="action_check_products" type="object" string="Check Product SKUs"/>
-                        <button name="cron_import_orders" type="object" string="Import Orders Now"/>
+                        <button name="action_import_orders" type="object" string="Import Orders Now"/>
                         <button name="action_register_webhook" type="object" string="Register Webhook"/>
                         <button name="action_unregister_webhook" type="object" string="Delete Webhook"
                                 invisible="not webhook_id" confirm="Delete the webhook on Trendyol?"/>
