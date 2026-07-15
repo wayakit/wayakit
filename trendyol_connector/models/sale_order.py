@@ -51,13 +51,21 @@ class SaleOrder(models.Model):
 
     @api.model
     def _trendyol_order_lines(self, pkg):
-        Product = self.env["product.product"]
+        # active_test=False: import orders for archived products too (never drop a
+        # paid order); order="active desc" prefers an active match over an archived
+        # duplicate, and a WARNING flags archived ones for cleanup.
+        Product = self.env["product.product"].with_context(active_test=False)
         lines, missing = [], []
         for raw in mapping.normalize_lines(pkg):
-            product = Product.search([("default_code", "=", raw["sku"])], limit=1) if raw["sku"] else Product.browse()
+            product = (Product.search([("default_code", "=", raw["sku"])],
+                                      order="active desc", limit=1)
+                       if raw["sku"] else Product.browse())
             if not product:
                 missing.append(raw["sku"] or "(empty SKU)")
                 continue
+            if not product.active:
+                _logger.warning("Trendyol order %s: product %s is archived in Odoo",
+                                pkg.get("orderNumber"), raw["sku"])
             lines.append({
                 "product_id": product.id,
                 "product_uom_qty": raw["quantity"],

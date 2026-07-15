@@ -220,7 +220,8 @@ class TrendyolBackend(models.Model):
         The Odoo SKU can live in Trendyol's Model code (productMainId), Stock code
         (stockCode) or barcode. Reports variants that match no product.product."""
         self.ensure_one()
-        Product = self.env["product.product"]
+        # active_test=False so archived products are diagnosed as "archived", not "missing".
+        Product = self.env["product.product"].with_context(active_test=False)
         path = "/integration/product/sellers/%s/products/approved" % self.seller_id
         page, total, missing = 0, 0, []
         while True:
@@ -232,8 +233,15 @@ class TrendyolBackend(models.Model):
                     total += 1
                     codes = [c for c in (model_code, content.get("stockCode"),
                                          var.get("stockCode"), var.get("barcode")) if c]
-                    if not codes or not Product.search_count([("default_code", "in", codes)]):
-                        missing.append("%s (%s)" % (model_code or var.get("stockCode") or "?", title))
+                    # order="active desc" -> prefer an active match over an archived duplicate
+                    match = (Product.search([("default_code", "in", codes)],
+                                            order="active desc", limit=1)
+                             if codes else Product.browse())
+                    label = model_code or var.get("stockCode") or "?"
+                    if not match:
+                        missing.append("%s (%s) — not in Odoo" % (label, title))
+                    elif not match.active:
+                        missing.append("%s (%s) — ARCHIVED in Odoo" % (label, title))
             page += 1
             if page >= (data.get("totalPages") or 1):
                 break
