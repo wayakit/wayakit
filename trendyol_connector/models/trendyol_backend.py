@@ -217,7 +217,8 @@ class TrendyolBackend(models.Model):
 
     def action_check_products(self):
         """Reconcile Trendyol approved products vs Odoo SKUs (default_code).
-        Reports variants whose stockCode/barcode match no product.product."""
+        The Odoo SKU can live in Trendyol's Model code (productMainId), Stock code
+        (stockCode) or barcode. Reports variants that match no product.product."""
         self.ensure_one()
         Product = self.env["product.product"]
         path = "/integration/product/sellers/%s/products/approved" % self.seller_id
@@ -225,11 +226,14 @@ class TrendyolBackend(models.Model):
         while True:
             data = self._request("GET", path, params={"page": page, "size": 100})
             for content in data.get("content") or []:
+                model_code = content.get("productMainId")  # Trendyol "Model code"
+                title = content.get("title", "")[:40]
                 for var in content.get("variants") or []:
                     total += 1
-                    codes = [c for c in (var.get("stockCode"), var.get("barcode")) if c]
+                    codes = [c for c in (model_code, content.get("stockCode"),
+                                         var.get("stockCode"), var.get("barcode")) if c]
                     if not codes or not Product.search_count([("default_code", "in", codes)]):
-                        missing.append("%s (%s)" % (var.get("stockCode") or "?", content.get("title", "")[:40]))
+                        missing.append("%s (%s)" % (model_code or var.get("stockCode") or "?", title))
             page += 1
             if page >= (data.get("totalPages") or 1):
                 break

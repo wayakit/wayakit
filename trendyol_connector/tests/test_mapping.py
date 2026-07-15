@@ -59,6 +59,13 @@ def test_normalize_lines():
     assert mapping.normalize_lines({}) == []
 
 
+def test_sku_from_model_code():
+    # Wayakit stores the SKU in Trendyol's "Model code" (productMainId); when
+    # merchantSku/sku are absent it must be used as the match key.
+    pkg = {"lines": [{"productMainId": "FP-PET-01500", "quantity": 1, "price": 50.0}]}
+    assert mapping.normalize_lines(pkg)[0]["sku"] == "FP-PET-01500"
+
+
 def test_vat_stripped():
     # Trendyol sends VAT-inclusive prices; Odoo adds 15% back -> net must be gross/1.15
     pkg = {"lines": [{"merchantSku": "FP-DIS-00001", "quantity": 1, "price": 115.0, "vatRate": 15}]}
@@ -68,7 +75,8 @@ def test_vat_stripped():
 
 if __name__ == "__main__":
     for fn in [test_should_import, test_map_state, test_epoch_ms_to_dt,
-               test_normalize_lines, test_vat_stripped, test_extract_packages]:
+               test_normalize_lines, test_sku_from_model_code, test_vat_stripped,
+               test_extract_packages]:
         fn()
         print(fn.__name__, "OK")
     print("all passed")
