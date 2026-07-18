@@ -7,10 +7,10 @@
                    t-att-min="props.min"
                    t-att-max="props.max"
                    t-att-step="props.step"
-                   t-att-value="value"
+                   t-att-value="state.value"
                    t-att-disabled="props.readonly"
                    t-on-input="onInput"/>
-            <span class="fw-bold" style="min-width: 2.5rem; text-align: right;" t-esc="value"/>
+            <span class="fw-bold" style="min-width: 2.5rem; text-align: right;" t-esc="state.value"/>
         </div>
     </t>
 </templates>
