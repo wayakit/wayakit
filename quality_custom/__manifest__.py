@@ -11,6 +11,12 @@
     'data': [
         'views/quality_point_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'quality_custom/static/src/ph_slider/ph_slider.js',
+            'quality_custom/static/src/ph_slider/ph_slider.xml',
+        ],
+    },
     'installable': True,
     'application': False,
 }
