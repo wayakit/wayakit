@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Odoo only shows the Tolerance range on Measure points. Worksheet points
+         reuse tolerance_min/max as the pH spec, read by the worksheet through
+         related fields on x_quality_check_id, so QC needs to edit them here. -->
+    <record id="view_quality_point_form_quality_custom" model="ir.ui.view">
+        <field name="name">quality.point.form.quality.custom</field>
+        <field name="model">quality.point</field>
+        <field name="inherit_id" ref="quality_control.quality_point_view_form_inherit_quality_control"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//label[@for='tolerance_min']" position="attributes">
+                <attribute name="invisible">test_type not in ('measure', 'worksheet')</attribute>
+            </xpath>
+
+            <xpath expr="//field[@name='tolerance_min']/.." position="attributes">
+                <attribute name="invisible">test_type not in ('measure', 'worksheet')</attribute>
+            </xpath>
+
+        </field>
+    </record>
+</odoo>
