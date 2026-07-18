@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="quality_custom.PhSlider">
+        <div class="o_field_ph_slider d-flex align-items-center gap-2 w-100">
+            <input type="range"
+                   class="flex-grow-1"
+                   t-att-min="props.min"
+                   t-att-max="props.max"
+                   t-att-step="props.step"
+                   t-att-value="value"
+                   t-att-disabled="props.readonly"
+                   t-on-input="onInput"/>
+            <span class="fw-bold" style="min-width: 2.5rem; text-align: right;" t-esc="value"/>
+        </div>
+    </t>
+</templates>
