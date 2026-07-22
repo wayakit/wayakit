@@ -27,11 +27,18 @@ export class PhSlider extends Component {
         return this.props.record.data[this.props.name] ?? this.props.min ?? 0;
     }
 
-    // input (not change) so the Pass/Fail badge recomputes live while dragging.
+    // Drag: move the thumb and the readout only. Local, no RPC.
     onInput(ev) {
-        const v = parseFloat(ev.target.value);
-        this.state.value = v;
-        this.props.record.update({ [this.props.name]: v });
+        this.state.value = parseFloat(ev.target.value);
+    }
+
+    // Release: one write to the record. Writing on every `input` event fired an
+    // onchange RPC per pixel dragged, and the stored computed Pass/Fail badge
+    // lagged behind the queue.
+    // ponytail: badge updates on release, not mid-drag. Debounce the update if
+    // someone ever wants it live again.
+    onChange(ev) {
+        this.props.record.update({ [this.props.name]: parseFloat(ev.target.value) });
     }
 }
 
