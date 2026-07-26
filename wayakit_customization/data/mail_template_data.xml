@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Name existing UI-created records so Python can env.ref() them
+             instead of hardcoding database ids. Must be ir.model.data records:
+             a <record model="mail.template"> would create a NEW template
+             instead of naming the existing one. -->
+        <record id="xmlid_mail_template_sale_confirmation_b2b" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">mail_template_sale_confirmation_b2b</field>
+            <field name="model">mail.template</field>
+            <field name="res_id">111</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+
+        <record id="xmlid_utm_medium_b2b" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">utm_medium_b2b</field>
+            <field name="model">utm.medium</field>
+            <field name="res_id">32</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+    </data>
+</odoo>

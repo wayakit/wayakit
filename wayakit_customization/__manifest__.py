@@ -17,7 +17,7 @@
     # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '1.0.26',
+    'version': '1.0.27',
 
     # any module necessary for this one to work correctly
     'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'whatsapp'],
@@ -25,6 +25,7 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
+        'data/mail_template_data.xml',
         'views/website_sale_hide_fields.xml',
         'views/views.xml',
         'views/templates.xml',
