@@ -12,13 +12,5 @@
             <field name="res_id">111</field>
             <field name="noupdate" eval="True"/>
         </record>
-
-        <record id="xmlid_utm_medium_b2b" model="ir.model.data">
-            <field name="module">wayakit_customization</field>
-            <field name="name">utm_medium_b2b</field>
-            <field name="model">utm.medium</field>
-            <field name="res_id">32</field>
-            <field name="noupdate" eval="True"/>
-        </record>
     </data>
 </odoo>
