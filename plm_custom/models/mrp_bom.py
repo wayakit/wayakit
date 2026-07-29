@@ -153,24 +153,25 @@ class MrpBomLine(models.Model):
         string='Qty (g)',
         compute='_compute_qty_in_grams',
         digits=(12, 4),
-        help='Quantity converted to grams: volume in mL x density. '
-             'Only computed for lines whose UoM is a volume.',
+        help='Quantity in grams. Weight UoMs convert directly; volume UoMs '
+             'convert to mL and multiply by the density. Any other UoM '
+             '(units, length) has no gram equivalent and stays at 0.',
     )
 
     @api.depends('product_qty', 'product_uom_id',
                  'product_id.product_tmpl_id.density')
     def _compute_qty_in_grams(self):
+        gram = self.env.ref('uom.product_uom_gram', raise_if_not_found=False)
         litre = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
         for line in self:
+            uom = line.product_uom_id
             density = line.product_id.product_tmpl_id.density
-            if (
-                density
-                and litre
-                and line.product_uom_id.category_id == litre.category_id
-            ):
-                qty_ml = line.product_uom_id._compute_quantity(
-                    line.product_qty, litre
-                ) * 1000.0
+            if gram and uom.category_id == gram.category_id:
+                line.qty_in_grams = uom._compute_quantity(
+                    line.product_qty, gram
+                )
+            elif density and litre and uom.category_id == litre.category_id:
+                qty_ml = uom._compute_quantity(line.product_qty, litre) * 1000.0
                 line.qty_in_grams = qty_ml * density
             else:
                 line.qty_in_grams = 0.0

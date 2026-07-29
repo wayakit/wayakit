@@ -25,6 +25,21 @@ class ProductTemplate(models.Model):
              "Used to convert mL quantities to grams in BoM lines.",
     )
 
+    is_volume_uom = fields.Boolean(
+        string='Measured in Volume',
+        compute='_compute_is_volume_uom',
+    )
+
+    @api.depends('uom_id')
+    def _compute_is_volume_uom(self):
+        vol_categ = self.env.ref(
+            'uom.product_uom_categ_vol', raise_if_not_found=False
+        )
+        for record in self:
+            record.is_volume_uom = (
+                bool(vol_categ) and record.uom_id.category_id == vol_categ
+            )
+
     @api.depends('categ_id', 'categ_id.complete_name')
     def _compute_is_plm_component(self):
         for record in self:

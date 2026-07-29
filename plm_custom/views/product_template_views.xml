@@ -39,9 +39,10 @@
                 <attribute name="invisible">is_plm_component and not is_plm_confidential</attribute>
             </xpath>
 
-            <!-- Densidad: solo visible para químicos (categoría Chemical) -->
+            <!-- Densidad: solo para químicos medidos en volumen (mL, L, µL) -->
             <xpath expr="//field[@name='categ_id']" position="after">
-                <field name="density" invisible="not is_plm_component"/>
+                <field name="is_volume_uom" invisible="1"/>
+                <field name="density" invisible="not is_plm_component or not is_volume_uom"/>
             </xpath>
 
         </field>
