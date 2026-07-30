@@ -20,12 +20,13 @@
     'version': '1.0.28',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'whatsapp'],
+    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'whatsapp', 'rating', 'website_sale_loyalty'],
 
     # always loaded
     'data': [
         'security/ir.model.access.csv',
         'data/mail_template_data.xml',
+        'data/loyalty_review_coupon_data.xml',
         'views/website_sale_hide_fields.xml',
         'views/views.xml',
         'views/templates.xml',

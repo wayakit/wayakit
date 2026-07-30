@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Coupon email sent automatically by loyalty.card.create() through the
+             program's "At Creation" communication plan. Same brand skeleton as the
+             "Feedback Generic" email that asked for the review in the first place. -->
+        <record id="mail_template_review_coupon" model="mail.template">
+            <field name="name">Review Coupon: 10% discount</field>
+            <field name="model_id" ref="loyalty.model_loyalty_card"/>
+            <field name="subject">Your 10% WAYAKIT discount — thank you for your review</field>
+            <field name="email_from">{{ (object.program_id.company_id or object.env.company).email_formatted }}</field>
+            <field name="partner_to">{{ object._get_mail_partner().id }}</field>
+            <field name="lang">{{ object._get_mail_partner().lang }}</field>
+            <field name="auto_delete" eval="True"/>
+            <field name="body_html" type="html">
+                <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#ffffff;opacity:0;">
+                    Here is your 10% WAYAKIT discount code.
+                </div>
+
+                <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;border:1px solid #d0e8d8;border-radius:12px;overflow:hidden;">
+
+                    <div style="background:#1A3A2A;padding:28px 32px 22px;">
+                        <p style="color:#5DB87A;font-size:15px;font-weight:500;letter-spacing:3px;margin:0 0 4px;">WAYAKIT</p>
+                        <p style="color:#A8D5B5;font-size:10px;letter-spacing:2px;margin:0;">GREENTECH · KAUST · SAUDI ARABIA</p>
+                    </div>
+
+                    <div style="background:#2E6B4A;padding:32px;text-align:center;">
+                        <div style="font-size:36px;margin-bottom:12px;">🎁</div>
+                        <h1 style="color:#ffffff;font-size:22px;font-weight:500;margin:0 0 8px;line-height:1.35;">
+                            Thank you for your review
+                        </h1>
+                        <p style="color:#A8D5B5;font-size:14px;margin:0;line-height:1.6;">
+                            Here is 10% off your next order.
+                        </p>
+                    </div>
+
+                    <div style="background:#ffffff;padding:32px;">
+
+                        <p style="font-size:15px;color:#1C1C1C;margin:0 0 16px;">
+                            Dear <t t-out="object.partner_id.name and object.partner_id.name.split()[0] or 'Valued Customer'">Customer</t>,
+                        </p>
+
+                        <p style="font-size:14px;color:#444;line-height:1.8;margin:0 0 24px;">
+                            Thank you for taking the time to review
+                            <strong style="color:#1A3A2A;"><t t-out="object.wayakit_review_product_id.name">your WAYAKIT product</t></strong>.
+                            Your feedback helps other customers choose better — and helps us keep improving.
+                        </p>
+
+                        <div style="border:1px solid #d0e8d8;border-radius:10px;padding:20px;margin:0 0 24px;background:#F4F9F6;text-align:center;">
+                            <p style="font-size:12px;font-weight:500;color:#6B7C74;text-transform:uppercase;letter-spacing:1.5px;margin:0 0 10px;">Your discount code</p>
+                            <p style="font-size:24px;font-weight:bold;letter-spacing:2px;color:#1A3A2A;margin:0 0 10px;">
+                                <t t-out="object.code">0440000000000</t>
+                            </p>
+                            <p style="font-size:13px;color:#2E6B4A;line-height:1.8;margin:0;">
+                                10% off your next order · single use<br/>
+                                Valid until <t t-out="format_date(object.expiration_date)">31/12/2026</t> (60 days)
+                            </p>
+                        </div>
+
+                        <div style="text-align:center;margin:0 0 24px;">
+                            <a t-attf-href="https://ksasystem.wayakit.com/coupon/{{ object.code }}"
+                               style="background:#5DB87A;color:#1A3A2A;font-size:14px;font-weight:500;padding:12px 32px;border-radius:30px;text-decoration:none;display:inline-block;margin:4px 0;">
+                                Shop now with my discount →</a>
+                            <p style="font-size:12px;color:#6B7C74;margin:10px 0 0;">
+                                The code is applied to your cart automatically.
+                            </p>
+                        </div>
+
+                        <p style="font-size:14px;color:#444;line-height:1.8;margin:0 0 20px;">
+                            Do not hesitate to reach us on
+                            <a href="https://wa.me/966545754908" style="text-decoration:none;color:#2E6B4A;">WhatsApp</a>
+                            or at <a href="mailto:info@wayakit.com" style="text-decoration:none;color:#2E6B4A;">info@wayakit.com</a>
+                            if you have any questions or concerns.
+                        </p>
+
+                        <p style="font-size:14px;color:#444;line-height:1.8;margin:0;">
+                            With appreciation,<br/><br/>
+                            <strong style="color:#1A3A2A;">The WAYAKIT Team</strong><br/>
+                            <span style="font-size:12px;color:#6B7C74;">Advanced Cleaning Solutions · Thuwal, Saudi Arabia</span>
+                        </p>
+
+                    </div>
+
+                    <div style="background:#1A3A2A;padding:24px 32px;text-align:center;">
+                        <p style="color:#5DB87A;font-size:13px;font-weight:500;letter-spacing:3px;margin:0 0 4px;">WAYAKIT</p>
+                        <p style="color:#6B7C74;font-size:11px;margin:0 0 14px;">
+                            Biotechnology in sustainable cleaning · Women-led · KAUST-developed
+                        </p>
+                        <p style="margin:0 0 14px;">
+                            <a href="https://ksasystem.wayakit.com/shop" style="color:#A8D5B5;font-size:11px;text-decoration:none;margin:0 8px;">Online Store</a>
+                            <a href="https://sa.wayakit.com/about-us1722618835552" style="color:#A8D5B5;font-size:11px;text-decoration:none;margin:0 8px;">About Us</a>
+                            <a href="https://sa.wayakit.com/environmental-certifications1723223805977" style="color:#A8D5B5;font-size:11px;text-decoration:none;margin:0 8px;">Certifications</a>
+                            <a href="https://wa.me/966545754908" style="color:#A8D5B5;font-size:11px;text-decoration:none;margin:0 8px;">WhatsApp</a>
+                        </p>
+                        <p style="color:#6B7C74;font-size:10px;margin:0;">
+                            © WAYAKIT · Advanced Solutions for Detergents LLC · Thuwal, Saudi Arabia
+                        </p>
+                    </div>
+
+                </div>
+            </field>
+        </record>
+    </data>
+
+    <data noupdate="1">
+        <!-- Name the existing UI-created records so Python/XML can env.ref() them
+             instead of hardcoding ids. Must be ir.model.data rows: a
+             <record model="loyalty.program"> would CREATE a new program. -->
+        <record id="xmlid_loyalty_program_review_feedback" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">loyalty_program_review_feedback</field>
+            <field name="model">loyalty.program</field>
+            <field name="res_id">10</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+        <record id="xmlid_loyalty_mail_review_coupon_create" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">loyalty_mail_review_coupon_create</field>
+            <field name="model">loyalty.mail</field>
+            <field name="res_id">2</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+    </data>
+
+    <data>
+        <!-- Point program 10's "At Creation" plan at the branded template. -->
+        <record id="loyalty_mail_review_coupon_create" model="loyalty.mail">
+            <field name="mail_template_id" ref="mail_template_review_coupon"/>
+        </record>
+    </data>
+</odoo>
