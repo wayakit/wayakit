@@ -74,6 +74,15 @@ def test_sku_from_stock_code():
     assert mapping.normalize_lines(pkg)[0]["sku"] == "FP-HOM-03601"
 
 
+def test_price_from_line_unit_price():
+    # Live order-line payloads have no "price"/"amount" field, only lineUnitPrice
+    # (gross) — that's what was silently defaulting to 0.
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "quantity": 1,
+                       "lineUnitPrice": 13.0, "vatRate": 10.0}]}
+    line = mapping.normalize_lines(pkg)[0]
+    assert abs(line["price"] - 13.0 / 1.10) < 1e-9
+
+
 def test_vat_stripped():
     # Trendyol sends VAT-inclusive prices; Odoo adds 15% back -> net must be gross/1.15
     pkg = {"lines": [{"merchantSku": "FP-DIS-00001", "quantity": 1, "price": 115.0, "vatRate": 15}]}
@@ -84,7 +93,7 @@ def test_vat_stripped():
 if __name__ == "__main__":
     for fn in [test_should_import, test_map_state, test_epoch_ms_to_dt,
                test_normalize_lines, test_sku_from_model_code, test_sku_from_stock_code,
-               test_vat_stripped, test_extract_packages]:
+               test_price_from_line_unit_price, test_vat_stripped, test_extract_packages]:
         fn()
         print(fn.__name__, "OK")
     print("all passed")

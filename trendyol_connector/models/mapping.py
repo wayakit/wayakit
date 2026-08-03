@@ -74,7 +74,9 @@ def normalize_lines(pkg):
     for line in pkg.get("lines") or []:
         if line.get("orderLineItemStatusName") == "Cancelled":
             continue
-        gross = line.get("price", line.get("amount", 0.0)) or 0.0
+        # Live API sends the VAT-inclusive unit price as lineUnitPrice (price/amount
+        # kept as fallbacks — not seen on real payloads, only used by older tests).
+        gross = line.get("lineUnitPrice", line.get("price", line.get("amount", 0.0))) or 0.0
         # Trendyol prices are VAT-inclusive; Odoo KSA sales tax (15%, id=20) is
         # price-EXcluded, so strip the line's vatRate to get the net unit price.
         vat = line.get("vatRate") or 0.0
