@@ -65,9 +65,11 @@ def epoch_ms_to_dt(ms):
 
 def normalize_lines(pkg):
     """Flatten a shipment package's `lines` into {sku, quantity, price, name}.
-    The Odoo default_code may be sent as merchantSku, sku or productMainId (the
-    "Model code" — Wayakit stores its SKU there). Lines cancelled inside an
-    otherwise-importable package are dropped."""
+    Wayakit stores its SKU in Trendyol's "Model code" (productMainId), but order
+    lines from the live API only ever carry stockCode/barcode (no productMainId,
+    no merchantSku) — try productMainId first, then stockCode/barcode/merchantSku/
+    sku as fallbacks. Lines cancelled inside an otherwise-importable package are
+    dropped."""
     out = []
     for line in pkg.get("lines") or []:
         if line.get("orderLineItemStatusName") == "Cancelled":
@@ -77,8 +79,9 @@ def normalize_lines(pkg):
         # price-EXcluded, so strip the line's vatRate to get the net unit price.
         vat = line.get("vatRate") or 0.0
         out.append({
-            "sku": str(line.get("merchantSku") or line.get("sku")
-                       or line.get("productMainId") or "").strip(),
+            "sku": str(line.get("productMainId") or line.get("stockCode")
+                       or line.get("barcode") or line.get("merchantSku")
+                       or line.get("sku") or "").strip(),
             "quantity": line.get("quantity") or 1,
             "price": gross / (1 + vat / 100.0),
             "name": line.get("productName"),

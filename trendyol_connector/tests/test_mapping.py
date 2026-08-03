@@ -66,6 +66,14 @@ def test_sku_from_model_code():
     assert mapping.normalize_lines(pkg)[0]["sku"] == "FP-PET-01500"
 
 
+def test_sku_from_stock_code():
+    # Live order-line payloads carry only stockCode/barcode, no productMainId/
+    # merchantSku — this is the shape that must resolve to a SKU.
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "barcode": "FP-HOM-03601",
+                       "quantity": 1, "price": 13.0}]}
+    assert mapping.normalize_lines(pkg)[0]["sku"] == "FP-HOM-03601"
+
+
 def test_vat_stripped():
     # Trendyol sends VAT-inclusive prices; Odoo adds 15% back -> net must be gross/1.15
     pkg = {"lines": [{"merchantSku": "FP-DIS-00001", "quantity": 1, "price": 115.0, "vatRate": 15}]}
@@ -75,8 +83,8 @@ def test_vat_stripped():
 
 if __name__ == "__main__":
     for fn in [test_should_import, test_map_state, test_epoch_ms_to_dt,
-               test_normalize_lines, test_sku_from_model_code, test_vat_stripped,
-               test_extract_packages]:
+               test_normalize_lines, test_sku_from_model_code, test_sku_from_stock_code,
+               test_vat_stripped, test_extract_packages]:
         fn()
         print(fn.__name__, "OK")
     print("all passed")
