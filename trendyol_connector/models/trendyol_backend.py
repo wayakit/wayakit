@@ -290,21 +290,34 @@ class TrendyolBackend(models.Model):
             "size": PAGE_SIZE,
         }
         path = self._orders_path()
-        page, created = 0, 0
+        page, seen, created, dup, not_importable, unmatched = 0, 0, 0, 0, 0, 0
         while True:
             data = self._request("GET", path, params=dict(base_params, page=page))
             content = data.get("content") or []
             for pkg in content:
+                seen += 1
                 if not mapping.should_import(pkg.get("status")):
+                    not_importable += 1
                     continue
                 pkg_id = str(pkg.get("id"))
                 if SaleOrder.search_count([("trendyol_package_id", "=", pkg_id)]):
+                    dup += 1
                     continue
                 if SaleOrder._create_from_trendyol(self, pkg):
                     created += 1
+                else:
+                    unmatched += 1
             page += 1
             if page >= (data.get("totalPages") or 1) or not content:
                 break
-        self.last_sync_date = now
-        _logger.info("Trendyol backend %s: imported %s new order(s)", self.name, created)
+        # Hold the cursor when an order was skipped for an unmatched SKU: the window is
+        # on PackageLastModifiedDate, so a package Trendyol never touches again would be
+        # lost forever if we advanced past it. Retries every sync until the SKU exists.
+        if not unmatched:
+            self.last_sync_date = now
+        _logger.info(
+            "Trendyol backend %s: %s package(s) in window [%s..%s] -> %s created, "
+            "%s already imported, %s not importable, %s unmatched SKU; cursor %s",
+            self.name, seen, start, now, created, dup, not_importable, unmatched,
+            "advanced" if not unmatched else "held at %s" % self.last_sync_date)
         return created
