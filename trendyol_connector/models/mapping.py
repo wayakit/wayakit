@@ -55,6 +55,17 @@ def extract_packages(payload):
     return []
 
 
+def package_id(pkg):
+    """The shipment package's unique id, used as the anti-dup key.
+
+    The orders endpoint returns it as `shipmentPackageId` — there is NO top-level `id`
+    on the real payload (the only `id`s are inside shipmentAddress/invoiceAddress).
+    Webhooks and the docs use `id`. Accept both; return "" (never the string "None")
+    when neither is there, because "None" collapses every order onto one dedup key and
+    the unique constraint then swallows every order after the first."""
+    return str(pkg.get("id") or pkg.get("shipmentPackageId") or "").strip()
+
+
 def epoch_ms_to_dt(ms):
     """Trendyol dates are epoch milliseconds (UTC). Returns a naive UTC datetime
     (what Odoo Datetime fields store) or None."""

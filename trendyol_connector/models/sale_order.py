@@ -42,7 +42,7 @@ class SaleOrder(models.Model):
             "client_order_ref": pkg.get("orderNumber"),
             "date_order": mapping.epoch_ms_to_dt(pkg.get("orderDate")) or fields.Datetime.now(),
             "trendyol_backend_id": backend.id,
-            "trendyol_package_id": str(pkg.get("id")),
+            "trendyol_package_id": mapping.package_id(pkg),
             "trendyol_order_number": pkg.get("orderNumber"),
             "trendyol_status": pkg.get("status"),
             "order_line": [(0, 0, l) for l in lines],

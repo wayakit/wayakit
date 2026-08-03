@@ -64,8 +64,10 @@ class TrendyolBackend(models.Model):
     )
 
     last_sync_date = fields.Datetime(
-        string="Last Order Sync (UTC)", readonly=True, copy=False,
-        help="Cursor: next sync pulls packages modified after this instant.",
+        string="Last Order Sync (UTC)", copy=False,
+        help="Cursor: next sync pulls packages modified after this instant (UTC, not your "
+             "timezone). Editable on purpose — set it back to re-pull orders Trendyol will "
+             "not touch again, or clear it to fall back to the last 7 days.",
     )
 
     # --- Webhook (real-time inbound; cron stays as reconciliation) ---
@@ -204,7 +206,7 @@ class TrendyolBackend(models.Model):
         SaleOrder = self.env["sale.order"]
         handled = 0
         for pkg in mapping.extract_packages(payload):
-            pkg_id = str(pkg.get("id") or pkg.get("shipmentPackageId") or "")
+            pkg_id = mapping.package_id(pkg)
             if not pkg_id:
                 continue
             order = SaleOrder.search([("trendyol_package_id", "=", pkg_id)], limit=1)
@@ -262,9 +264,22 @@ class TrendyolBackend(models.Model):
         }
 
     def action_import_orders(self):
-        """Button handler: import just the selected backend(s) now."""
-        created = sum(backend._import_orders() for backend in self)
-        return self._notify(_("Imported %s new order(s).") % created)
+        """Button handler: import just the selected backend(s) now.
+        Reports the full breakdown, not just the created count — "0 imported" has four
+        very different causes and the notification is the only thing the user ever sees."""
+        totals, window = {}, ""
+        for backend in self:
+            res = backend._import_orders()
+            window = res.pop("window")
+            for key, val in res.items():
+                totals[key] = totals.get(key, 0) + val
+        # ponytail: one flat line — display_notification does not honour newlines.
+        msg = _(
+            "Window %(window)s UTC — Trendyol returned %(seen)s package(s): "
+            "%(created)s imported · %(dup)s already in Odoo · "
+            "%(not_importable)s not importable (status) · %(unmatched)s unmatched SKU"
+        ) % dict(totals, window=window)
+        return self._notify(msg, warning=not totals.get("created"))
 
     @api.model
     def cron_import_orders(self):
@@ -299,7 +314,12 @@ class TrendyolBackend(models.Model):
                 if not mapping.should_import(pkg.get("status")):
                     not_importable += 1
                     continue
-                pkg_id = str(pkg.get("id"))
+                pkg_id = mapping.package_id(pkg)
+                if not pkg_id:
+                    _logger.warning("Trendyol order %s has no package id, skipped: %s",
+                                    pkg.get("orderNumber"), pkg)
+                    unmatched += 1
+                    continue
                 if SaleOrder.search_count([("trendyol_package_id", "=", pkg_id)]):
                     dup += 1
                     continue
@@ -315,9 +335,11 @@ class TrendyolBackend(models.Model):
         # lost forever if we advanced past it. Retries every sync until the SKU exists.
         if not unmatched:
             self.last_sync_date = now
+        counters = {"seen": seen, "created": created, "dup": dup,
+                    "not_importable": not_importable, "unmatched": unmatched}
         _logger.info(
-            "Trendyol backend %s: %s package(s) in window [%s..%s] -> %s created, "
-            "%s already imported, %s not importable, %s unmatched SKU; cursor %s",
-            self.name, seen, start, now, created, dup, not_importable, unmatched,
+            "Trendyol backend %s: window [%s .. %s] -> %s; cursor %s",
+            self.name, start, now, counters,
             "advanced" if not unmatched else "held at %s" % self.last_sync_date)
-        return created
+        counters["window"] = "%s → %s" % (start, now)
+        return counters

@@ -36,6 +36,15 @@ def test_extract_packages():
     assert mapping.extract_packages("junk") == []
 
 
+def test_package_id():
+    # Real orders-endpoint payload: no top-level "id", only "shipmentPackageId".
+    assert mapping.package_id({"shipmentPackageId": 92261124, "orderNumber": "858409652"}) == "92261124"
+    assert mapping.package_id({"id": 123}) == "123"                       # webhook/doc shape
+    assert mapping.package_id({"shipmentAddress": {"id": 18400106}}) == ""  # nested id is NOT it
+    # must never be the string "None": that collapses every order onto one dedup key
+    assert mapping.package_id({}) == ""
+
+
 def test_epoch_ms_to_dt():
     dt = mapping.epoch_ms_to_dt(1700000000000)
     assert dt is not None and dt.year == 2023 and dt.month == 11
@@ -91,7 +100,7 @@ def test_vat_stripped():
 
 
 if __name__ == "__main__":
-    for fn in [test_should_import, test_map_state, test_epoch_ms_to_dt,
+    for fn in [test_should_import, test_map_state, test_package_id, test_epoch_ms_to_dt,
                test_normalize_lines, test_sku_from_model_code, test_sku_from_stock_code,
                test_price_from_line_unit_price, test_vat_stripped, test_extract_packages]:
         fn()
