@@ -32,12 +32,16 @@
                                 <field name="company_id" groups="base.group_multi_company"/>
                                 <field name="warehouse_location_id"/>
                                 <field name="marketplace_partner_id"/>
+                                <field name="salesperson_id"/>
                                 <field name="last_sync_date"/>
                                 <field name="active" invisible="1"/>
                             </group>
                             <group string="Webhook (real-time orders)">
-                                <field name="webhook_url" readonly="1"/>
-                                <field name="webhook_api_key" password="True"/>
+                                <field name="webhook_url" placeholder="https://…/trendyol/webhook"/>
+                                <!-- Not password="True": it is our own generated token and it
+                                     has to be copied out (curl tests, support). Read access to
+                                     this model is already restricted by the ACL. -->
+                                <field name="webhook_api_key" widget="CopyClipboardChar"/>
                                 <field name="webhook_id"/>
                             </group>
                         </group>

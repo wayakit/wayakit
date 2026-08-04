@@ -55,6 +55,12 @@ class TrendyolBackend(models.Model):
         default=lambda self: self.env.ref("stock.stock_location_stock", raise_if_not_found=False),
         help="Location Wayakit ships FBM orders from (KSA WH/Stock). Used from Phase 2 on.",
     )
+    salesperson_id = fields.Many2one(
+        "res.users", string="Salesperson", domain=[("share", "=", False)],
+        help="Salesperson set on every imported order. Leave empty for no salesperson. "
+             "Set explicitly so cron, webhook and the manual button all produce the same "
+             "thing — otherwise the order inherits whoever happened to click the button.",
+    )
     marketplace_partner_id = fields.Many2one(
         "res.partner", string="Marketplace Partner", required=True,
         default=lambda self: self.env.ref(
@@ -78,12 +84,19 @@ class TrendyolBackend(models.Model):
         help="Shared secret Trendyol sends back as x-api-key on every webhook call. "
              "Auto-generated; regenerating requires re-registering the webhook.",
     )
-    webhook_url = fields.Char(compute="_compute_webhook_url", string="Webhook URL")
+    webhook_url = fields.Char(
+        string="Webhook URL", copy=False,
+        default=lambda self: self._default_webhook_url(),
+        help="Endpoint Trendyol POSTs to. Defaults to web.base.url + /trendyol/webhook, but "
+             "editable on purpose: on odoo.sh web.base.url often points at a custom domain "
+             "or a restored dump, not at the build actually serving this database. Whatever "
+             "is here is what gets registered on Trendyol — it must be publicly reachable.",
+    )
 
-    def _compute_webhook_url(self):
+    @api.model
+    def _default_webhook_url(self):
         base = self.env["ir.config_parameter"].sudo().get_param("web.base.url", "")
-        for rec in self:
-            rec.webhook_url = base.rstrip("/") + "/trendyol/webhook"
+        return base.rstrip("/") + "/trendyol/webhook"
 
     @api.onchange("environment")
     def _onchange_environment(self):
