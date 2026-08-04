@@ -70,10 +70,11 @@ class TrendyolBackend(models.Model):
     )
 
     last_sync_date = fields.Datetime(
-        string="Last Order Sync (UTC)", copy=False,
-        help="Cursor: next sync pulls packages modified after this instant (UTC, not your "
-             "timezone). Editable on purpose — set it back to re-pull orders Trendyol will "
-             "not touch again, or clear it to fall back to the last 7 days.",
+        string="Last Order Sync", copy=False,
+        help="Cursor: next sync pulls packages modified after this instant. Stored in UTC but "
+             "shown and typed in YOUR timezone, like every Odoo datetime — the import log "
+             "prints the raw UTC window. Editable on purpose: set it back to re-pull orders "
+             "Trendyol will not touch again, or clear it to fall back to the last 7 days.",
     )
 
     # --- Webhook (real-time inbound; cron stays as reconciliation) ---
