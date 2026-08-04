@@ -38,6 +38,9 @@ class SaleOrder(models.Model):
             "partner_id": backend.marketplace_partner_id.id,
             "partner_shipping_id": (ship_partner or backend.marketplace_partner_id).id,
             "company_id": backend.company_id.id,
+            # explicit (even when empty) so the default never picks up env.user: the
+            # button would stamp whoever clicked it and the webhook the public user.
+            "user_id": backend.salesperson_id.id or False,
             "origin": "Trendyol %s" % (pkg.get("orderNumber") or ""),
             "client_order_ref": pkg.get("orderNumber"),
             "date_order": mapping.epoch_ms_to_dt(pkg.get("orderDate")) or fields.Datetime.now(),
