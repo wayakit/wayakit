@@ -47,6 +47,17 @@ class WebsiteSaleOnepage(WebsiteSale):
                 req.append('zip')
         return req
 
+    # ── Post-payment guard ────────────────────────────────────────────
+    def _get_shop_payment_errors(self, order):
+        # ponytail: /shop/payment/validate corre este chequeo al volver del gateway.
+        # Si la sesion se perdio en el retorno cross-site (MyFatoorah), `order` llega
+        # vacio -> company_id False -> _check_company_domain(False) deja cero carriers
+        # -> ValidationError "unable to ship" sobre un pago YA cobrado y confirmado
+        # por el webhook. Igual si la orden ya esta confirmada: no hay nada que validar.
+        if not order or order.state != 'draft':
+            return []
+        return super()._get_shop_payment_errors(order)
+
     # ── Main Checkout Logic ───────────────────────────────────────────
     @http.route()
     def checkout(self, **post):
