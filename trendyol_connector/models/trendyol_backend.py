@@ -267,10 +267,11 @@ class TrendyolBackend(models.Model):
         """Button handler: import just the selected backend(s) now.
         Reports the full breakdown, not just the created count — "0 imported" has four
         very different causes and the notification is the only thing the user ever sees."""
-        totals, window = {}, ""
+        totals, window, skus = {}, "", set()
         for backend in self:
             res = backend._import_orders()
             window = res.pop("window")
+            skus.update(res.pop("missing_skus"))
             for key, val in res.items():
                 totals[key] = totals.get(key, 0) + val
         # ponytail: one flat line — display_notification does not honour newlines.
@@ -279,6 +280,8 @@ class TrendyolBackend(models.Model):
             "%(created)s imported · %(dup)s already in Odoo · "
             "%(not_importable)s not importable (status) · %(unmatched)s unmatched SKU"
         ) % dict(totals, window=window)
+        if skus:
+            msg += _(" → no product.product has default_code: %s") % ", ".join(sorted(skus))
         return self._notify(msg, warning=not totals.get("created"))
 
     @api.model
@@ -306,6 +309,7 @@ class TrendyolBackend(models.Model):
         }
         path = self._orders_path()
         page, seen, created, dup, not_importable, unmatched = 0, 0, 0, 0, 0, 0
+        missing_skus = set()
         while True:
             data = self._request("GET", path, params=dict(base_params, page=page))
             content = data.get("content") or []
@@ -327,6 +331,8 @@ class TrendyolBackend(models.Model):
                     created += 1
                 else:
                     unmatched += 1
+                    # cheap re-run (failures only) so the notification can name the SKUs
+                    missing_skus.update(SaleOrder._trendyol_order_lines(pkg)[1])
             page += 1
             if page >= (data.get("totalPages") or 1) or not content:
                 break
@@ -342,4 +348,5 @@ class TrendyolBackend(models.Model):
             self.name, start, now, counters,
             "advanced" if not unmatched else "held at %s" % self.last_sync_date)
         counters["window"] = "%s → %s" % (start, now)
+        counters["missing_skus"] = sorted(missing_skus)
         return counters
