@@ -1,5 +1,6 @@
 from odoo import http, _
 from odoo.http import request
+from odoo.addons.payment import utils as payment_utils
 from odoo.addons.website_sale.controllers.main import WebsiteSale
 
 
@@ -57,6 +58,42 @@ class WebsiteSaleOnepage(WebsiteSale):
         if not order or order.state != 'draft':
             return []
         return super()._get_shop_payment_errors(order)
+
+    # ── Post-payment order recovery (cross-site gateway returns) ──────
+    @http.route()
+    def shop_payment_validate(self, sale_order_id=None, **post):
+        """Recover the order from the transaction when the session was lost on the
+        cross-site gateway return (e.g. MyFatoorah in an in-app browser / Safari ITP).
+
+        The landing route always carries ``tx_id`` + ``access_token``. When neither
+        the cart nor ``sale_last_order_id`` can be resolved from the session (the
+        cookie was dropped on the way back from the hosted payment page), use those
+        URL params to rebuild the order and render the confirmation page *in this
+        request* — no redirect — so the result no longer depends on the session
+        cookie surviving the return trip. Falls back to the parent implementation in
+        every other case, leaving normal checkout untouched.
+        """
+        tx_id = post.get('tx_id')
+        access_token = post.get('access_token')
+        if (sale_order_id is None and tx_id and access_token
+                and not request.website.sale_get_order()
+                and 'sale_last_order_id' not in request.session):
+            try:
+                tx = request.env['payment.transaction'].sudo().browse(int(tx_id)).exists()
+            except (ValueError, TypeError):
+                tx = request.env['payment.transaction'].sudo()
+            if tx and payment_utils.check_access_token(
+                    access_token, tx.partner_id.id, tx.amount, tx.currency_id.id):
+                order = tx.sale_order_ids[:1]
+                if order and order.state == 'sale':
+                    # Keep the session consistent for any later same-site request.
+                    request.session['sale_last_order_id'] = order.id
+                    request.website.sale_reset()
+                    return request.render(
+                        "website_sale.confirmation",
+                        self._prepare_shop_payment_confirmation_values(order),
+                    )
+        return super().shop_payment_validate(sale_order_id, **post)
 
     # ── Main Checkout Logic ───────────────────────────────────────────
     @http.route()

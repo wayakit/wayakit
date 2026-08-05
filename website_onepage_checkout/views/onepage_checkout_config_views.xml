@@ -111,8 +111,7 @@
                 <field name="filter_website_addresses"/>
                 <field name="allowed_country_ids"
                        widget="many2many_tags"
-                       invisible="not filter_website_addresses"
-                       domain="[('address_view_id', '=', False)]"/>
+                       invisible="not filter_website_addresses"/>
             </group>
         </xpath>
     </field>
