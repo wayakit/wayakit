@@ -1,6 +1,6 @@
 {
     'name': 'PLM Custom',
-    'version': '17.0.1.0.2',
+    'version': '17.0.1.1.3',
     'summary': 'PLM extended: synonym names, dual BoM view, export restrictions',
     'author': 'Your Company',
     'category': 'Manufacturing/PLM',
