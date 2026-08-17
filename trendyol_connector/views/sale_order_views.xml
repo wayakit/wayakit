@@ -8,6 +8,7 @@
                 <xpath expr="//field[@name='client_order_ref']" position="after">
                     <field name="trendyol_order_number" readonly="1" invisible="not trendyol_order_number"/>
                     <field name="trendyol_status" readonly="1" invisible="not trendyol_order_number"/>
+                    <field name="trendyol_pushed_status" readonly="1" invisible="not trendyol_order_number"/>
                     <field name="trendyol_package_id" readonly="1" invisible="not trendyol_order_number"/>
                     <field name="trendyol_backend_id" readonly="1" invisible="not trendyol_order_number"/>
                 </xpath>

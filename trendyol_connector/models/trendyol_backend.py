@@ -69,6 +69,26 @@ class TrendyolBackend(models.Model):
              "as a per-order delivery child of this partner.",
     )
 
+    # --- Phase 2: shipping & stock ---
+    auto_confirm = fields.Boolean(
+        string="Confirm Imported Orders", default=True,
+        help="Confirm every imported order (draft -> sales order) so the delivery is created "
+             "from the FBM stock location. A Trendyol package is already paid, there is "
+             "nothing to quote. Turn off to go back to Phase 1 behaviour (draft only).",
+    )
+    push_status = fields.Boolean(
+        string="Push Status to Trendyol", default=True,
+        help="Notify Trendyol that the package is being prepared (status Picking) when the "
+             "order is confirmed. Shipped/Delivered cannot be set by the seller — Trendyol "
+             "derives them from the tracking number.",
+    )
+    push_stock = fields.Boolean(
+        string="Push Stock Levels", default=True,
+        help="Include this backend in the 'Trendyol: Push Stock' cron. Quantities only — "
+             "prices stay owned by Seller Center.",
+    )
+    stock_last_push = fields.Datetime(string="Last Stock Push", readonly=True, copy=False)
+
     last_sync_date = fields.Datetime(
         string="Last Order Sync", copy=False,
         help="Cursor: next sync pulls packages modified after this instant. Stored in UTC but "
@@ -151,6 +171,31 @@ class TrendyolBackend(models.Model):
     def _orders_path(self):
         return "/integration/order/sellers/%s/orders" % self.seller_id
 
+    def _package_path(self, package_id, suffix=""):
+        return "/integration/order/sellers/%s/shipment-packages/%s%s" % (
+            self.seller_id, package_id, suffix)
+
+    # ------------------------------------------------------- outbound (Phase 2)
+    def _update_package_status(self, package_id, status, lines=None, params=None):
+        """Notify Trendyol of a package status. Only "Picking" and "Invoiced" are
+        settable by the seller: "Shipped"/"Delivered" are derived by Trendyol from the
+        tracking number and are rejected here."""
+        self.ensure_one()
+        payload = {"status": status}
+        if lines:
+            payload["lines"] = lines
+        if params:
+            payload["params"] = params
+        return self._request("PUT", self._package_path(package_id), payload=payload)
+
+    def _update_tracking(self, package_id, sender_number, provider_code):
+        """Send our own waybill number (FBM: Wayakit ships, so Trendyol only learns the
+        tracking number from us). Requires the package to be in Picking already."""
+        self.ensure_one()
+        return self._request(
+            "PUT", self._package_path(package_id, "/tracking-details"),
+            payload={"cargoSenderNumber": sender_number, "providerCode": provider_code})
+
     # --------------------------------------------------------------- actions
     def action_test_connection(self):
         """Lightweight call to validate credentials/host."""
@@ -225,47 +270,67 @@ class TrendyolBackend(models.Model):
                 continue
             order = SaleOrder.search([("trendyol_package_id", "=", pkg_id)], limit=1)
             if order:
-                order.trendyol_status = pkg.get("status") or order.trendyol_status
+                order._trendyol_apply_status(pkg.get("status"))
                 handled += 1
             elif mapping.should_import(pkg.get("status")) and SaleOrder._create_from_trendyol(self, pkg):
                 handled += 1
         return handled
 
-    def action_check_products(self):
-        """Reconcile Trendyol approved products vs Odoo SKUs (default_code).
-        The Odoo SKU can live in Trendyol's Model code (productMainId), Stock code
-        (stockCode) or barcode. Reports variants that match no product.product."""
+    def _iter_approved_variants(self):
+        """Yield (content, variant) for every approved Trendyol variant, paging the catalog.
+        Shared by the SKU report and the stock push so both see exactly the same catalog."""
         self.ensure_one()
-        # active_test=False so archived products are diagnosed as "archived", not "missing".
-        Product = self.env["product.product"].with_context(active_test=False)
         path = "/integration/product/sellers/%s/products/approved" % self.seller_id
-        page, total, missing = 0, 0, []
+        page = 0
         while True:
             data = self._request("GET", path, params={"page": page, "size": 100})
             for content in data.get("content") or []:
-                model_code = content.get("productMainId")  # Trendyol "Model code"
-                title = content.get("title", "")[:40]
                 for var in content.get("variants") or []:
-                    total += 1
-                    codes = [c for c in (model_code, content.get("stockCode"),
-                                         var.get("stockCode"), var.get("barcode")) if c]
-                    # order="active desc" -> prefer an active match over an archived duplicate
-                    match = (Product.search([("default_code", "in", codes)],
-                                            order="active desc", limit=1)
-                             if codes else Product.browse())
-                    label = model_code or var.get("stockCode") or "?"
-                    if not match:
-                        missing.append("%s (%s) — not in Odoo" % (label, title))
-                    elif not match.active:
-                        missing.append("%s (%s) — ARCHIVED in Odoo" % (label, title))
+                    yield content, var
             page += 1
             if page >= (data.get("totalPages") or 1):
                 break
+
+    @api.model
+    def _variant_codes(self, content, var):
+        """Candidate Odoo default_codes for a Trendyol variant. Wayakit keeps its SKU in the
+        Model code (productMainId); stockCode/barcode are the fallbacks."""
+        return [c for c in (content.get("productMainId"), content.get("stockCode"),
+                            var.get("stockCode"), var.get("barcode")) if c]
+
+    def action_check_products(self):
+        """Reconcile Trendyol approved products vs Odoo SKUs (default_code).
+        The Odoo SKU can live in Trendyol's Model code (productMainId), Stock code
+        (stockCode) or barcode. Reports variants that match no product.product, plus the
+        ones with no Trendyol barcode — those can never be stock-synced (the
+        price-and-inventory endpoint keys on barcode and nothing else)."""
+        self.ensure_one()
+        # active_test=False so archived products are diagnosed as "archived", not "missing".
+        Product = self.env["product.product"].with_context(active_test=False)
+        total, missing = 0, []
+        for content, var in self._iter_approved_variants():
+            total += 1
+            model_code = content.get("productMainId")  # Trendyol "Model code"
+            title = content.get("title", "")[:40]
+            codes = self._variant_codes(content, var)
+            # order="active desc" -> prefer an active match over an archived duplicate
+            match = (Product.search([("default_code", "in", codes)],
+                                    order="active desc", limit=1)
+                     if codes else Product.browse())
+            label = model_code or var.get("stockCode") or "?"
+            if not match:
+                missing.append("%s (%s) — not in Odoo" % (label, title))
+            elif not match.active:
+                missing.append("%s (%s) — ARCHIVED in Odoo" % (label, title))
+            elif not var.get("barcode"):
+                missing.append("%s (%s) — no barcode on Trendyol (stock cannot be pushed)"
+                               % (label, title))
         if missing:
-            _logger.warning("Trendyol SKU check: %s unmatched of %s: %s", len(missing), total, missing)
-        msg = (_("%s of %s Trendyol variants have no matching Odoo SKU:\n%s") % (
+            _logger.warning("Trendyol SKU check: %s issues of %s: %s", len(missing), total, missing)
+        msg = (_("%s of %s Trendyol variants need attention:\n%s") % (
             len(missing), total, "\n".join(missing[:20]) + ("\n…" if len(missing) > 20 else ""))
-            if missing else _("All %s Trendyol variants match an Odoo SKU.") % total)
+            if missing else _("All %s Trendyol variants match an active Odoo SKU and have a "
+                              "barcode.") % total)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -297,6 +362,73 @@ class TrendyolBackend(models.Model):
         if skus:
             msg += _(" → no product.product has default_code: %s") % ", ".join(sorted(skus))
         return self._notify(msg, warning=not totals.get("created"))
+
+    # ---------------------------------------------------------- stock (Phase 2)
+    def _inventory_path(self):
+        return "/integration/inventory/sellers/%s/products/price-and-inventory" % self.seller_id
+
+    def push_stock_levels(self):
+        """Send the free quantity of every approved Trendyol variant we can match in Odoo.
+
+        Quantity only, never prices: Seller Center keeps owning pricing/promos, and the
+        endpoint would happily overwrite them.
+        ponytail: pushes the whole catalog every run — that is one request per 1000 variants
+        and Wayakit's catalog is in the hundreds. If it grows, diff against the last pushed
+        quantity (store it) instead of adding a second cron."""
+        self.ensure_one()
+        # Active products only (unlike the diagnostic): pushing stock for an archived
+        # product is meaningless — it is reported by action_check_products instead.
+        Product = self.env["product.product"]
+        location = self.warehouse_location_id
+        items, skipped = [], []
+        for content, var in self._iter_approved_variants():
+            label = content.get("productMainId") or var.get("stockCode") or "?"
+            barcode = var.get("barcode")
+            codes = self._variant_codes(content, var)
+            product = (Product.search([("default_code", "in", codes)], limit=1)
+                       if codes else Product.browse())
+            if not product:
+                skipped.append("%s (no Odoo product)" % label)
+                continue
+            if not barcode:
+                skipped.append("%s (no Trendyol barcode)" % label)
+                continue
+            qty = (product.with_context(location=location.id).free_qty if location
+                   else product.free_qty)
+            items.append({"barcode": barcode, "quantity": max(int(qty), 0)})
+
+        batches = []
+        for batch in mapping.chunks(items):
+            res = self._request("POST", self._inventory_path(), payload={"items": batch})
+            batches.append(res.get("batchRequestId") if isinstance(res, dict) else res)
+        self.stock_last_push = fields.Datetime.now()
+        _logger.info("Trendyol backend %s: stock push -> %s item(s) in %s batch(es) %s; "
+                     "skipped %s: %s", self.name, len(items), len(batches), batches,
+                     len(skipped), skipped)
+        return {"pushed": len(items), "skipped": skipped, "batches": batches}
+
+    def action_push_stock(self):
+        """Button: push stock for the selected backend(s) now."""
+        pushed, skipped, batches = 0, [], []
+        for backend in self:
+            res = backend.push_stock_levels()
+            pushed += res["pushed"]
+            skipped += res["skipped"]
+            batches += res["batches"]
+        msg = _("%(pushed)s quantity(ies) sent in %(n)s batch(es): %(batches)s") % {
+            "pushed": pushed, "n": len(batches), "batches": ", ".join(map(str, batches)) or "—"}
+        if skipped:
+            msg += _(" · %s variant(s) skipped: %s") % (
+                len(skipped), ", ".join(skipped[:20]) + ("…" if len(skipped) > 20 else ""))
+        return self._notify(msg, warning=not pushed)
+
+    @api.model
+    def cron_push_stock(self):
+        for backend in self.search([("active", "=", True), ("push_stock", "=", True)]):
+            try:
+                backend.push_stock_levels()
+            except Exception as e:  # never let one backend kill the cron
+                _logger.exception("Trendyol stock push failed for backend %s: %s", backend.name, e)
 
     @api.model
     def cron_import_orders(self):
@@ -338,7 +470,11 @@ class TrendyolBackend(models.Model):
                                     pkg.get("orderNumber"), pkg)
                     unmatched += 1
                     continue
-                if SaleOrder.search_count([("trendyol_package_id", "=", pkg_id)]):
+                known = SaleOrder.search([("trendyol_package_id", "=", pkg_id)], limit=1)
+                if known:
+                    # Reconcile, don't just count: this is the path that catches up an order
+                    # whose webhook was missed or whose auto-confirm had failed.
+                    known._trendyol_apply_status(pkg.get("status"))
                     dup += 1
                     continue
                 if SaleOrder._create_from_trendyol(self, pkg):

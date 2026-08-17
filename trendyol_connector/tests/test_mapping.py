@@ -22,9 +22,26 @@ def test_should_import():
 
 def test_map_state():
     assert mapping.map_state("Created") == "draft"
-    assert mapping.map_state("Delivered") == "done"
     assert mapping.map_state("Whatever") == "draft"  # safe default
     assert mapping.map_state("CANCELLED") == "cancel"  # webhook spelling
+    # Odoo 17 removed the "done" state from sale.order (draft/sent/sale/cancel only);
+    # writing it would raise. Delivered confirms the order and locks it instead.
+    assert "done" not in mapping.STATE_MAP.values()
+    assert mapping.map_state("Delivered") == "sale"
+
+
+def test_should_lock():
+    assert mapping.should_lock("Delivered")
+    assert mapping.should_lock("DELIVERED")   # webhook spelling
+    assert not mapping.should_lock("Shipped")
+    assert not mapping.should_lock(None)
+
+
+def test_chunks():
+    assert mapping.chunks([]) == []                       # nothing in -> no request out
+    assert mapping.chunks([1, 2, 3], size=2) == [[1, 2], [3]]
+    batches = mapping.chunks(list(range(1001)))            # Trendyol caps items at 1000
+    assert [len(b) for b in batches] == [1000, 1]
 
 
 def test_extract_packages():
@@ -68,6 +85,15 @@ def test_normalize_lines():
     assert mapping.normalize_lines({}) == []
 
 
+def test_line_id():
+    # Trendyol's own line id: needed as lines[].lineId when pushing the package status.
+    pkg = {"lines": [{"id": 987654, "stockCode": "FP-HOM-03601", "quantity": 1,
+                      "lineUnitPrice": 13.0}]}
+    assert mapping.normalize_lines(pkg)[0]["line_id"] == "987654"
+    # absent -> empty string, never the literal "None" (it would be pushed as a lineId)
+    assert mapping.normalize_lines({"lines": [{"stockCode": "X"}]})[0]["line_id"] == ""
+
+
 def test_sku_from_model_code():
     # Wayakit stores the SKU in Trendyol's "Model code" (productMainId); when
     # merchantSku/sku are absent it must be used as the match key.
@@ -100,8 +126,9 @@ def test_vat_stripped():
 
 
 if __name__ == "__main__":
-    for fn in [test_should_import, test_map_state, test_package_id, test_epoch_ms_to_dt,
-               test_normalize_lines, test_sku_from_model_code, test_sku_from_stock_code,
+    for fn in [test_should_import, test_map_state, test_should_lock, test_chunks,
+               test_package_id, test_epoch_ms_to_dt, test_normalize_lines, test_line_id,
+               test_sku_from_model_code, test_sku_from_stock_code,
                test_price_from_line_unit_price, test_vat_stripped, test_extract_packages]:
         fn()
         print(fn.__name__, "OK")

@@ -9,6 +9,7 @@
                         <button name="action_test_connection" type="object" string="Test Connection" class="btn-primary"/>
                         <button name="action_check_products" type="object" string="Check Product SKUs"/>
                         <button name="action_import_orders" type="object" string="Import Orders Now"/>
+                        <button name="action_push_stock" type="object" string="Push Stock Now"/>
                         <button name="action_register_webhook" type="object" string="Register Webhook"/>
                         <button name="action_unregister_webhook" type="object" string="Delete Webhook"
                                 invisible="not webhook_id" confirm="Delete the webhook on Trendyol?"/>
@@ -43,6 +44,12 @@
                                      this model is already restricted by the ACL. -->
                                 <field name="webhook_api_key" widget="CopyClipboardChar"/>
                                 <field name="webhook_id"/>
+                            </group>
+                            <group string="Shipping &amp; Stock">
+                                <field name="auto_confirm"/>
+                                <field name="push_status"/>
+                                <field name="push_stock"/>
+                                <field name="stock_last_push"/>
                             </group>
                         </group>
                     </sheet>

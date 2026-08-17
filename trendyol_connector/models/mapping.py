@@ -10,17 +10,25 @@ from datetime import datetime
 # Excluded on purpose: Cancelled, Returned, UnDelivered, UnSupplied, Awaiting.
 IMPORTABLE = {"Created", "Picking", "Invoiced", "Shipped", "AtCollectionPoint", "Delivered"}
 
-# Trendyol status -> Odoo sale.order state. Phase 1 imports everything as draft;
-# this map is the hook Phase 2/3 uses to auto-confirm/close. Kept here so it has a test.
+# Trendyol status -> Odoo sale.order state. Phase 2 uses it to auto-confirm.
+# NOTE: "done" is NOT a valid sale.order state in Odoo 17 — SALE_ORDER_STATE is only
+# draft/sent/sale/cancel and locking moved to the `locked` boolean. Delivered therefore
+# maps to "sale"; see LOCK_STATUSES for the locking part.
 STATE_MAP = {
     "Created": "draft",
     "Picking": "draft",
     "Invoiced": "sale",
     "Shipped": "sale",
     "AtCollectionPoint": "sale",
-    "Delivered": "done",
+    "Delivered": "sale",
     "Cancelled": "cancel",
 }
+
+# Statuses after which the order should be locked (Odoo 17 replacement for state "done").
+LOCK_STATUSES = {"Delivered"}
+
+# Trendyol accepts at most 1000 items per price-and-inventory request.
+MAX_INVENTORY_ITEMS = 1000
 
 
 def _canon(status):
@@ -31,6 +39,7 @@ def _canon(status):
 
 _IMPORTABLE_CANON = {_canon(s) for s in IMPORTABLE}
 _STATE_MAP_CANON = {_canon(k): v for k, v in STATE_MAP.items()}
+_LOCK_CANON = {_canon(s) for s in LOCK_STATUSES}
 
 
 def should_import(status):
@@ -39,6 +48,15 @@ def should_import(status):
 
 def map_state(status):
     return _STATE_MAP_CANON.get(_canon(status), "draft")
+
+
+def should_lock(status):
+    return _canon(status) in _LOCK_CANON
+
+
+def chunks(seq, size=MAX_INVENTORY_ITEMS):
+    """Split a list into API-sized batches. Empty in -> empty out (no pointless request)."""
+    return [seq[i:i + size] for i in range(0, len(seq), size)]
 
 
 def extract_packages(payload):
@@ -98,5 +116,8 @@ def normalize_lines(pkg):
             "quantity": line.get("quantity") or 1,
             "price": gross / (1 + vat / 100.0),
             "name": line.get("productName"),
+            # Trendyol's own line id — required to push a per-line package status
+            # (PUT shipment-packages expects lines[].lineId). Kept on the Odoo line.
+            "line_id": str(line.get("id") or "").strip(),
         })
     return out
