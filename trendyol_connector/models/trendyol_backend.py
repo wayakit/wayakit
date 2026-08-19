@@ -171,9 +171,9 @@ class TrendyolBackend(models.Model):
     def _orders_path(self):
         return "/integration/order/sellers/%s/orders" % self.seller_id
 
-    def _package_path(self, package_id, suffix=""):
-        return "/integration/order/sellers/%s/shipment-packages/%s%s" % (
-            self.seller_id, package_id, suffix)
+    def _package_path(self, package_id):
+        return "/integration/order/sellers/%s/shipment-packages/%s" % (
+            self.seller_id, package_id)
 
     # ------------------------------------------------------- outbound (Phase 2)
     def _update_package_status(self, package_id, status, lines=None, params=None):
@@ -187,13 +187,9 @@ class TrendyolBackend(models.Model):
         payload = {"status": status, "lines": lines or [], "params": params or {}}
         return self._request("PUT", self._package_path(package_id), payload=payload)
 
-    def _update_tracking(self, package_id, sender_number, provider_code):
-        """Send our own waybill number (FBM: Wayakit ships, so Trendyol only learns the
-        tracking number from us). Requires the package to be in Picking already."""
-        self.ensure_one()
-        return self._request(
-            "PUT", self._package_path(package_id, "/tracking-details"),
-            payload={"cargoSenderNumber": sender_number, "providerCode": provider_code})
+    # ponytail: no tracking push. Trendyol supplies the shipping guide for Wayakit's
+    # packages (ops, 2026-08-19) — pushing our own waybill would overwrite theirs.
+    # Bring back PUT .../tracking-details only if Wayakit ever ships with its own courier.
 
     # --------------------------------------------------------------- actions
     def action_test_connection(self):
