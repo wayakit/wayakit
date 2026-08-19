@@ -101,6 +101,11 @@ class SaleOrder(models.Model):
             # failure, not blow up the delivery validation that called us.
             lines = [{"lineId": int(l.trendyol_line_id), "quantity": int(l.product_uom_qty)}
                      for l in self.order_line if l.trendyol_line_id]
+            if not lines:
+                # Trendyol answers a lines-less body with an opaque 404. Orders imported
+                # before the lineId fix have none; they can only be pushed by re-importing.
+                raise ValueError(
+                    "no Trendyol line id on this order — re-import it to push its status")
             backend._update_package_status(self.trendyol_package_id, status, lines, params)
         except Exception as e:
             _logger.warning("Trendyol order %s: pushing status %s failed: %s",

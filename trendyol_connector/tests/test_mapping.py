@@ -86,10 +86,13 @@ def test_normalize_lines():
 
 
 def test_line_id():
-    # Trendyol's own line id: needed as lines[].lineId when pushing the package status.
-    pkg = {"lines": [{"id": 987654, "stockCode": "FP-HOM-03601", "quantity": 1,
-                      "lineUnitPrice": 13.0}]}
-    assert mapping.normalize_lines(pkg)[0]["line_id"] == "987654"
+    # Real orders payload spells it "lineId", not "id" — reading "id" produced an empty
+    # lines list and the status push answered 404. Both spellings must resolve.
+    pkg = {"lines": [{"lineId": 10562124, "stockCode": "FP-HOM-03601", "quantity": 1,
+                      "lineUnitPrice": 100.0}]}
+    assert mapping.normalize_lines(pkg)[0]["line_id"] == "10562124"
+    # doc/webhook spelling
+    assert mapping.normalize_lines({"lines": [{"id": 987654}]})[0]["line_id"] == "987654"
     # absent -> empty string, never the literal "None" (it would be pushed as a lineId)
     assert mapping.normalize_lines({"lines": [{"stockCode": "X"}]})[0]["line_id"] == ""
 

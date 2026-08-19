@@ -118,6 +118,9 @@ def normalize_lines(pkg):
             "name": line.get("productName"),
             # Trendyol's own line id — required to push a per-line package status
             # (PUT shipment-packages expects lines[].lineId). Kept on the Odoo line.
-            "line_id": str(line.get("id") or "").strip(),
+            # The live orders payload names it `lineId`, NOT `id` (same trap as
+            # shipmentPackageId in package_id): reading `id` gave an empty list and
+            # the status push 404'd. `id` kept as the doc/webhook spelling.
+            "line_id": str(line.get("lineId") or line.get("id") or "").strip(),
         })
     return out

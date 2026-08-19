@@ -181,11 +181,10 @@ class TrendyolBackend(models.Model):
         settable by the seller: "Shipped"/"Delivered" are derived by Trendyol from the
         tracking number and are rejected here."""
         self.ensure_one()
-        payload = {"status": status}
-        if lines:
-            payload["lines"] = lines
-        if params:
-            payload["params"] = params
+        # `lines` and `params` are always sent, even empty: a body without `lines`
+        # is answered with a 404 (SellerIntegrationApiDomainNotFoundException), not a
+        # 400, which is impossible to read as "you forgot the lines".
+        payload = {"status": status, "lines": lines or [], "params": params or {}}
         return self._request("PUT", self._package_path(package_id), payload=payload)
 
     def _update_tracking(self, package_id, sender_number, provider_code):
