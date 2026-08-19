@@ -123,9 +123,19 @@ class SaleOrder(models.Model):
         This is the catch-up path: it re-runs the confirm+push that the import already
         tried, which is what recovers an order whose webhook was missed or whose
         auto-confirm failed. Both steps are idempotent, so re-running them is free.
-        Phase 2 only moves forward — Cancelled/Returned just refresh the char (Phase 3)."""
+        Only moves forward: Cancelled/Returned are handed to a human (see below)."""
         self.ensure_one()
+        previous = self.trendyol_status
         self.trendyol_status = status or self.trendyol_status
+        if status and status != previous and not mapping.should_import(status):
+            # Cancelled / Returned / UnDelivered / UnSupplied. ponytail: no automation —
+            # Wayakit sees roughly one cancellation a year, so cancelling the SO or
+            # building the stock return in code would be more maintenance than the two
+            # clicks it replaces. Just make sure a human hears about it: the chatter
+            # reaches the salesperson, who follows the order.
+            self.message_post(body=_(
+                "Trendyol: package is now %s. This order needs manual handling in Odoo "
+                "(cancel it, or process the return).") % status)
         if not (mapping.should_import(status) and self.trendyol_backend_id.auto_confirm):
             return
         if self._trendyol_confirm() and mapping.map_state(status) == "draft":

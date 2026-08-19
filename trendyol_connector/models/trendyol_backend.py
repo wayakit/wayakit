@@ -209,9 +209,13 @@ class TrendyolBackend(models.Model):
 
     # ------------------------------------------------------------- webhooks
     # Webhook enum spells statuses CREATED / AT_COLLECTION_POINT etc.
-    # Importables + CANCELLED (to reflect the status on already-imported orders).
+    # Importables + the bad endings, which never create an order but must reach one we
+    # already have so the salesperson gets the chatter notice.
+    # NOTE: an explicit list does NOT auto-gain statuses later — changing this needs a
+    # click on "Register Webhook" (it PUTs when webhook_id is already set).
     WEBHOOK_STATUSES = ["CREATED", "PICKING", "INVOICED", "SHIPPED",
-                        "AT_COLLECTION_POINT", "DELIVERED", "CANCELLED"]
+                        "AT_COLLECTION_POINT", "DELIVERED",
+                        "CANCELLED", "RETURNED", "UNDELIVERED", "UNSUPPLIED"]
 
     def _webhook_path(self, suffix=""):
         return "/integration/webhook/sellers/%s/webhooks%s" % (self.seller_id, suffix)
@@ -456,21 +460,25 @@ class TrendyolBackend(models.Model):
             content = data.get("content") or []
             for pkg in content:
                 seen += 1
-                if not mapping.should_import(pkg.get("status")):
-                    not_importable += 1
-                    continue
                 pkg_id = mapping.package_id(pkg)
-                if not pkg_id:
-                    _logger.warning("Trendyol order %s has no package id, skipped: %s",
-                                    pkg.get("orderNumber"), pkg)
-                    unmatched += 1
-                    continue
-                known = SaleOrder.search([("trendyol_package_id", "=", pkg_id)], limit=1)
+                # Look the order up BEFORE the importable filter: Cancelled/Returned never
+                # create an order, but when we already have one the status still has to
+                # reach it. The cron is the safety net for a webhook we missed.
+                known = (SaleOrder.search([("trendyol_package_id", "=", pkg_id)], limit=1)
+                         if pkg_id else SaleOrder.browse())
                 if known:
                     # Reconcile, don't just count: this is the path that catches up an order
                     # whose webhook was missed or whose auto-confirm had failed.
                     known._trendyol_apply_status(pkg.get("status"))
                     dup += 1
+                    continue
+                if not mapping.should_import(pkg.get("status")):
+                    not_importable += 1
+                    continue
+                if not pkg_id:
+                    _logger.warning("Trendyol order %s has no package id, skipped: %s",
+                                    pkg.get("orderNumber"), pkg)
+                    unmatched += 1
                     continue
                 if SaleOrder._create_from_trendyol(self, pkg):
                     created += 1

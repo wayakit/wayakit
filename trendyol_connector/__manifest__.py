@@ -3,7 +3,7 @@
     "summary": "Direct Trendyol MENA integration for Wayakit: auth, product match, order "
                "import, order confirmation, status push and stock sync.",
     "category": "Sales",
-    "version": "17.0.2.1.0",
+    "version": "17.0.2.2.0",
     "author": "Wayakit",
     "website": "https://wayakit.com",
     "license": "LGPL-3",
