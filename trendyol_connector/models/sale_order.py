@@ -19,6 +19,12 @@ class SaleOrder(models.Model):
         help="Last status we successfully notified to Trendyol. Makes the push idempotent "
              "and shows at a glance whether Trendyol knows the order is being prepared.",
     )
+    trendyol_alerted_status = fields.Char(
+        string="Status Alerted in Chatter", readonly=True, copy=False,
+        help="Last Cancelled/Returned-type status we posted a chatter notice about. "
+             "Keeps the notice idempotent when Trendyol redelivers a webhook or sends "
+             "them out of order.",
+    )
 
     _sql_constraints = [
         ("trendyol_package_uniq", "unique(trendyol_package_id)",
@@ -125,14 +131,19 @@ class SaleOrder(models.Model):
         auto-confirm failed. Both steps are idempotent, so re-running them is free.
         Only moves forward: Cancelled/Returned are handed to a human (see below)."""
         self.ensure_one()
-        previous = self.trendyol_status
         self.trendyol_status = status or self.trendyol_status
-        if status and status != previous and not mapping.should_import(status):
+        if (status and not mapping.should_import(status)
+                and self.trendyol_alerted_status != status):
             # Cancelled / Returned / UnDelivered / UnSupplied. ponytail: no automation —
             # Wayakit sees roughly one cancellation a year, so cancelling the SO or
             # building the stock return in code would be more maintenance than the two
             # clicks it replaces. Just make sure a human hears about it: the chatter
             # reaches the salesperson, who follows the order.
+            # Guarded on what we ALREADY announced, not on "the status changed": Trendyol
+            # redelivers webhooks and sends them out of order (stage sent Delivered and
+            # Returned 6 s apart and the notice fired twice), so comparing against the
+            # previous status is not idempotent.
+            self.trendyol_alerted_status = status
             self.message_post(body=_(
                 "Trendyol: package is now %s. This order needs manual handling in Odoo "
                 "(cancel it, or process the return).") % status)
