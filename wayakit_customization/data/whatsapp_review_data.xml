@@ -1,0 +1,36 @@
+<odoo>
+    <data noupdate="1">
+        <!-- Name the WhatsApp templates Farah created and got approved in Meta so
+             Python can env.ref() them instead of hardcoding ids. Must be
+             ir.model.data rows: a <record model="whatsapp.template"> would CREATE
+             new (unapproved) templates. Same pattern as
+             data/loyalty_review_coupon_data.xml. -->
+        <record id="xmlid_whatsapp_template_review_feedback" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">whatsapp_template_review_feedback</field>
+            <field name="model">whatsapp.template</field>
+            <field name="res_id">38</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+        <record id="xmlid_whatsapp_template_review_coupon" model="ir.model.data">
+            <field name="module">wayakit_customization</field>
+            <field name="name">whatsapp_template_review_coupon</field>
+            <field name="model">whatsapp.template</field>
+            <field name="res_id">40</field>
+            <field name="noupdate" eval="True"/>
+        </record>
+    </data>
+
+    <data>
+        <!-- Entry point for the marketing campaign "Whatsapp Feedback + Coupon"
+             (id 16): Farah picks this action by name on the ~14 day activity.
+             The body is one line on purpose - the logic is versioned in
+             models/sale_order_inherit.py, same split as views/ir_cron.xml. -->
+        <record id="action_send_review_whatsapp" model="ir.actions.server">
+            <field name="name">Send WhatsApp Review Request (KSA)</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="state">code</field>
+            <field name="code">records.wayakit_send_review_whatsapp()</field>
+        </record>
+    </data>
+</odoo>
