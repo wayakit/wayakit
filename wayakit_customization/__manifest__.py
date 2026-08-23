@@ -27,6 +27,7 @@
         'security/ir.model.access.csv',
         'data/mail_template_data.xml',
         'data/loyalty_review_coupon_data.xml',
+        'data/whatsapp_review_data.xml',
         'views/website_sale_hide_fields.xml',
         'views/views.xml',
         'views/templates.xml',

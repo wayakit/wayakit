@@ -31,4 +31,24 @@ class LoyaltyCard(models.Model):
                 if template and coupon._get_mail_partner():
                     template.send_mail(
                         coupon.id, force_send=force_send, email_layout_xmlid=False)
+                # Second channel, same coupon. Deliberately after the email: the
+                # helper swallows its own errors, so a WhatsApp outage can never
+                # cost the customer the coupon mail.
+                coupon._wayakit_send_coupon_whatsapp()
         return super(LoyaltyCard, self - ours)._send_creation_communication(force_send=force_send)
+
+    def _wayakit_send_coupon_whatsapp(self):
+        """Push the coupon code over WhatsApp too (template customer_coupon_code_2).
+
+        That template carries a single Free Text -- the code. The redeem link
+        /coupon/<code> stays email-only: the Meta-approved body has no room for a
+        URL. Dedup is untouched and still lives in rating_rating.py: this runs
+        only on card CREATION, so 3 reviews of one order = 1 card = 1 message.
+        """
+        self.ensure_one()
+        template = self.env.ref(
+            'wayakit_customization.whatsapp_template_review_coupon',
+            raise_if_not_found=False,
+        )
+        if self.partner_id:
+            self.partner_id._wayakit_send_whatsapp(template, [self.code])
