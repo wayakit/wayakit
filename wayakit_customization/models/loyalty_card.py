@@ -44,11 +44,15 @@ class LoyaltyCard(models.Model):
         /coupon/<code> stays email-only: the Meta-approved body has no room for a
         URL. Dedup is untouched and still lives in rating_rating.py: this runs
         only on card CREATION, so 3 reviews of one order = 1 card = 1 message.
+
+        Sent on order_id, not partner_id: the template applies to sale.order and
+        that is also where its {{1}} 'partner_id.name' resolves. order_id is
+        always set by rating_rating._wayakit_grant_review_coupon.
         """
         self.ensure_one()
         template = self.env.ref(
             'wayakit_customization.whatsapp_template_review_coupon',
             raise_if_not_found=False,
         )
-        if self.partner_id:
-            self.partner_id._wayakit_send_whatsapp(template, [self.code])
+        if self.order_id:
+            self.order_id._wayakit_send_whatsapp(template, [self.code])

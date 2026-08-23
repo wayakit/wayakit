@@ -96,4 +96,6 @@ class SaleOrder(models.Model):
             if not text:
                 _logger.info("%s: no reviewable product, no WhatsApp sent", order.name)
                 continue
-            order.partner_id._wayakit_send_whatsapp(template, [text])
+            # Template 38 applies to sale.order: send on the order itself, it is
+            # what resolves phone_field 'partner_id.mobile' and {{1}} 'partner_id.name'.
+            order._wayakit_send_whatsapp(template, [text])
