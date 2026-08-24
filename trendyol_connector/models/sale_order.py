@@ -262,11 +262,25 @@ class SaleOrder(models.Model):
         country = self.env["res.country"].search(
             [("code", "=", info["country_code"] or (backend.store_front_code or "").upper())],
             limit=1)
+        # whatsapp_sale (Enterprise) sends a WhatsApp message off partner_id.mobile/phone on
+        # every order confirmation. That never used to run — the customer was the generic
+        # "Trendyol Marketplace" partner, which has no phone. Now that a real buyer is the
+        # customer, a malformed number (seen on Trendyol's own stage sandbox test data)
+        # reaches that automation and raises INSIDE action_confirm(), which _trendyol_confirm
+        # correctly catches — but it means the order silently never auto-confirms. Validate
+        # with Odoo's own formatter (reused, not reimplemented) and drop what doesn't parse
+        # rather than write a value another module's automation will choke on later.
+        phone = (Partner._phone_format(number=info["phone"], country=country,
+                                       raise_exception=False)
+                 if info["phone"] and country else False)
+        if info["phone"] and not phone:
+            _logger.warning("Trendyol order %s: buyer phone %r did not validate for %s, dropped",
+                            pkg.get("orderNumber"), info["phone"], country.code)
         # Only the fields Trendyol actually sent. The address usually travels on Trendyol's
         # shipping label, not the API, so most of these stay empty on MENA payloads.
         addr = {k: v for k, v in (("street", info["street"]), ("street2", info["street2"]),
                                   ("city", info["city"]), ("zip", info["zip"]),
-                                  ("phone", info["phone"])) if v}
+                                  ("phone", phone)) if v}
         # country_id is NOT optional: it drives the fiscal position, and with it the tax on
         # the order. Getting it wrong silently breaks the "total == Trendyol gross" invariant.
         if country:
