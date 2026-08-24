@@ -275,25 +275,20 @@ class SaleOrder(models.Model):
         country = self.env["res.country"].search(
             [("code", "=", info["country_code"] or (backend.store_front_code or "").upper())],
             limit=1)
-        # whatsapp_sale (Enterprise) sends a WhatsApp message off partner_id.mobile/phone on
-        # every order confirmation. That never used to run — the customer was the generic
-        # "Trendyol Marketplace" partner, which has no phone. Now that a real buyer is the
-        # customer, a malformed number (seen on Trendyol's own stage sandbox test data)
-        # reaches that automation and raises INSIDE action_confirm(), which _trendyol_confirm
-        # correctly catches — but it means the order silently never auto-confirms. Validate
-        # with Odoo's own formatter (reused, not reimplemented) and drop what doesn't parse
-        # rather than write a value another module's automation will choke on later.
-        phone = (Partner._phone_format(number=info["phone"], country=country,
-                                       raise_exception=False)
-                 if info["phone"] and country else False)
-        if info["phone"] and not phone:
-            _logger.warning("Trendyol order %s: buyer phone %r did not validate for %s, dropped",
-                            pkg.get("orderNumber"), info["phone"], country.code)
+        # ponytail: phone deliberately NOT written on this contact. whatsapp_sale
+        # (Enterprise) sends a WhatsApp message off partner_id.mobile/phone on every order
+        # confirmation, and Trendyol's own stage sandbox test numbers fail its validator
+        # (raises INSIDE action_confirm — _trendyol_confirm degrades that gracefully, but
+        # the confirm should never have to depend on WhatsApp's opinion of a marketplace
+        # phone number). Tried validating with Odoo's own phone_validation first: it passed
+        # numbers that whatsapp's own stricter check still rejected, so it settled nothing.
+        # Matches the existing convention too — the contacts ops already creates by hand
+        # (`Trendyol - fariduh muhudi…`, `Trendyol-salahah al-shahri`) carry no phone either.
+        # Add it back only alongside a real fix on the WhatsApp/whatsapp_sale side.
         # Only the fields Trendyol actually sent. The address usually travels on Trendyol's
         # shipping label, not the API, so most of these stay empty on MENA payloads.
         addr = {k: v for k, v in (("street", info["street"]), ("street2", info["street2"]),
-                                  ("city", info["city"]), ("zip", info["zip"]),
-                                  ("phone", phone)) if v}
+                                  ("city", info["city"]), ("zip", info["zip"])) if v}
         # country_id is NOT optional: it drives the fiscal position, and with it the tax on
         # the order. Getting it wrong silently breaks the "total == Trendyol gross" invariant.
         if country:
