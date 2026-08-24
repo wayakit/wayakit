@@ -27,10 +27,6 @@ STATE_MAP = {
 # Statuses after which the order should be locked (Odoo 17 replacement for state "done").
 LOCK_STATUSES = {"Delivered"}
 
-# Trendyol accepts at most 1000 items per price-and-inventory request.
-MAX_INVENTORY_ITEMS = 1000
-
-
 def _canon(status):
     """The GET API says "AtCollectionPoint"; webhooks say "AT_COLLECTION_POINT".
     Canonical form: uppercase, no underscores."""
@@ -52,11 +48,6 @@ def map_state(status):
 
 def should_lock(status):
     return _canon(status) in _LOCK_CANON
-
-
-def chunks(seq, size=MAX_INVENTORY_ITEMS):
-    """Split a list into API-sized batches. Empty in -> empty out (no pointless request)."""
-    return [seq[i:i + size] for i in range(0, len(seq), size)]
 
 
 def extract_packages(payload):
@@ -90,6 +81,37 @@ def epoch_ms_to_dt(ms):
     if not ms:
         return None
     return datetime.utcfromtimestamp(ms / 1000.0)
+
+
+def buyer(pkg):
+    """Extract the individual buyer from a shipment package.
+
+    Everything here is optional: the MENA payload is expected to carry the name and
+    little else (the address travels on Trendyol's own shipping label, not the API), so
+    each field falls back until it runs out and the caller decides what to do with "".
+
+    Same trap as package_id/lineId: the field names below are the documented ones plus
+    the ones seen on real payloads. Log a full production package before trusting them.
+
+    `ref` is the dedup key (Trendyol's customer id). When Trendyol masks it, the caller
+    falls back to matching on the name.
+    """
+    addr = pkg.get("shipmentAddress") or pkg.get("invoiceAddress") or {}
+    name = (
+        " ".join(filter(None, [pkg.get("customerFirstName"), pkg.get("customerLastName")]))
+        or addr.get("fullName")
+        or " ".join(filter(None, [addr.get("firstName"), addr.get("lastName")]))
+    )
+    return {
+        "ref": str(pkg.get("customerId") or "").strip(),
+        "name": " ".join((name or "").split()),   # collapse the double spaces a missing half leaves
+        "street": addr.get("address1") or addr.get("fullAddress") or "",
+        "street2": addr.get("address2") or "",
+        "city": addr.get("city") or "",
+        "zip": str(addr.get("postalCode") or ""),
+        "phone": addr.get("phone") or "",
+        "country_code": (addr.get("countryCode") or "").upper(),
+    }
 
 
 def normalize_lines(pkg):

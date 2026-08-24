@@ -1,6 +1,9 @@
 import logging
 
+from markupsafe import Markup
+
 from odoo import api, fields, models, _
+from odoo.tools import html_escape
 
 from . import mapping
 
@@ -45,10 +48,13 @@ class SaleOrder(models.Model):
                 pkg.get("orderNumber"), missing)
             return False
 
-        ship_partner = self._trendyol_shipping_partner(backend, pkg)
+        # The buyer is both the customer and the ship-to: one flat contact, no delivery
+        # child. Falls back to the generic marketplace partner only when Trendyol sent
+        # no name at all.
+        partner = self._trendyol_buyer_partner(backend, pkg) or backend.marketplace_partner_id
         vals = {
-            "partner_id": backend.marketplace_partner_id.id,
-            "partner_shipping_id": (ship_partner or backend.marketplace_partner_id).id,
+            "partner_id": partner.id,
+            "partner_shipping_id": partner.id,
             "company_id": backend.company_id.id,
             # explicit (even when empty) so the default never picks up env.user: the
             # button would stamp whoever clicked it and the webhook the public user.
@@ -71,8 +77,55 @@ class SaleOrder(models.Model):
 
         # A Trendyol package is already paid: there is nothing to quote. Same call the
         # reconciliation cron uses, so import and catch-up can never drift apart.
+        # Before _trendyol_apply_status on purpose: that call confirms the order, which
+        # reserves stock, which decrements free_qty by this very order's quantity. Read
+        # availability first or every order reports itself as short.
+        order._trendyol_notify_new_order()
         order._trendyol_apply_status(pkg.get("status"))
         return order
+
+    def _trendyol_notify_new_order(self):
+        """Ping the backend's notify list once, when the order is first created.
+
+        Idempotent by construction: creation happens exactly once per package (the
+        trendyol_package_uniq constraint guarantees it), so there is no "already
+        notified" flag to keep.
+
+        The body names each product with its ordered vs available quantity because a bare
+        "new order arrived" ping is useless here: Wayakit KSA regularly sits at zero free
+        stock, and whoever reads this has to know whether the item must be manufactured
+        before the warehouse can pick it (see the Guayaquil/Wayakit question on the
+        ticket — WH/OUT/02005 sat unshipped for a week for exactly this reason)."""
+        self.ensure_one()
+        backend = self.trendyol_backend_id
+        partners = backend.notify_user_ids.partner_id
+        if not partners:
+            return False
+        location = backend.warehouse_location_id
+        rows, short = [], False
+        for line in self.order_line.filtered(lambda l: not l.display_type):
+            product = (line.product_id.with_context(location=location.id) if location
+                       else line.product_id)
+            free = product.free_qty
+            # only storables have a meaningful free_qty; a service is never "short"
+            missing = (line.product_uom_qty - free) if line.product_id.type == "product" else 0
+            short = short or missing > 0
+            rows.append("<li>%s — %s ordered, %s available%s</li>" % (
+                html_escape(line.product_id.display_name), line.product_uom_qty, free,
+                " <b>&#9888; must be manufactured</b>" if missing > 0 else ""))
+        body = Markup(
+            "<p>New Trendyol order <b>%s</b>%s.</p><ul>%s</ul>%s" % (
+                html_escape(self.trendyol_order_number or ""),
+                " — <b>stock is short</b>" if short else "",
+                "".join(rows),
+                "<p>Manufacturing has to produce the missing quantity before the delivery "
+                "can be picked and shipped.</p>" if short else ""))
+        # subscribe as well as notify: they then also get the Cancelled/Returned notices
+        # this order may post later.
+        self.message_subscribe(partner_ids=partners.ids)
+        self.message_post(body=body, partner_ids=partners.ids,
+                          subtype_xmlid="mail.mt_comment")
+        return True
 
     # ------------------------------------------------------- status (Phase 2)
     def _trendyol_confirm(self):
@@ -183,29 +236,58 @@ class SaleOrder(models.Model):
         return lines, missing
 
     @api.model
-    def _trendyol_shipping_partner(self, backend, pkg):
-        """One delivery-type child per order holding the real ship-to address.
-        ponytail: a child per order, not a customer per buyer — keeps the CRM clean and
-        gives Phase 2 a real address to print labels from. Dedup handled upstream by package_id."""
-        addr = pkg.get("shipmentAddress") or {}
-        if not addr:
+    def _trendyol_buyer_partner(self, backend, pkg):
+        """One res.partner per real buyer, reused on repeat orders.
+
+        Reverses the original design (generic partner + a delivery child per order):
+        Wayakit wants the buyer's own contact, which is also what ops already creates by
+        hand in production under the name "Trendyol - <name>". Returns False when the
+        payload carries no name at all — the caller then falls back to the generic
+        marketplace partner rather than creating an anonymous contact per order."""
+        info = mapping.buyer(pkg)
+        if not info["name"]:
             return False
-        name = addr.get("fullName") \
-            or " ".join(filter(None, [addr.get("firstName"), addr.get("lastName")])) \
-            or pkg.get("orderNumber") or "Trendyol buyer"
+        Partner = self.env["res.partner"]
+        name = "Trendyol - %s" % info["name"]
+
+        # 1. the customer id is the real dedup key (same lesson as trendyol_package_id:
+        #    match on an id we stored, never on a value that can drift).
+        partner = (Partner.search([("trendyol_customer_ref", "=", info["ref"])], limit=1)
+                   if info["ref"] else Partner.browse())
+        # 2. no id (Trendyol masks buyer data on MENA) -> fall back to the name, which is
+        #    also what picks up the contacts ops created by hand before this module.
+        if not partner:
+            partner = Partner.search([("name", "=ilike", name)], limit=1)
+
         country = self.env["res.country"].search(
-            [("code", "=", (addr.get("countryCode") or "").upper())], limit=1)
-        return self.env["res.partner"].create({
+            [("code", "=", info["country_code"] or (backend.store_front_code or "").upper())],
+            limit=1)
+        # Only the fields Trendyol actually sent. The address usually travels on Trendyol's
+        # shipping label, not the API, so most of these stay empty on MENA payloads.
+        addr = {k: v for k, v in (("street", info["street"]), ("street2", info["street2"]),
+                                  ("city", info["city"]), ("zip", info["zip"]),
+                                  ("phone", info["phone"])) if v}
+        # country_id is NOT optional: it drives the fiscal position, and with it the tax on
+        # the order. Getting it wrong silently breaks the "total == Trendyol gross" invariant.
+        if country:
+            addr["country_id"] = country.id
+
+        if partner:
+            # Never overwrite what a human typed — only fill the blanks, and stamp the
+            # customer id so the next order matches on the id instead of the name.
+            fill = {k: v for k, v in addr.items() if not partner[k]}
+            if info["ref"] and not partner.trendyol_customer_ref:
+                fill["trendyol_customer_ref"] = info["ref"]
+            if fill:
+                partner.write(fill)
+            return partner
+
+        return Partner.create(dict(addr, **{
             "name": name,
-            "type": "delivery",
-            "parent_id": backend.marketplace_partner_id.id,
-            "street": addr.get("address1") or addr.get("fullAddress"),
-            "street2": addr.get("address2"),
-            "city": addr.get("city"),
-            "zip": addr.get("postalCode"),
-            "phone": addr.get("phone"),
-            "country_id": country.id or False,
-        })
+            "type": "contact",
+            "customer_rank": 1,
+            "trendyol_customer_ref": info["ref"] or False,
+        }))
 
 
 class SaleOrderLine(models.Model):

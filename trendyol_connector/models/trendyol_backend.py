@@ -61,6 +61,13 @@ class TrendyolBackend(models.Model):
              "Set explicitly so cron, webhook and the manual button all produce the same "
              "thing — otherwise the order inherits whoever happened to click the button.",
     )
+    notify_user_ids = fields.Many2many(
+        "res.users", string="Notify on New Order", domain=[("share", "=", False)],
+        help="Users pinged in the chatter when a new Trendyol order lands. They are also "
+             "subscribed as followers, so they keep receiving the cancellation/return "
+             "notices on that order. Add manufacturing here when a product has to be "
+             "produced before the order can be picked and shipped.",
+    )
     marketplace_partner_id = fields.Many2one(
         "res.partner", string="Marketplace Partner", required=True,
         default=lambda self: self.env.ref(
@@ -69,7 +76,7 @@ class TrendyolBackend(models.Model):
              "as a per-order delivery child of this partner.",
     )
 
-    # --- Phase 2: shipping & stock ---
+    # --- Phase 2: shipping ---
     auto_confirm = fields.Boolean(
         string="Confirm Imported Orders", default=True,
         help="Confirm every imported order (draft -> sales order) so the delivery is created "
@@ -82,12 +89,6 @@ class TrendyolBackend(models.Model):
              "order is confirmed. Shipped/Delivered cannot be set by the seller — Trendyol "
              "derives them from the tracking number.",
     )
-    push_stock = fields.Boolean(
-        string="Push Stock Levels", default=True,
-        help="Include this backend in the 'Trendyol: Push Stock' cron. Quantities only — "
-             "prices stay owned by Seller Center.",
-    )
-    stock_last_push = fields.Datetime(string="Last Stock Push", readonly=True, copy=False)
 
     last_sync_date = fields.Datetime(
         string="Last Order Sync", copy=False,
@@ -276,8 +277,7 @@ class TrendyolBackend(models.Model):
         return handled
 
     def _iter_approved_variants(self):
-        """Yield (content, variant) for every approved Trendyol variant, paging the catalog.
-        Shared by the SKU report and the stock push so both see exactly the same catalog."""
+        """Yield (content, variant) for every approved Trendyol variant, paging the catalog."""
         self.ensure_one()
         path = "/integration/product/sellers/%s/products/approved" % self.seller_id
         page = 0
@@ -300,9 +300,7 @@ class TrendyolBackend(models.Model):
     def action_check_products(self):
         """Reconcile Trendyol approved products vs Odoo SKUs (default_code).
         The Odoo SKU can live in Trendyol's Model code (productMainId), Stock code
-        (stockCode) or barcode. Reports variants that match no product.product, plus the
-        ones with no Trendyol barcode — those can never be stock-synced (the
-        price-and-inventory endpoint keys on barcode and nothing else)."""
+        (stockCode) or barcode. Reports the variants that match no product.product."""
         self.ensure_one()
         # active_test=False so archived products are diagnosed as "archived", not "missing".
         Product = self.env["product.product"].with_context(active_test=False)
@@ -321,15 +319,11 @@ class TrendyolBackend(models.Model):
                 missing.append("%s (%s) — not in Odoo" % (label, title))
             elif not match.active:
                 missing.append("%s (%s) — ARCHIVED in Odoo" % (label, title))
-            elif not var.get("barcode"):
-                missing.append("%s (%s) — no barcode on Trendyol (stock cannot be pushed)"
-                               % (label, title))
         if missing:
             _logger.warning("Trendyol SKU check: %s issues of %s: %s", len(missing), total, missing)
         msg = (_("%s of %s Trendyol variants need attention:\n%s") % (
             len(missing), total, "\n".join(missing[:20]) + ("\n…" if len(missing) > 20 else ""))
-            if missing else _("All %s Trendyol variants match an active Odoo SKU and have a "
-                              "barcode.") % total)
+            if missing else _("All %s Trendyol variants match an active Odoo SKU.") % total)
         return {
             "type": "ir.actions.client",
             "tag": "display_notification",
@@ -361,73 +355,6 @@ class TrendyolBackend(models.Model):
         if skus:
             msg += _(" → no product.product has default_code: %s") % ", ".join(sorted(skus))
         return self._notify(msg, warning=not totals.get("created"))
-
-    # ---------------------------------------------------------- stock (Phase 2)
-    def _inventory_path(self):
-        return "/integration/inventory/sellers/%s/products/price-and-inventory" % self.seller_id
-
-    def push_stock_levels(self):
-        """Send the free quantity of every approved Trendyol variant we can match in Odoo.
-
-        Quantity only, never prices: Seller Center keeps owning pricing/promos, and the
-        endpoint would happily overwrite them.
-        ponytail: pushes the whole catalog every run — that is one request per 1000 variants
-        and Wayakit's catalog is in the hundreds. If it grows, diff against the last pushed
-        quantity (store it) instead of adding a second cron."""
-        self.ensure_one()
-        # Active products only (unlike the diagnostic): pushing stock for an archived
-        # product is meaningless — it is reported by action_check_products instead.
-        Product = self.env["product.product"]
-        location = self.warehouse_location_id
-        items, skipped = [], []
-        for content, var in self._iter_approved_variants():
-            label = content.get("productMainId") or var.get("stockCode") or "?"
-            barcode = var.get("barcode")
-            codes = self._variant_codes(content, var)
-            product = (Product.search([("default_code", "in", codes)], limit=1)
-                       if codes else Product.browse())
-            if not product:
-                skipped.append("%s (no Odoo product)" % label)
-                continue
-            if not barcode:
-                skipped.append("%s (no Trendyol barcode)" % label)
-                continue
-            qty = (product.with_context(location=location.id).free_qty if location
-                   else product.free_qty)
-            items.append({"barcode": barcode, "quantity": max(int(qty), 0)})
-
-        batches = []
-        for batch in mapping.chunks(items):
-            res = self._request("POST", self._inventory_path(), payload={"items": batch})
-            batches.append(res.get("batchRequestId") if isinstance(res, dict) else res)
-        self.stock_last_push = fields.Datetime.now()
-        _logger.info("Trendyol backend %s: stock push -> %s item(s) in %s batch(es) %s; "
-                     "skipped %s: %s", self.name, len(items), len(batches), batches,
-                     len(skipped), skipped)
-        return {"pushed": len(items), "skipped": skipped, "batches": batches}
-
-    def action_push_stock(self):
-        """Button: push stock for the selected backend(s) now."""
-        pushed, skipped, batches = 0, [], []
-        for backend in self:
-            res = backend.push_stock_levels()
-            pushed += res["pushed"]
-            skipped += res["skipped"]
-            batches += res["batches"]
-        msg = _("%(pushed)s quantity(ies) sent in %(n)s batch(es): %(batches)s") % {
-            "pushed": pushed, "n": len(batches), "batches": ", ".join(map(str, batches)) or "—"}
-        if skipped:
-            msg += _(" · %s variant(s) skipped: %s") % (
-                len(skipped), ", ".join(skipped[:20]) + ("…" if len(skipped) > 20 else ""))
-        return self._notify(msg, warning=not pushed)
-
-    @api.model
-    def cron_push_stock(self):
-        for backend in self.search([("active", "=", True), ("push_stock", "=", True)]):
-            try:
-                backend.push_stock_levels()
-            except Exception as e:  # never let one backend kill the cron
-                _logger.exception("Trendyol stock push failed for backend %s: %s", backend.name, e)
 
     @api.model
     def cron_import_orders(self):

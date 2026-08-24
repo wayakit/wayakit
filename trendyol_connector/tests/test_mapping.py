@@ -37,13 +37,6 @@ def test_should_lock():
     assert not mapping.should_lock(None)
 
 
-def test_chunks():
-    assert mapping.chunks([]) == []                       # nothing in -> no request out
-    assert mapping.chunks([1, 2, 3], size=2) == [[1, 2], [3]]
-    batches = mapping.chunks(list(range(1001)))            # Trendyol caps items at 1000
-    assert [len(b) for b in batches] == [1000, 1]
-
-
 def test_extract_packages():
     pkg = {"id": 1, "lines": []}
     assert mapping.extract_packages(pkg) == [pkg]                      # single package
@@ -67,6 +60,52 @@ def test_epoch_ms_to_dt():
     assert dt is not None and dt.year == 2023 and dt.month == 11
     assert mapping.epoch_ms_to_dt(0) is None
     assert mapping.epoch_ms_to_dt(None) is None
+
+
+def test_buyer_name_sources():
+    # 1. the package's own customer fields win
+    assert mapping.buyer({"customerFirstName": "Salahah", "customerLastName": "Al-Shahri",
+                          "shipmentAddress": {"fullName": "Someone Else"}}
+                         )["name"] == "Salahah Al-Shahri"
+    # 2. shipmentAddress.fullName
+    assert mapping.buyer({"shipmentAddress": {"fullName": "Fariduh Al-Abas"}}
+                         )["name"] == "Fariduh Al-Abas"
+    # 3. shipmentAddress first+last
+    assert mapping.buyer({"shipmentAddress": {"firstName": "Ana", "lastName": "Ruiz"}}
+                         )["name"] == "Ana Ruiz"
+    # half a name must not leave a trailing space -> it would create "Trendyol - Ana "
+    # and never match "Trendyol - Ana" again on the next order.
+    assert mapping.buyer({"customerFirstName": "Ana"})["name"] == "Ana"
+
+
+def test_buyer_name_only_payload():
+    # The MENA shape Wayakit expects: a name and nothing else (the address travels on
+    # Trendyol's shipping label). Must not blow up and must not invent address values.
+    info = mapping.buyer({"customerFirstName": "Ana", "customerLastName": "Ruiz"})
+    assert info["name"] == "Ana Ruiz"
+    assert (info["street"], info["city"], info["zip"], info["phone"],
+            info["country_code"]) == ("", "", "", "", "")
+
+
+def test_buyer_ref_and_address():
+    info = mapping.buyer({
+        "customerId": 4455661,
+        "shipmentAddress": {"fullName": "Ana Ruiz", "address1": "King Fahd Rd",
+                            "address2": "Apt 4", "city": "Riyadh", "postalCode": 12345,
+                            "phone": "+966500000000", "countryCode": "sa"},
+    })
+    assert info["ref"] == "4455661"          # str, never an int: it is matched as a Char
+    assert info["street"] == "King Fahd Rd" and info["street2"] == "Apt 4"
+    assert info["zip"] == "12345"            # arrives as an int on real payloads
+    assert info["country_code"] == "SA"      # upper: res.country.code is uppercase
+
+
+def test_buyer_anonymous():
+    # No name anywhere -> "" so the caller falls back to the generic marketplace partner
+    # instead of creating one anonymous contact per order.
+    assert mapping.buyer({})["name"] == ""
+    assert mapping.buyer({"shipmentAddress": {"city": "Riyadh"}})["name"] == ""
+    assert mapping.buyer({})["ref"] == ""    # never the literal "None"
 
 
 def test_normalize_lines():
@@ -129,8 +168,10 @@ def test_vat_stripped():
 
 
 if __name__ == "__main__":
-    for fn in [test_should_import, test_map_state, test_should_lock, test_chunks,
-               test_package_id, test_epoch_ms_to_dt, test_normalize_lines, test_line_id,
+    for fn in [test_should_import, test_map_state, test_should_lock,
+               test_package_id, test_epoch_ms_to_dt,
+               test_buyer_name_sources, test_buyer_name_only_payload,
+               test_buyer_ref_and_address, test_buyer_anonymous, test_normalize_lines, test_line_id,
                test_sku_from_model_code, test_sku_from_stock_code,
                test_price_from_line_unit_price, test_vat_stripped, test_extract_packages]:
         fn()

@@ -10,16 +10,5 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
         </record>
-
-        <record id="ir_cron_trendyol_push_stock" model="ir.cron">
-            <field name="name">Trendyol: Push Stock</field>
-            <field name="model_id" ref="model_trendyol_backend"/>
-            <field name="state">code</field>
-            <field name="code">model.cron_push_stock()</field>
-            <field name="user_id" ref="base.user_root"/>
-            <field name="interval_number">1</field>
-            <field name="interval_type">hours</field>
-            <field name="numbercall">-1</field>
-        </record>
     </data>
 </odoo>
