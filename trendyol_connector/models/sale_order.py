@@ -131,17 +131,30 @@ class SaleOrder(models.Model):
     def _trendyol_confirm(self):
         """Confirm the order, but never lose it if confirmation fails: a missing route, a
         stock rule or an access error must leave a draft order behind (and a chatter note),
-        not roll back the import of a paid marketplace order."""
+        not roll back the import of a paid marketplace order.
+
+        action_confirm() writes state='sale' early and only fails later, in a post-confirm
+        hook (e.g. Enterprise WhatsApp's order-confirmation send, which validates the
+        customer's phone and raises if it doesn't parse). Odoo does not roll that back just
+        because we caught the exception here without a savepoint — the order is genuinely
+        confirmed by the time the exception reaches us. Trust self.state, not whether the
+        try block completed cleanly, or a confirmed order gets both a false "left as a
+        quotation" chatter note AND never gets its Picking status pushed to Trendyol."""
         self.ensure_one()
         if self.state not in ("draft", "sent"):
             return self.state == "sale"
         try:
             self.action_confirm()
         except Exception as e:
-            _logger.exception("Trendyol order %s: auto-confirm failed", self.trendyol_order_number)
-            self.message_post(body=_("Trendyol: auto-confirm failed, order left as a "
-                                     "quotation. %s") % e)
-            return False
+            confirmed = self.state == "sale"
+            _logger.exception("Trendyol order %s: %s during confirm", self.trendyol_order_number,
+                              "a post-confirm step failed" if confirmed else "auto-confirm failed")
+            self.message_post(body=(
+                _("Trendyol: order confirmed, but a step after confirmation failed. %s") % e
+                if confirmed else
+                _("Trendyol: auto-confirm failed, order left as a "
+                 "quotation. %s") % e))
+            return confirmed
         return True
 
     def _trendyol_push_status(self, status, params=None):
