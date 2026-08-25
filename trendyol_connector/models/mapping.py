@@ -125,9 +125,28 @@ def normalize_lines(pkg):
     for line in pkg.get("lines") or []:
         if line.get("orderLineItemStatusName") == "Cancelled":
             continue
-        # Live API sends the VAT-inclusive unit price as lineUnitPrice (price/amount
-        # kept as fallbacks — not seen on real payloads, only used by older tests).
-        gross = line.get("lineUnitPrice", line.get("price", line.get("amount", 0.0))) or 0.0
+        qty = line.get("quantity") or 1
+        # `lineUnitPrice` is NOT a unit price despite the name: on a real payload it carries
+        # the SAME value as lineGrossAmount, i.e. the LINE TOTAL. Proof from stage order
+        # 1156149765: quantity 25, lineGrossAmount 1250, lineUnitPrice 1250 — a genuine unit
+        # price would make that line 31 250. With quantity 1 the two readings are
+        # indistinguishable, which is why every earlier test passed and this only surfaced
+        # on the first multi-unit order. Same trap as shipmentPackageId and lineId.
+        #
+        # Dividing the line total by the quantity is correct under BOTH readings: if
+        # lineUnitPrice ever really is per-unit, then lineGrossAmount/quantity returns that
+        # exact same number. So prefer lineGrossAmount and divide.
+        #
+        # ponytail: discounts (lineTotalDiscount/lineSellerDiscount/lineTyDiscount) are NOT
+        # subtracted — every payload seen so far has them at 0, so whether lineGrossAmount is
+        # before or after discount is untestable here. Guessing would be a money bug either
+        # way (double-counting vs overcharging). Check it on the first real prod order that
+        # carries a discount.
+        if line.get("lineGrossAmount") is not None:
+            gross = (line.get("lineGrossAmount") or 0.0) / qty
+        else:
+            # price/amount are genuine unit prices (older payload shapes and tests).
+            gross = line.get("lineUnitPrice", line.get("price", line.get("amount", 0.0))) or 0.0
         # Trendyol prices are VAT-inclusive; Odoo KSA sales tax (15%, id=20) is
         # price-EXcluded, so strip the line's vatRate to get the net unit price.
         vat = line.get("vatRate") or 0.0
@@ -135,7 +154,7 @@ def normalize_lines(pkg):
             "sku": str(line.get("productMainId") or line.get("stockCode")
                        or line.get("barcode") or line.get("merchantSku")
                        or line.get("sku") or "").strip(),
-            "quantity": line.get("quantity") or 1,
+            "quantity": qty,
             "price": gross / (1 + vat / 100.0),
             "name": line.get("productName"),
             # Trendyol's own line id — required to push a per-line package status

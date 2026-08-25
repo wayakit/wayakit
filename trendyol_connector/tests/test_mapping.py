@@ -160,6 +160,29 @@ def test_price_from_line_unit_price():
     assert abs(line["price"] - 13.0 / 1.10) < 1e-9
 
 
+def test_price_multi_unit_line():
+    """The bug that only a multi-unit order could expose (stage order 1156149765).
+
+    Trendyol's `lineUnitPrice` is NOT a unit price: it carries the same value as
+    lineGrossAmount, the LINE TOTAL. With quantity 1 the two readings are identical, so
+    every single-unit test passed while a 25-unit order imported at 25x the real price."""
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "quantity": 25, "vatRate": 10.0,
+                      "lineGrossAmount": 1250.0, "lineUnitPrice": 1250.0}]}
+    line = mapping.normalize_lines(pkg)[0]
+    assert line["quantity"] == 25
+    # 1250 gross for the whole line -> 50 gross per unit -> 45.4545 net at vatRate 10
+    assert abs(line["price"] - 50.0 / 1.10) < 1e-9
+    # and the line must still add back up to what Trendyol charged, net of VAT
+    assert abs(line["price"] * line["quantity"] - 1250.0 / 1.10) < 1e-9
+
+
+def test_price_single_unit_still_right():
+    """Regression guard: the single-unit path validated on stage must not move."""
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "quantity": 1, "vatRate": 10.0,
+                      "lineGrossAmount": 100.0, "lineUnitPrice": 100.0}]}
+    assert abs(mapping.normalize_lines(pkg)[0]["price"] - 100.0 / 1.10) < 1e-9
+
+
 def test_vat_stripped():
     # Trendyol sends VAT-inclusive prices; Odoo adds 15% back -> net must be gross/1.15
     pkg = {"lines": [{"merchantSku": "FP-DIS-00001", "quantity": 1, "price": 115.0, "vatRate": 15}]}
@@ -173,7 +196,8 @@ if __name__ == "__main__":
                test_buyer_name_sources, test_buyer_name_only_payload,
                test_buyer_ref_and_address, test_buyer_anonymous, test_normalize_lines, test_line_id,
                test_sku_from_model_code, test_sku_from_stock_code,
-               test_price_from_line_unit_price, test_vat_stripped, test_extract_packages]:
+               test_price_from_line_unit_price, test_price_multi_unit_line,
+               test_price_single_unit_still_right, test_vat_stripped, test_extract_packages]:
         fn()
         print(fn.__name__, "OK")
     print("all passed")

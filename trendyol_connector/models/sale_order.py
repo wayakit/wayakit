@@ -115,7 +115,9 @@ class SaleOrder(models.Model):
             # only storables have a meaningful free_qty; a service is never "short"
             missing = (line.product_uom_qty - free) if line.product_id.type == "product" else 0
             short = short or missing > 0
-            rows.append("<li>%s — %s ordered, %s available%s</li>" % (
+            # %g, not the raw float: Odoo's UoM conversion leaves artifacts like
+            # 25.000000000000004, which reads as a broken message to whoever gets pinged.
+            rows.append("<li>%s — %g ordered, %g available%s</li>" % (
                 html_escape(line.product_id.display_name), line.product_uom_qty, free,
                 " <b>&#9888; must be manufactured</b>" if missing > 0 else ""))
         body = Markup(
