@@ -100,6 +100,11 @@ class SaleOrder(models.Model):
         backend = self.trendyol_backend_id
         partners = backend.notify_user_ids.partner_id
         if not partners:
+            # Loud on purpose: an empty list is valid config, but it is also the single
+            # most likely reason someone reports "the notification never arrived".
+            _logger.warning(
+                "Trendyol order %s: no Notify on New Order users on backend %s, "
+                "nobody was notified", self.trendyol_order_number, backend.name)
             return False
         location = backend.warehouse_location_id
         rows, short = [], False
