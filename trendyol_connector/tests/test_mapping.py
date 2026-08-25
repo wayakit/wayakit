@@ -183,6 +183,32 @@ def test_price_single_unit_still_right():
     assert abs(mapping.normalize_lines(pkg)[0]["price"] - 100.0 / 1.10) < 1e-9
 
 
+def test_price_with_discount():
+    """Stage order 2038174306 — the case a zero discount had been hiding.
+
+    lineGrossAmount is the line total BEFORE discount; the buyer paid
+    lineGrossAmount - lineTotalDiscount (the package agrees: 100 gross, 20 discount,
+    80 packageTotalPrice). Charging the gross would overcharge every discounted order."""
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "quantity": 1, "vatRate": 10.0,
+                      "lineGrossAmount": 100.0, "lineTotalDiscount": 20.0,
+                      "lineUnitPrice": 80.0}]}
+    line = mapping.normalize_lines(pkg)[0]
+    # 80 paid, VAT-inclusive at 10 -> 72.7272 net. NOT 100/1.10 = 90.91.
+    assert abs(line["price"] - 80.0 / 1.10) < 1e-9
+
+
+def test_price_discount_and_multi_unit():
+    """Both traps at once: a discounted line of several units."""
+    pkg = {"lines": [{"stockCode": "FP-HOM-03601", "quantity": 4, "vatRate": 15.0,
+                      "lineGrossAmount": 400.0, "lineTotalDiscount": 80.0,
+                      "lineUnitPrice": 320.0}]}
+    line = mapping.normalize_lines(pkg)[0]
+    # 320 paid over 4 units = 80 gross each -> 69.5652 net at KSA's 15
+    assert abs(line["price"] - 80.0 / 1.15) < 1e-9
+    # and the line adds back up to exactly what Trendyol charged, net of VAT
+    assert abs(line["price"] * line["quantity"] - 320.0 / 1.15) < 1e-9
+
+
 def test_vat_stripped():
     # Trendyol sends VAT-inclusive prices; Odoo adds 15% back -> net must be gross/1.15
     pkg = {"lines": [{"merchantSku": "FP-DIS-00001", "quantity": 1, "price": 115.0, "vatRate": 15}]}
@@ -197,7 +223,8 @@ if __name__ == "__main__":
                test_buyer_ref_and_address, test_buyer_anonymous, test_normalize_lines, test_line_id,
                test_sku_from_model_code, test_sku_from_stock_code,
                test_price_from_line_unit_price, test_price_multi_unit_line,
-               test_price_single_unit_still_right, test_vat_stripped, test_extract_packages]:
+               test_price_single_unit_still_right, test_price_with_discount,
+               test_price_discount_and_multi_unit, test_vat_stripped, test_extract_packages]:
         fn()
         print(fn.__name__, "OK")
     print("all passed")

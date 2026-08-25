@@ -126,26 +126,30 @@ def normalize_lines(pkg):
         if line.get("orderLineItemStatusName") == "Cancelled":
             continue
         qty = line.get("quantity") or 1
-        # `lineUnitPrice` is NOT a unit price despite the name: on a real payload it carries
-        # the SAME value as lineGrossAmount, i.e. the LINE TOTAL. Proof from stage order
-        # 1156149765: quantity 25, lineGrossAmount 1250, lineUnitPrice 1250 — a genuine unit
-        # price would make that line 31 250. With quantity 1 the two readings are
-        # indistinguishable, which is why every earlier test passed and this only surfaced
-        # on the first multi-unit order. Same trap as shipmentPackageId and lineId.
+        # What the buyer actually paid for this line, per unit, VAT included.
         #
-        # Dividing the line total by the quantity is correct under BOTH readings: if
-        # lineUnitPrice ever really is per-unit, then lineGrossAmount/quantity returns that
-        # exact same number. So prefer lineGrossAmount and divide.
+        # Two Trendyol traps in one field cluster, both proved on stage:
+        #  1. `lineUnitPrice` is NOT a unit price despite the name. It is the line TOTAL
+        #     after discount. Order 1156149765: quantity 25, lineGrossAmount 1250,
+        #     lineUnitPrice 1250 — a real unit price would make that line 31 250.
+        #  2. `lineGrossAmount` is the line total BEFORE discount. Order 2038174306:
+        #     lineGrossAmount 100, lineTotalDiscount 20, lineUnitPrice 80, and the package
+        #     agrees (packageGrossAmount 100, packageTotalDiscount 20, packageTotalPrice 80).
+        # So across every payload seen: lineUnitPrice == lineGrossAmount - lineTotalDiscount.
         #
-        # ponytail: discounts (lineTotalDiscount/lineSellerDiscount/lineTyDiscount) are NOT
-        # subtracted — every payload seen so far has them at 0, so whether lineGrossAmount is
-        # before or after discount is untestable here. Guessing would be a money bug either
-        # way (double-counting vs overcharging). Check it on the first real prod order that
-        # carries a discount.
+        # Computed from gross-minus-discount rather than from lineUnitPrice on purpose: those
+        # two fields have verified meanings at both package and line level, so this does not
+        # depend on settling what a field named "UnitPrice" really is. It also cross-checks —
+        # if it ever stops matching lineUnitPrice, Trendyol changed something.
+        #
+        # Note quantity 1 hides trap 1 and a zero discount hides trap 2: the Phase 2 stage
+        # validation passed clean while both were live. Never validate a per-unit or
+        # per-discount rule with quantity 1 and no discount.
         if line.get("lineGrossAmount") is not None:
-            gross = (line.get("lineGrossAmount") or 0.0) / qty
+            paid = (line.get("lineGrossAmount") or 0.0) - (line.get("lineTotalDiscount") or 0.0)
+            gross = paid / qty
         else:
-            # price/amount are genuine unit prices (older payload shapes and tests).
+            # Older/other payload shapes: these really are unit prices.
             gross = line.get("lineUnitPrice", line.get("price", line.get("amount", 0.0))) or 0.0
         # Trendyol prices are VAT-inclusive; Odoo KSA sales tax (15%, id=20) is
         # price-EXcluded, so strip the line's vatRate to get the net unit price.
