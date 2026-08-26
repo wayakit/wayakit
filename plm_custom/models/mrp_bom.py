@@ -35,6 +35,22 @@ class MrpBom(models.Model):
     sample_uom_id = fields.Many2one('uom.uom', string='Sample UoM', required=True,
                                     default=lambda self: self.env.ref('uom.product_uom_gram', raise_if_not_found=False))
 
+    def _sample_size_in_base(self):
+        """Sample size as a plain number in its category's base unit: g for
+        weight, mL for volume. The percentage numerator is always grams
+        (0.5 % = 0.5 g per 100 of base), so this only normalizes the '100'."""
+        self.ensure_one()
+        gram = self.env.ref('uom.product_uom_gram', raise_if_not_found=False)
+        litre = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
+        uom = self.sample_uom_id
+        if gram and uom.category_id == gram.category_id:
+            return uom._compute_quantity(self.sample_size, gram, round=False)
+        if litre and uom.category_id == litre.category_id:
+            return uom._compute_quantity(
+                self.sample_size, litre, round=False
+            ) * 1000.0
+        return self.sample_size
+
     @api.depends_context('uid')
     def _compute_is_plm_confidential_bom(self):
         is_confidential = self.env.user.has_group(
@@ -126,7 +142,11 @@ class MrpBom(models.Model):
     def write(self, vals):
         if self._is_plm_standard_user():
             raise AccessError("PLM Restriction: Standard users are not allowed to edit Bills of Materials.")
-        return super().write(vals)
+        res = super().write(vals)
+        # Moving the formulation basis moves every percentage-driven quantity.
+        if 'sample_size' in vals or 'sample_uom_id' in vals:
+            self.bom_line_ids._plm_apply_percentage()
+        return res
 
     def unlink(self):
         if self._is_plm_standard_user():
@@ -166,15 +186,38 @@ class MrpBomLine(models.Model):
         for line in self:
             uom = line.product_uom_id
             density = line.product_id.product_tmpl_id.density
+            # round=False: UoM rounding defaults to 'UP' at the target unit's
+            # precision (0.001 L = 1 mL), which snapped every fractional mL up
+            # to the next whole mL. Formulation quantities are exact.
             if gram and uom.category_id == gram.category_id:
                 line.qty_in_grams = uom._compute_quantity(
-                    line.product_qty, gram
+                    line.product_qty, gram, round=False
                 )
             elif density and litre and uom.category_id == litre.category_id:
-                qty_ml = uom._compute_quantity(line.product_qty, litre) * 1000.0
+                qty_ml = uom._compute_quantity(
+                    line.product_qty, litre, round=False
+                ) * 1000.0
                 line.qty_in_grams = qty_ml * density
             else:
                 line.qty_in_grams = 0.0
+
+    def _grams_to_product_uom(self, grams):
+        """Inverse of _compute_qty_in_grams: grams -> quantity in the line's own
+        UoM. Weight converts directly; volume divides by the density to get mL
+        first. Any other UoM has no gram equivalent, so the number is returned
+        untouched (previous behaviour)."""
+        self.ensure_one()
+        gram = self.env.ref('uom.product_uom_gram', raise_if_not_found=False)
+        litre = self.env.ref('uom.product_uom_litre', raise_if_not_found=False)
+        uom = self.product_uom_id
+        density = self.product_id.product_tmpl_id.density
+        if gram and uom.category_id == gram.category_id:
+            return gram._compute_quantity(grams, uom, round=False)
+        if density and litre and uom.category_id == litre.category_id:
+            return litre._compute_quantity(
+                grams / density / 1000.0, uom, round=False
+            )
+        return grams
 
     # 1. Nuevo campo para el porcentaje
     component_percentage = fields.Float(
@@ -183,19 +226,45 @@ class MrpBomLine(models.Model):
         default=0.0
     )
 
-    # 2. Restricción estricta de 0 a 100
+    # 2. No upper bound: Wayakit formulas are expressed per 100, per 1000 or on
+    # another basis, so a single component (water, base) can legitimately go
+    # over 100. Only a negative percentage is a real error.
     @api.constrains('component_percentage')
     def _check_component_percentage(self):
         for line in self:
-            if line.component_percentage < 0.0 or line.component_percentage > 100.0:
-                raise ValidationError("PLM Restriction: The percentage must be between 0 and 100.")
+            if line.component_percentage < 0.0:
+                raise ValidationError("PLM Restriction: The percentage cannot be negative.")
 
-    @api.onchange('component_percentage', 'bom_id.sample_size')
+    def _plm_percentage_qty(self):
+        """product_qty implied by component_percentage, or None when the line is
+        not percentage-driven. The percentage is defined on the formulation,
+        which is in grams: 0.5 % = 0.5 g per 100 of sample. Resolve the grams
+        FIRST, then convert to the component's own stock UoM via the density."""
+        self.ensure_one()
+        if self.component_percentage <= 0 or self.bom_id.sample_size <= 0:
+            return None
+        grams = (self.bom_id._sample_size_in_base()
+                 * self.component_percentage / 100.0)
+        return self._grams_to_product_uom(grams)
+
+    def _plm_apply_percentage(self):
+        """The onchange only fires in the form; BoMs are also loaded by import
+        and copied by mrp.eco, so the percentage has to be resolved in the ORM."""
+        for line in self:
+            qty = line._plm_percentage_qty()
+            if qty is not None:
+                # The context stops write() from calling this back.
+                line.with_context(plm_skip_percentage=True).write(
+                    {'product_qty': qty}
+                )
+
+    @api.onchange('component_percentage', 'bom_id.sample_size',
+                  'product_id', 'product_uom_id')
     def _onchange_component_percentage(self):
         for line in self:
-            if line.component_percentage > 0 and line.bom_id.sample_size > 0:
-                # Calcula la cantidad real basada en el Sample Size
-                line.product_qty = (line.bom_id.sample_size * line.component_percentage) / 100.0
+            qty = line._plm_percentage_qty()
+            if qty is not None:
+                line.product_qty = qty
 
     @api.depends(
         'product_id',
@@ -227,12 +296,21 @@ class MrpBomLine(models.Model):
     def create(self, vals_list):
         if self._is_plm_standard_user():
             raise AccessError("PLM Restriction: Standard users cannot add components to a BoM.")
-        return super().create(vals_list)
+        lines = super().create(vals_list)
+        # After super() on purpose: bom_id, product_uom_id and the density are
+        # resolved by then, even when an import leaves them to their defaults.
+        lines._plm_apply_percentage()
+        return lines
 
     def write(self, vals):
         if self._is_plm_standard_user():
             raise AccessError("PLM Restriction: Standard users cannot edit BoM components.")
-        return super().write(vals)
+        res = super().write(vals)
+        if not self.env.context.get('plm_skip_percentage') and (
+            {'component_percentage', 'product_id', 'product_uom_id'} & vals.keys()
+        ):
+            self._plm_apply_percentage()
+        return res
 
     def unlink(self):
         if self._is_plm_standard_user():
