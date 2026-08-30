@@ -1,0 +1,11 @@
+<odoo>
+    <data noupdate="1">
+        <!-- Generic marketplace customer used on every imported Trendyol order.
+             Real ship-to addresses are created as delivery children of this partner. -->
+        <record id="partner_trendyol_marketplace" model="res.partner">
+            <field name="name">Trendyol Marketplace</field>
+            <field name="is_company" eval="True"/>
+            <field name="customer_rank">1</field>
+        </record>
+    </data>
+</odoo>
