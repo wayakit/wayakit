@@ -109,7 +109,7 @@ class TrendyolBackend(models.Model):
     webhook_url = fields.Char(
         string="Webhook URL", copy=False,
         default=lambda self: self._default_webhook_url(),
-        help="Endpoint Trendyol POSTs to. Defaults to web.base.url + /trendyol/webhook, but "
+        help="Endpoint Trendyol POSTs to. Defaults to web.base.url + /ty/webhook, but "
              "editable on purpose: on odoo.sh web.base.url often points at a custom domain "
              "or a restored dump, not at the build actually serving this database. Whatever "
              "is here is what gets registered on Trendyol — it must be publicly reachable.",
@@ -118,7 +118,9 @@ class TrendyolBackend(models.Model):
     @api.model
     def _default_webhook_url(self):
         base = self.env["ir.config_parameter"].sudo().get_param("web.base.url", "")
-        return base.rstrip("/") + "/trendyol/webhook"
+        # "/ty/", never "/trendyol/": Trendyol rejects a webhook URL containing its own
+        # name (see the route comment in controllers/main.py).
+        return base.rstrip("/") + "/ty/webhook"
 
     @api.onchange("environment")
     def _onchange_environment(self):

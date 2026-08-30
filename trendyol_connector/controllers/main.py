@@ -10,7 +10,13 @@ _logger = logging.getLogger(__name__)
 class TrendyolWebhookController(http.Controller):
 
     # type="http" (not "json"): Trendyol POSTs plain JSON, not JSON-RPC.
-    @http.route("/trendyol/webhook", type="http", auth="public",
+    # "/ty/webhook", NOT "/trendyol/webhook": Trendyol refuses to register a webhook whose
+    # URL contains its own name. Documented, and it is enforced on prod —
+    # "Your webhook service's endpoint should not contain 'Trendyol', 'Dolap', 'localhost'."
+    # Registering the old path answered 400 webhook.url.is.not.valid with no hint as to why.
+    # Renaming this route means the Cloudflare skip rule has to move with it, or the
+    # endpoint goes back to being blocked (see CLAUDE.md §11).
+    @http.route("/ty/webhook", type="http", auth="public",
                 methods=["POST"], csrf=False)
     def trendyol_webhook(self, **kwargs):
         key = request.httprequest.headers.get("x-api-key")
