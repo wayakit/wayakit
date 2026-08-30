@@ -38,7 +38,7 @@
                                 <field name="active" invisible="1"/>
                             </group>
                             <group string="Webhook (real-time orders)">
-                                <field name="webhook_url" placeholder="https://…/trendyol/webhook"/>
+                                <field name="webhook_url" placeholder="https://…/ty/webhook"/>
                                 <!-- Not password="True": it is our own generated token and it
                                      has to be copied out (curl tests, support). Read access to
                                      this model is already restricted by the ACL. -->
