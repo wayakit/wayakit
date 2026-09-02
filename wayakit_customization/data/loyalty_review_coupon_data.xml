@@ -26,9 +26,12 @@
 
                     <!-- header -->
                     <div style="padding:28px 32px 24px;text-align:center;border-bottom:1px solid #D7EAF2;">
+                        <!-- Explicit height (140 × 309/420) so the placeholder keeps the
+                             logo's shape while images are blocked, which is the default
+                             in Outlook and in Gmail for unknown senders. -->
                         <img src="https://ksasystem.wayakit.com/wayakit_customization/static/src/img/wayakit_logo.png"
-                             width="140" alt="WAYAKIT — Biotechnology in Hygiene"
-                             style="display:block;margin:0 auto 14px;width:140px;height:auto;"/>
+                             width="140" height="103" alt="WAYAKIT — Biotechnology in Hygiene"
+                             style="display:block;margin:0 auto 14px;width:140px;height:103px;"/>
                         <p style="font-family:'Poppins','Segoe UI',Arial,sans-serif;color:#3A9BD4;font-size:9px;font-weight:600;letter-spacing:2.5px;margin:0;text-transform:uppercase;">GreenTech · KAUST · Saudi Arabia</p>
                     </div>
 
