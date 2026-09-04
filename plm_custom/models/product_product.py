@@ -2,16 +2,14 @@ from odoo import models, api
 
 
 class ProductProduct(models.Model):
-    _inherit = 'product.product'
+    _inherit = ['product.product', 'plm.mask.mixin']
 
-    def _is_plm_standard_user(self):
-        is_confidential = self.env.user.has_group(
-            'plm_custom.group_plm_confidential'
-        )
-        is_standard = self.env.user.has_group(
-            'plm_custom.group_plm_standard'
-        )
-        return is_standard and not is_confidential
+    # _is_plm_standard_user() lives in plm.mask.mixin.
+
+    def _plm_export_blocked(self):
+        return bool(self.filtered(
+            lambda p: p.product_tmpl_id.is_plm_component or p.product_tmpl_id.bom_ids
+        ))
 
     @staticmethod
     def _build_display_name(name, default_code):

@@ -5,7 +5,7 @@ PLM_COMPONENT_CATEGORY = 'All / Raw material / Chemical'
 
 
 class ProductTemplate(models.Model):
-    _inherit = 'product.template'
+    _inherit = ['product.template', 'plm.mask.mixin']
 
     synonym_name = fields.Char(
         string='Synonym Name',
@@ -47,14 +47,14 @@ class ProductTemplate(models.Model):
                 record.categ_id.complete_name == PLM_COMPONENT_CATEGORY
             )
 
-    def _is_plm_standard_user(self):
-        is_confidential = self.env.user.has_group(
-            'plm_custom.group_plm_confidential'
-        )
-        is_standard = self.env.user.has_group(
-            'plm_custom.group_plm_standard'
-        )
-        return is_standard and not is_confidential
+    # _is_plm_standard_user() lives in plm.mask.mixin.
+
+    def _plm_export_blocked(self):
+        # Mirrors the JS guard, but on the recordset actually being exported
+        # instead of on the domain the client happened to send.
+        return bool(self.filtered(
+            lambda tmpl: tmpl.is_plm_component or tmpl.bom_ids
+        ))
 
     # ── Breadcrumb / display_name ──────────────────────────────────────────
     def _compute_display_name(self):

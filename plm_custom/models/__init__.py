@@ -1,3 +1,5 @@
+from . import plm_mask_mixin
 from . import product_template
 from . import product_product
 from . import mrp_bom
+from . import stock_move

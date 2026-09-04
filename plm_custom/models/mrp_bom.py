@@ -3,7 +3,7 @@ from odoo.exceptions import AccessError, ValidationError
 
 
 class MrpBom(models.Model):
-    _inherit = 'mrp.bom'
+    _inherit = ['mrp.bom', 'plm.mask.mixin']
 
     product_tmpl_name = fields.Char(
         string='Product Name',
@@ -121,14 +121,11 @@ class MrpBom(models.Model):
 
         return new_domain
 
-    def _is_plm_standard_user(self):
-        is_confidential = self.env.user.has_group(
-            'plm_custom.group_plm_confidential'
-        )
-        is_standard = self.env.user.has_group(
-            'plm_custom.group_plm_standard'
-        )
-        return is_standard and not is_confidential
+    # _is_plm_standard_user() lives in plm.mask.mixin.
+
+    def _plm_export_blocked(self):
+        # A BoM IS the formula: never exportable by a Standard user.
+        return True
 
     # ---------------------------------------------------------
     # NUEVAS RESTRICCIONES DE ESCRITURA PARA BOM (CUSTOM 2)
@@ -155,7 +152,7 @@ class MrpBom(models.Model):
 
 
 class MrpBomLine(models.Model):
-    _inherit = 'mrp.bom.line'
+    _inherit = ['mrp.bom.line', 'plm.mask.mixin']
 
     component_display_name = fields.Char(
         string='Component',
@@ -282,14 +279,10 @@ class MrpBomLine(models.Model):
             else:
                 record.component_display_name = record.product_id.display_name or ''
 
-    def _is_plm_standard_user(self):
-        is_confidential = self.env.user.has_group(
-            'plm_custom.group_plm_confidential'
-        )
-        is_standard = self.env.user.has_group(
-            'plm_custom.group_plm_standard'
-        )
-        return is_standard and not is_confidential
+    # _is_plm_standard_user() lives in plm.mask.mixin.
+
+    def _plm_export_blocked(self):
+        return True
 
     # Restricciones para las líneas del BoM
     @api.model_create_multi

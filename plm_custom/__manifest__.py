@@ -1,6 +1,6 @@
 {
     'name': 'PLM Custom',
-    'version': '17.0.1.2.0',
+    'version': '17.0.1.3.0',
     'summary': 'PLM extended: synonym names, dual BoM view, export restrictions',
     'author': 'Your Company',
     'category': 'Manufacturing/PLM',
@@ -9,6 +9,10 @@
         'product',
         'mrp',
         'mrp_plm',
+        # stock: masks description_picking on stock.move / stock.move.line.
+        # web: the export controllers are subclassed in controllers/export.py.
+        'stock',
+        'web',
     ],
     'data': [
         'security/res_groups.xml',
