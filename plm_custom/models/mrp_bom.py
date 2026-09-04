@@ -3,6 +3,7 @@ from odoo.exceptions import AccessError, ValidationError
 
 
 class MrpBom(models.Model):
+    _name = 'mrp.bom'
     _inherit = ['mrp.bom', 'plm.mask.mixin']
 
     product_tmpl_name = fields.Char(
@@ -152,6 +153,7 @@ class MrpBom(models.Model):
 
 
 class MrpBomLine(models.Model):
+    _name = 'mrp.bom.line'
     _inherit = ['mrp.bom.line', 'plm.mask.mixin']
 
     component_display_name = fields.Char(

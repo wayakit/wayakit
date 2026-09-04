@@ -2,6 +2,7 @@ from odoo import models, api
 
 
 class ProductProduct(models.Model):
+    _name = 'product.product'
     _inherit = ['product.product', 'plm.mask.mixin']
 
     # _is_plm_standard_user() lives in plm.mask.mixin.

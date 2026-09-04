@@ -5,6 +5,9 @@ PLM_COMPONENT_CATEGORY = 'All / Raw material / Chemical'
 
 
 class ProductTemplate(models.Model):
+    # _name is mandatory once _inherit lists more than one model: without it
+    # Odoo falls back to the Python class name and builds a NEW model.
+    _name = 'product.template'
     _inherit = ['product.template', 'plm.mask.mixin']
 
     synonym_name = fields.Char(

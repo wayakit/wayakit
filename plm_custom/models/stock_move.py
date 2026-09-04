@@ -39,6 +39,9 @@ class StockMove(models.Model):
     # be overridden", and search_read() reaches _read_format without going
     # through it. Views (web_search_read -> web_read -> read), read() and
     # search_read() all converge here.
+    # _name is mandatory once _inherit lists more than one model: without it
+    # Odoo falls back to the Python class name and builds a NEW model.
+    _name = 'stock.move'
     _inherit = ['stock.move', 'plm.mask.mixin']
 
     def _read_format(self, fnames, load='_classic_read'):
@@ -47,6 +50,7 @@ class StockMove(models.Model):
 
 
 class StockMoveLine(models.Model):
+    _name = 'stock.move.line'
     _inherit = ['stock.move.line', 'plm.mask.mixin']
 
     def _read_format(self, fnames, load='_classic_read'):
