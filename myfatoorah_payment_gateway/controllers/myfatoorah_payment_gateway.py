@@ -252,6 +252,7 @@ class PaymentMyFatoorahController(http.Controller):
                 'partner_country_id': order.partner_id.country_id.id,
                 'partner_state_id': order.partner_id.state_id.id if order.partner_id.state_id else False,
                 'operation': 'online_redirect',
+                'landing_route': '/shop/payment/validate',
             })
             tx.sale_order_ids = [(6, 0, [order.id])]
 
