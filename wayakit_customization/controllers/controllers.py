@@ -49,6 +49,15 @@ _logger = logging.getLogger(__name__)
 
 class CustomAppointmentController(AppointmentController):
 
+    # Only these two service variants should override the appointment
+    # duration and force a 2-hour booking. Any other product (or no
+    # product match at all) keeps the original appointment_type
+    # duration / date_end untouched.
+    DURATION_OVERRIDE_PRODUCT_CODES = [
+        'FP-CWS-00102',  # Car Wash Sedan [Exterior & Interior Deep cleaning]
+        'FP-CWS-00202',  # Car Wash SUV [Exterior & Interior Deep cleaning]
+    ]
+
     def _handle_appointment_form_submission(
             self, appointment_type,
             date_start, date_end, duration,
@@ -78,11 +87,13 @@ class CustomAppointmentController(AppointmentController):
                     product
                 )
 
-        # When the selected service product variant defines a duration, use it
-        # for the appointment instead of the appointment type default duration
-        if product and product.duration > 0:
-            duration = product.duration
-            date_end = date_start + timedelta(hours=duration)
+        # Only the two configured service variants (by internal reference
+        # code) force the appointment to a fixed 2-hour slot. Any other
+        # product, or no product match, leaves duration/date_end exactly as
+        # passed in (i.e. the original appointment type duration).
+        if product and product.default_code in self.DURATION_OVERRIDE_PRODUCT_CODES:
+            duration = 2
+            date_end = date_start + timedelta(hours=2)
 
         # Call original method to create calendar event
         result = super()._handle_appointment_form_submission(
