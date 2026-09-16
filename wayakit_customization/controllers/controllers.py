@@ -298,8 +298,6 @@ class CustomAppointmentController(AppointmentController):
             "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Small up to 2 sqm",
             "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Medium 2.1-6 sqm",
             "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Big 7-20 sqm",
-            "Extra big Carpet 17 to 20 sqm [SAR 330.435 VAT included]": "Extra big carpet 17-20 sqm",
-            "Extra big Carpet 21 to 25 sqm [SAR 382.6087 VAT included]": "Extra big carpet 21-25 sqm",
         }
         # Get the search term for this question
         search_term = product_search_terms.get(question_text)
