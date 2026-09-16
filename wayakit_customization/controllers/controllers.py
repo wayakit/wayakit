@@ -36,10 +36,15 @@
 #
 #             return response
 
+import logging
+from datetime import timedelta
+
 from odoo import http, fields
 from odoo.http import request
 from odoo.addons.appointment.controllers.appointment import AppointmentController
 import re
+
+_logger = logging.getLogger(__name__)
 
 
 class CustomAppointmentController(AppointmentController):
@@ -53,6 +58,9 @@ class CustomAppointmentController(AppointmentController):
         # Create customer contact from form data and sales order
         sale_order = False
         customer_partner = self._create_or_update_customer_partner(name, description)
+        # Resolve the selected service product once; reused for both the sale
+        # order and the duration override below
+        product = self._get_selected_service_product(appointment_type, answer_input_values)
 
         if customer_partner:
             # Check appointment type and handle accordingly
@@ -62,13 +70,19 @@ class CustomAppointmentController(AppointmentController):
                     customer_partner,
                     answer_input_values
                 )
-            else:
+            elif product:
                 # For Car Wash Care and other types, use the existing logic
                 sale_order = self._create_appointment_sale_order(
                     appointment_type,
                     customer_partner,  # Use the created/updated customer
-                    answer_input_values
+                    product
                 )
+
+        # When the selected service product variant defines a duration, use it
+        # for the appointment instead of the appointment type default duration
+        if product and product.duration > 0:
+            duration = product.duration
+            date_end = date_start + timedelta(hours=duration)
 
         # Call original method to create calendar event
         result = super()._handle_appointment_form_submission(
@@ -141,20 +155,29 @@ class CustomAppointmentController(AppointmentController):
             # Fallback: create partner with just the name
             return request.env['res.partner'].sudo().create({'name': name})
 
-    def _create_appointment_sale_order(self, appointment_type, customer_partner, answer_input_values):
+    def _get_selected_service_product(self, appointment_type, answer_input_values):
+        """Return the service product variant selected in the booking form, if any"""
+        if appointment_type.name.lower() != "car wash care":
+            return None
+
+        try:
+            service_question, selected_answer = self._find_service_selection(answer_input_values)
+            if not (service_question and selected_answer and selected_answer.name):
+                return None
+            return self._find_matching_product(selected_answer.name)
+        except Exception:
+            # Never block a booking on the custom product matching; fall back
+            # to the standard appointment duration / no sale order
+            _logger.exception(
+                "Failed to resolve service product for appointment type %s",
+                appointment_type.name,
+            )
+            return None
+
+    def _create_appointment_sale_order(self, appointment_type, customer_partner, product):
         """Create a sale order from appointment data with proper product matching"""
         # Only process if this is a Car Wash Care appointment
         if appointment_type.name.lower() != "car wash care":
-            return False
-
-        # Find the service question and selected answer
-        service_question, selected_answer = self._find_service_selection(answer_input_values)
-        if not (service_question and selected_answer):
-            return False
-
-        # Find matching product based on answer
-        product = self._find_matching_product(selected_answer.name)
-        if not product:
             return False
 
         # Create the sales order with the customer partner (not logged-in user)
@@ -280,9 +303,18 @@ class CustomAppointmentController(AppointmentController):
 
     def _find_service_selection(self, answer_input_values):
         """Find the service selection question and answer"""
+        if not answer_input_values:
+            return (None, None)
+        # Load every asked question in one query; browsing them one by one
+        # below would trigger a separate read per answer. Map by id because
+        # several answers (checkbox questions) can share the same question.
+        questions = request.env['appointment.question'].browse(
+            list(dict.fromkeys(answer['question_id'] for answer in answer_input_values))
+        )
+        questions_by_id = {question.id: question for question in questions}
         for answer in answer_input_values:
-            question = request.env['appointment.question'].browse(answer['question_id'])
-            if 'service' in question.name.lower() and question.question_type == 'select':
+            question = questions_by_id.get(answer['question_id'])
+            if question and 'service' in question.name.lower() and question.question_type == 'select':
                 return (
                     question,
                     request.env['appointment.answer'].browse(answer['value_answer_id'])
@@ -291,6 +323,9 @@ class CustomAppointmentController(AppointmentController):
 
     def _find_matching_product(self, answer_name):
         """Match the appointment answer to an existing product"""
+        if not answer_name:
+            return None
+
         # Only process if this is a Car Wash Care appointment
         # Clean and parse the answer text
         service_type = self._extract_service_type(answer_name)
