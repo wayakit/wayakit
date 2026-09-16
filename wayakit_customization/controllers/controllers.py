@@ -336,9 +336,8 @@ class CustomAppointmentController(AppointmentController):
             "Mattresses [SAR 336.89 VAT included]": "Mattress",
             "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Small up to 2 sqm",
             "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Medium 2.1-6 sqm",
-            "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Big 7-20 sqm"
+            "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Big 7-20 sqm",
         }
-
         # Get the search term for this question
         search_term = product_search_terms.get(question_text)
 
