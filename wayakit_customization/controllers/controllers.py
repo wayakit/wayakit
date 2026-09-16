@@ -49,14 +49,41 @@ _logger = logging.getLogger(__name__)
 
 class CustomAppointmentController(AppointmentController):
 
-    # Only these two service variants should override the appointment
-    # duration and force a 2-hour booking. Any other product (or no
-    # product match at all) keeps the original appointment_type
-    # duration / date_end untouched.
-    DURATION_OVERRIDE_PRODUCT_CODES = [
-        'FP-CWS-00102',  # Car Wash Sedan [Exterior & Interior Deep cleaning]
-        'FP-CWS-00202',  # Car Wash SUV [Exterior & Interior Deep cleaning]
-    ]
+    @http.route(['/appointment/<int:appointment_type_id>/submit'],
+                type='http', auth="public", website=True, methods=["POST"])
+    def appointment_form_submit(self, appointment_type_id, datetime_str, duration_str, name, phone, email, staff_user_id=None, available_resource_ids=None, asked_capacity=1,
+                                guest_emails_str=None, **kwargs):
+        kwargs.pop('duration_str', None)
+        if self._is_deep_cleaning_in_kwargs(kwargs) or (duration_str and float(duration_str) >= 2.0):
+            duration_str = "2.0"
+        return super().appointment_form_submit(
+            appointment_type_id, datetime_str, duration_str, name, phone, email,
+            staff_user_id=staff_user_id, available_resource_ids=available_resource_ids,
+            asked_capacity=asked_capacity, guest_emails_str=guest_emails_str, **kwargs
+        )
+
+    def _is_deep_cleaning_in_kwargs(self, kwargs):
+        """Check if any answer passed in form kwargs indicates deep cleaning."""
+        try:
+            answer_ids = []
+            for k, v in kwargs.items():
+                if not k.startswith('question_') or not v:
+                    continue
+                match = re.match(r"\bquestion_([0-9]+)_answer_([0-9]+)\b", k)
+                if match:
+                    answer_ids.append(int(match.group(2)))
+                elif isinstance(v, list):
+                    answer_ids.extend([int(x) for x in v if str(x).isdigit()])
+                elif str(v).isdigit():
+                    answer_ids.append(int(v))
+            if answer_ids:
+                answers = request.env['appointment.answer'].sudo().browse(answer_ids)
+                for ans in answers:
+                    if ans.name and 'deep clean' in ans.name.lower():
+                        return True
+        except Exception:
+            _logger.exception("Failed to check deep-cleaning in kwargs")
+        return False
 
     def _handle_appointment_form_submission(
             self, appointment_type,
@@ -67,8 +94,8 @@ class CustomAppointmentController(AppointmentController):
         # Create customer contact from form data and sales order
         sale_order = False
         customer_partner = self._create_or_update_customer_partner(name, description)
-        # Resolve the selected service product once; reused for both the sale
-        # order and the duration override below
+        # Resolve the selected service product once; reused for the sale
+        # order below
         product = self._get_selected_service_product(appointment_type, answer_input_values)
 
         if customer_partner:
@@ -87,11 +114,12 @@ class CustomAppointmentController(AppointmentController):
                     product
                 )
 
-        # Only the two configured service variants (by internal reference
-        # code) force the appointment to a fixed 2-hour slot. Any other
-        # product, or no product match, leaves duration/date_end exactly as
-        # passed in (i.e. the original appointment type duration).
-        if product and product.default_code in self.DURATION_OVERRIDE_PRODUCT_CODES:
+        # "Deep cleaning" service selection always forces a fixed 2-hour
+        # slot, regardless of the appointment type's configured duration.
+        # Keyed off the "Type of service" answer text directly (not the
+        # matched product), so it doesn't depend on product naming or
+        # default_code being set up correctly.
+        if self._is_deep_cleaning_selected(answer_input_values):
             duration = 2
             date_end = date_start + timedelta(hours=2)
 
@@ -113,6 +141,20 @@ class CustomAppointmentController(AppointmentController):
                 event.sale_order_id = sale_order.id
 
         return result
+
+    def _is_deep_cleaning_selected(self, answer_input_values):
+        """True if the customer picked a 'deep cleaning' Type of service
+        option, regardless of appointment type or matched product."""
+        try:
+            _, selected_answer = self._find_service_selection(answer_input_values)
+            if not selected_answer or not selected_answer.name:
+                return False
+            return 'deep clean' in selected_answer.name.lower()
+        except Exception:
+            # Never block a booking on this check; fall back to the
+            # appointment type's default duration.
+            _logger.exception("Failed to check deep-cleaning selection")
+            return False
 
     def _create_or_update_customer_partner(self, name, description):
         """Create or update customer partner from form data"""
@@ -154,6 +196,7 @@ class CustomAppointmentController(AppointmentController):
                 'email': email,
             }
 
+
             if existing_partner:
                 # Update existing partner
                 existing_partner.write(partner_vals)
@@ -175,10 +218,6 @@ class CustomAppointmentController(AppointmentController):
             service_question, selected_answer = self._find_service_selection(answer_input_values)
             if not (service_question and selected_answer and selected_answer.name):
                 return None
-            # Read the vehicle type from its own dedicated "Type of car"
-            # question rather than parsing it out of the service-selection
-            # text, which can mention multiple vehicle types at once
-            # (e.g. "Exterior + Interior deep cleaning (Sedan SAR 260, SUV SAR 330)")
             vehicle_type_answer = self._find_vehicle_type_selection(answer_input_values)
             return self._find_matching_product(selected_answer.name, vehicle_type_answer)
         except Exception:
@@ -365,10 +404,6 @@ class CustomAppointmentController(AppointmentController):
         # Only process if this is a Car Wash Care appointment
         # Clean and parse the answer text
         service_type = self._extract_service_type(answer_name)
-        # Prefer the vehicle type read from the dedicated "Type of car"
-        # question; only fall back to parsing it out of the service answer
-        # text if that question wasn't found (keeps old behavior as a
-        # safety net)
         vehicle_type = self._extract_vehicle_type(vehicle_type_answer or answer_name)
 
         if not service_type or not vehicle_type:
@@ -380,20 +415,23 @@ class CustomAppointmentController(AppointmentController):
             ('name', 'ilike', service_type),
             ('type', '=', 'service')
         ]
+        if service_type != 'Deep cleaning':
+            domain.append(('name', 'not ilike', 'Deep cleaning'))
 
         return request.env['product.product'].sudo().search(domain, limit=1)
 
     def _extract_service_type(self, answer_name):
         """Extract service type from answer (e.g., 'Exterior', 'Interior')"""
         answer_name = answer_name.lower()
-        if 'exterior' in answer_name and 'interior' in answer_name:
+        if 'deep' in answer_name:
+            return 'Deep cleaning'
+        elif 'exterior' in answer_name and 'interior' in answer_name:
             return 'Exterior & Interior'
         elif 'exterior' in answer_name:
             return 'Exterior'
         elif 'interior' in answer_name:
             return 'Interior'
         return None
-
 
     def _extract_vehicle_type(self, answer_name):
         """Extract vehicle type from answer (e.g., 'SUV', 'Sedan')"""
