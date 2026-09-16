@@ -175,7 +175,12 @@ class CustomAppointmentController(AppointmentController):
             service_question, selected_answer = self._find_service_selection(answer_input_values)
             if not (service_question and selected_answer and selected_answer.name):
                 return None
-            return self._find_matching_product(selected_answer.name)
+            # Read the vehicle type from its own dedicated "Type of car"
+            # question rather than parsing it out of the service-selection
+            # text, which can mention multiple vehicle types at once
+            # (e.g. "Exterior + Interior deep cleaning (Sedan SAR 260, SUV SAR 330)")
+            vehicle_type_answer = self._find_vehicle_type_selection(answer_input_values)
+            return self._find_matching_product(selected_answer.name, vehicle_type_answer)
         except Exception:
             # Never block a booking on the custom product matching; fall back
             # to the standard appointment duration / no sale order
@@ -332,7 +337,27 @@ class CustomAppointmentController(AppointmentController):
                 )
         return (None, None)
 
-    def _find_matching_product(self, answer_name):
+    def _find_vehicle_type_selection(self, answer_input_values):
+        """Find the answer to the dedicated 'Type of car' question (Sedan/SUV/etc.)
+
+        The service-selection answer text can mention multiple vehicle types
+        at once for pricing display (e.g. "...(Sedan SAR 260, SUV SAR 330)"),
+        so the vehicle type must be read from its own question instead.
+        """
+        if not answer_input_values:
+            return None
+        questions = request.env['appointment.question'].browse(
+            list(dict.fromkeys(answer['question_id'] for answer in answer_input_values))
+        )
+        questions_by_id = {question.id: question for question in questions}
+        for answer in answer_input_values:
+            question = questions_by_id.get(answer['question_id'])
+            if question and 'type of car' in question.name.lower() and question.question_type == 'select':
+                answer_record = request.env['appointment.answer'].browse(answer['value_answer_id'])
+                return answer_record.name if answer_record else None
+        return None
+
+    def _find_matching_product(self, answer_name, vehicle_type_answer=None):
         """Match the appointment answer to an existing product"""
         if not answer_name:
             return None
@@ -340,7 +365,11 @@ class CustomAppointmentController(AppointmentController):
         # Only process if this is a Car Wash Care appointment
         # Clean and parse the answer text
         service_type = self._extract_service_type(answer_name)
-        vehicle_type = self._extract_vehicle_type(answer_name)
+        # Prefer the vehicle type read from the dedicated "Type of car"
+        # question; only fall back to parsing it out of the service answer
+        # text if that question wasn't found (keeps old behavior as a
+        # safety net)
+        vehicle_type = self._extract_vehicle_type(vehicle_type_answer or answer_name)
 
         if not service_type or not vehicle_type:
             return None
