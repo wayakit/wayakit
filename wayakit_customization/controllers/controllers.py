@@ -394,6 +394,7 @@ class CustomAppointmentController(AppointmentController):
             return 'Interior'
         return None
 
+
     def _extract_vehicle_type(self, answer_name):
         """Extract vehicle type from answer (e.g., 'SUV', 'Sedan')"""
         vehicle_types = ['suv', 'sedan', 'golfcart', 'motorcycle']
