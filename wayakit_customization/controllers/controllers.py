@@ -54,7 +54,13 @@ class CustomAppointmentController(AppointmentController):
     def appointment_form_submit(self, appointment_type_id, datetime_str, duration_str, name, phone, email, staff_user_id=None, available_resource_ids=None, asked_capacity=1,
                                 guest_emails_str=None, **kwargs):
         kwargs.pop('duration_str', None)
-        if self._is_deep_cleaning_in_kwargs(kwargs) or (duration_str and float(duration_str) >= 2.0):
+        appointment_type = request.env['appointment.type'].sudo().browse(appointment_type_id)
+        if appointment_type and appointment_type.name.lower() == "curtain and furniture care":
+            if self._is_carpet_in_kwargs(kwargs):
+                duration_str = "0.5"
+            else:
+                duration_str = str(appointment_type.appointment_duration or "2.0")
+        elif self._is_deep_cleaning_in_kwargs(kwargs) or (duration_str and float(duration_str) >= 2.0):
             duration_str = "2.0"
         return super().appointment_form_submit(
             appointment_type_id, datetime_str, duration_str, name, phone, email,
@@ -83,6 +89,54 @@ class CustomAppointmentController(AppointmentController):
                         return True
         except Exception:
             _logger.exception("Failed to check deep-cleaning in kwargs")
+        return False
+
+    def _is_carpet_in_kwargs(self, kwargs):
+        """Check if any answer passed in form kwargs indicates a carpet service selection."""
+        try:
+            for k, v in kwargs.items():
+                if not k.startswith('question_') or not v:
+                    continue
+
+                # Checkbox match: question_<qid>_answer_<aid>
+                match_cb = re.match(r"\bquestion_([0-9]+)_answer_([0-9]+)\b", k)
+                if match_cb:
+                    qid = int(match_cb.group(1))
+                    aid = int(match_cb.group(2))
+                    question = request.env['appointment.question'].sudo().browse(qid)
+                    answer = request.env['appointment.answer'].sudo().browse(aid)
+                    if (answer.name and 'carpet' in answer.name.lower()) or \
+                       (question.name and 'carpet' in question.name.lower()):
+                        return True
+                    continue
+
+                # Select / Radio match: question_<qid>
+                match_q = re.match(r"\bquestion_([0-9]+)\b", k)
+                if match_q:
+                    qid = int(match_q.group(1))
+                    question = request.env['appointment.question'].sudo().browse(qid)
+                    answer_ids = []
+                    if isinstance(v, list):
+                        answer_ids.extend([int(x) for x in v if str(x).isdigit()])
+                    elif str(v).isdigit():
+                        answer_ids.append(int(v))
+
+                    for aid in answer_ids:
+                        answer = request.env['appointment.answer'].sudo().browse(aid)
+                        if not answer or not answer.name:
+                            continue
+                        ans_name = answer.name.strip()
+                        if 'carpet' in ans_name.lower():
+                            return True
+                        if question.name and 'carpet' in question.name.lower():
+                            qty_match = re.match(r'^(\d+)', ans_name)
+                            if qty_match:
+                                if int(qty_match.group(1)) > 0:
+                                    return True
+                            elif ans_name.lower() not in ['0', 'no', 'none', 'false', '']:
+                                return True
+        except Exception:
+            _logger.exception("Failed to check carpet in kwargs")
         return False
 
     def _handle_appointment_form_submission(
@@ -123,6 +177,12 @@ class CustomAppointmentController(AppointmentController):
             duration = 2
             date_end = date_start + timedelta(hours=2)
 
+        # In Curtain and Furniture Care appointment, if customer selected any service type includes carpet, duration should be 30 min (0.5 hour)
+        if appointment_type and appointment_type.name.lower() == "curtain and furniture care":
+            if self._is_carpet_selected(answer_input_values):
+                duration = 0.5
+                date_end = date_start + timedelta(minutes=30)
+
         # Call original method to create calendar event
         result = super()._handle_appointment_form_submission(
             appointment_type, date_start, date_end, duration,
@@ -154,6 +214,44 @@ class CustomAppointmentController(AppointmentController):
             # Never block a booking on this check; fall back to the
             # appointment type's default duration.
             _logger.exception("Failed to check deep-cleaning selection")
+            return False
+
+    def _is_carpet_selected(self, answer_input_values):
+        """True if the customer picked any service type that includes carpet
+        in Curtain and Furniture Care."""
+        if not answer_input_values:
+            return False
+        try:
+            questions = request.env['appointment.question'].sudo().browse(
+                list(dict.fromkeys(a['question_id'] for a in answer_input_values if 'question_id' in a))
+            )
+            questions_by_id = {q.id: q for q in questions}
+
+            for answer_val in answer_input_values:
+                qid = answer_val.get('question_id')
+                aid = answer_val.get('value_answer_id')
+                if not qid or not aid:
+                    continue
+                question = questions_by_id.get(qid)
+                answer_rec = request.env['appointment.answer'].sudo().browse(aid)
+                if not answer_rec or not answer_rec.name:
+                    continue
+
+                ans_name = answer_rec.name.strip()
+                # If answer itself mentions carpet
+                if 'carpet' in ans_name.lower():
+                    return True
+
+                # If question mentions carpet
+                if question and question.name and 'carpet' in question.name.lower():
+                    qty_match = re.match(r'^(\d+)', ans_name)
+                    if qty_match:
+                        if int(qty_match.group(1)) > 0:
+                            return True
+                    elif ans_name.lower() not in ['0', 'no', 'none', 'false', '']:
+                        return True
+        except Exception:
+            _logger.exception("Failed to check carpet selection")
             return False
 
     def _create_or_update_customer_partner(self, name, description):
@@ -337,6 +435,8 @@ class CustomAppointmentController(AppointmentController):
             "Small Carpet up to 2 sqm [SAR 40 VAT included]": "Small up to 2 sqm",
             "Medium Carpet 2.1 to 6 sqm [SAR 160 VAT included]": "Medium 2.1-6 sqm",
             "Big Carpet 7 to 20 sqm [SAR 240 VAT included]": "Big 7-20 sqm",
+            "Extra Big Carpet 17-20 sqm [SAR 380.01 VAT included]": "Extra Big",
+            "Extra Big Carpet 21-25 sqm [SAR 440.00 VAT included]": "Extra Big 21-25 sqm",
         }
         # Get the search term for this question
         search_term = product_search_terms.get(question_text)
