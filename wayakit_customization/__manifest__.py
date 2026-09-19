@@ -20,7 +20,7 @@
     'version': '1.0.33',
 
     # any module necessary for this one to work correctly
-    'depends': ['base', 'product', 'appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'stock', 'whatsapp', 'rating', 'website_sale_loyalty'],
+    'depends': ['base', 'product', 'appointment', 'website_appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'stock', 'whatsapp', 'rating', 'website_sale_loyalty'],
 
     # always loaded
     'data': [
@@ -43,6 +43,9 @@
     ],
     'assets': {
         'web.assets_backend': [],
+        'web.assets_frontend': [
+            'wayakit_customization/static/src/js/appointment_form.js',
+        ],
         'website.assets_frontend': [
                 'wayakit_customization/static/src/js/popup_handler.js',
         ],
