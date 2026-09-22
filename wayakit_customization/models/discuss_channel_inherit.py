@@ -6,7 +6,7 @@ section 6 for the full write-up.
 """
 import logging
 
-from odoo import models
+from odoo import api, models
 from odoo.addons.whatsapp.tools import phone_validation as wa_phone_validation
 
 from .whatsapp_channel_name import channel_name
@@ -63,11 +63,18 @@ class DiscussChannel(models.Model):
             vals["name"] = channel_name(number, vals.get("name"))
         return vals
 
+    @api.model
     def _wayakit_backfill_whatsapp_names(self):
         """Rename the channels created between July 2026 and this module.
 
         Called by data/whatsapp_channel_name_data.xml on every module upgrade.
         Idempotent, so running it N times equals running it once.
+
+        @api.model is mandatory, not decoration: <function> goes through
+        api.call_kw, which routes anything without _api == 'model' to
+        _call_kw_multi, and that one reads args[0] as the id list. With no ids to
+        pass it blows up with "IndexError: list index out of range" and takes the
+        whole build down.
         """
         channels = self.sudo().search([("channel_type", "=", "whatsapp")])
         renamed = 0
