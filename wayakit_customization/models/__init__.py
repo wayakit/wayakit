@@ -16,4 +16,5 @@ from . import sale_order_inherit
 from . import loyalty_card
 from . import rating_rating
 from . import stock_move_inherit
+from . import discuss_channel_inherit
 # from . import models

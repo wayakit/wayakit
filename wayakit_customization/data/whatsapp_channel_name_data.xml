@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Retroactive rename of the WhatsApp channels born without a phone
+             number (enterprise commit 8fe680ab, July 2026). Runs on every module
+             upgrade; the method is idempotent, so repeating it duplicates nothing.
+             Logic is versioned in models/discuss_channel_inherit.py, same split
+             as views/ir_cron.xml and data/whatsapp_review_data.xml. -->
+        <function model="discuss.channel" name="_wayakit_backfill_whatsapp_names"/>
+    </data>
+</odoo>
