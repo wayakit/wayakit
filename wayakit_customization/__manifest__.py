@@ -17,7 +17,7 @@
     # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '1.0.38',
+    'version': '1.0.39',
     # any module necessary for this one to work correctly
     'depends': ['base', 'product', 'appointment', 'website_appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'stock', 'whatsapp', 'rating', 'website_sale_loyalty'],
 
@@ -32,6 +32,7 @@
         'views/website_sale_hide_fields.xml',
         'views/views.xml',
         'views/templates.xml',
+        'views/appointment_kitchen_templates.xml',
         'views/ir_cron.xml',
         'views/partner_national_short_code.xml',
         'views/sale_order_national_short_code.xml',

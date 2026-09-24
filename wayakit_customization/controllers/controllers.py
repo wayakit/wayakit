@@ -42,9 +42,26 @@ from datetime import timedelta
 from odoo import http, fields
 from odoo.http import request
 from odoo.addons.appointment.controllers.appointment import AppointmentController
+from odoo.addons.base.models.ir_qweb import keep_query
 import re
 
 _logger = logging.getLogger(__name__)
+
+# Kitchen Steam Deep Cleaning: one appointment question per house group,
+# each with its own price and duration. Matched by SKU, not by name: the
+# product names carry brackets and "kitchen" also hits FP-RES chemicals.
+KITCHEN_SERVICES = {
+    'oasis': {'sku': 'FP-CUR-00026', 'hours': 1.5, 'areas': ('oasis', 'harbor')},
+    'garden': {'sku': 'FP-CUR-00027', 'hours': 2.0, 'areas': ('garden', 'island', 'palm', 'nhc')},
+}
+
+
+def _kitchen_service(question_name):
+    """KITCHEN_SERVICES entry for a kitchen question, None for any other question"""
+    name = (question_name or '').lower()
+    if 'kitchen' not in name:
+        return None
+    return KITCHEN_SERVICES['oasis' if 'oasis' in name else 'garden']
 
 
 class CustomAppointmentController(AppointmentController):
@@ -56,7 +73,9 @@ class CustomAppointmentController(AppointmentController):
         kwargs.pop('duration_str', None)
         appointment_type = request.env['appointment.type'].sudo().browse(appointment_type_id)
         if appointment_type and appointment_type.name.lower() == "curtain and furniture care":
-            if self._is_carpet_in_kwargs(kwargs):
+            # Kitchen keeps the full 2 h slot so availability is checked for
+            # the longest possible visit; the real duration is set later
+            if self._is_carpet_in_kwargs(kwargs) and not self._is_kitchen_in_kwargs(kwargs):
                 duration_str = "0.5"
             else:
                 duration_str = str(appointment_type.appointment_duration or "2.0")
@@ -89,6 +108,22 @@ class CustomAppointmentController(AppointmentController):
                         return True
         except Exception:
             _logger.exception("Failed to check deep-cleaning in kwargs")
+        return False
+
+    def _is_kitchen_in_kwargs(self, kwargs):
+        """True if any kitchen question was answered with a quantity > 0."""
+        try:
+            for k, v in kwargs.items():
+                match = re.match(r"^question_([0-9]+)$", k)
+                if not match or not str(v).isdigit():
+                    continue
+                question = request.env['appointment.question'].sudo().with_context(lang='en_US').browse(int(match.group(1)))
+                answer = request.env['appointment.answer'].sudo().browse(int(v))
+                quantity_match = re.match(r'^(\d+)', answer.name or '')
+                if _kitchen_service(question.name) and quantity_match and int(quantity_match.group(1)) > 0:
+                    return True
+        except Exception:
+            _logger.exception("Failed to check kitchen in kwargs")
         return False
 
     def _is_carpet_in_kwargs(self, kwargs):
@@ -145,6 +180,13 @@ class CustomAppointmentController(AppointmentController):
             description, answer_input_values, name, customer, appointment_invite, guests=None,
             staff_user=None, asked_capacity=1, booking_line_values=None
     ):
+        # A kitchen question only applies to its own house group; the form
+        # hides the other one, so this only trips on a tampered POST
+        kitchen_area, kitchen_services = self._get_kitchen_booking(answer_input_values)
+        if any(kitchen_area not in service['areas'] for service in kitchen_services):
+            return request.redirect('/appointment/%s?%s' % (
+                appointment_type.id, keep_query('*', state='failed-kitchen-area')))
+
         # Create customer contact from form data and sales order
         sale_order = False
         customer_partner = self._create_or_update_customer_partner(name, description)
@@ -183,6 +225,12 @@ class CustomAppointmentController(AppointmentController):
                 duration = 0.5
                 date_end = date_start + timedelta(minutes=30)
 
+        # Kitchen deep cleaning is done on-site by the house group's own
+        # timing and wins over the 30-min carpet pickup
+        if kitchen_services:
+            duration = max(service['hours'] for service in kitchen_services)
+            date_end = date_start + timedelta(hours=duration)
+
         # Call original method to create calendar event
         result = super()._handle_appointment_form_submission(
             appointment_type, date_start, date_end, duration,
@@ -201,6 +249,24 @@ class CustomAppointmentController(AppointmentController):
                 event.sale_order_id = sale_order.id
 
         return result
+
+    def _get_kitchen_booking(self, answer_input_values):
+        """Return (area, kitchen services picked with quantity > 0).
+        Read in English: the Arabic form carries translated labels."""
+        area, services = '', []
+        for answer in answer_input_values or []:
+            if not answer.get('value_answer_id'):
+                continue
+            question = request.env['appointment.question'].sudo().with_context(lang='en_US').browse(answer['question_id'])
+            answer_name = request.env['appointment.answer'].sudo().with_context(lang='en_US').browse(answer['value_answer_id']).name or ''
+            if (question.name or '').strip().lower() == 'area':
+                area = answer_name.strip().lower()
+                continue
+            service = _kitchen_service(question.name)
+            quantity_match = re.match(r'^(\d+)', answer_name)
+            if service and quantity_match and int(quantity_match.group(1)) > 0:
+                services.append(service)
+        return area, services
 
     def _is_deep_cleaning_selected(self, answer_input_values):
         """True if the customer picked a 'deep cleaning' Type of service
@@ -413,8 +479,9 @@ class CustomAppointmentController(AppointmentController):
                     quantity_match = re.match(r'^(\d+)', answer_record.name)
                     if quantity_match:
                         quantity = int(quantity_match.group(1))
-                        # Use the question text to identify the product
-                        question_text = question.name
+                        # Use the question text to identify the product, in
+                        # English so the Arabic form maps to the same product
+                        question_text = question.with_context(lang='en_US').name
 
                         if question_text and quantity > 0:
                             product_quantities[question_text] = quantity
@@ -424,6 +491,10 @@ class CustomAppointmentController(AppointmentController):
 
     def _find_curtain_furniture_product(self, question_text):
         """Find matching product for Curtain and Furniture Care items based on question text"""
+        kitchen = _kitchen_service(question_text)
+        if kitchen:
+            return request.env['product.product'].sudo().search([('default_code', '=', kitchen['sku'])], limit=1)
+
         # Map form question text to search terms for products
         product_search_terms = {
             "Curtain set [SAR 350 VAT included]": "Curtain set",
