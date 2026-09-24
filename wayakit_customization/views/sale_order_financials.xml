@@ -39,6 +39,13 @@
                                 <field name="fin_total_cost" sum="Total"/>
                                 <field name="fin_profit" sum="Total"/>
                                 <field name="fin_cost_missing"/>
+                                <field name="fin_pi_master_ref" column_invisible="1"/>
+                                <!-- Only for users who can open product.master; anyone else
+                                     would get an access error on click. -->
+                                <button name="action_open_pi_master" type="object"
+                                        string="Price Intelligence" icon="fa-external-link"
+                                        invisible="not fin_pi_master_ref"
+                                        groups="price_intelligence.group_price_intelligence_user,price_intelligence.group_price_intelligence_viewer"/>
                             </tree>
                         </field>
                     </page>

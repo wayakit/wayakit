@@ -17,6 +17,7 @@ class SaleOrderLine(models.Model):
         string="Profit", compute='_compute_financials', groups=FIN_GROUP)
     fin_cost_missing = fields.Boolean(
         string="No PI Cost", compute='_compute_financials', groups=FIN_GROUP)
+    fin_pi_master_ref = fields.Integer(compute='_compute_financials', groups=FIN_GROUP)
 
     def _financials_counted(self):
         """Product lines only: sections/notes, down payments and shipping
@@ -30,14 +31,9 @@ class SaleOrderLine(models.Model):
             and not getattr(self, 'is_delivery', False)
         )
 
-    def _financials_unit_costs(self):
-        """{line: unit cost in the order currency per product UoM}, lines
-        without a known cost are left out.
-
-        Swap point: the cost source is Price Intelligence today
-        (product.master.unit_cost_sar, joined on SKU = default_code). When
-        PLM/FIFO costs are trusted, only this method changes.
-        """
+    def _financials_pi_masters(self):
+        """{line: product.master record} for the counted lines whose SKU
+        (default_code) exists in Price Intelligence."""
         lines = self.filtered(lambda l: l._financials_counted() and l.product_id.default_code)
         codes = list(set(lines.mapped('product_id.default_code')))
         if not codes:
@@ -46,16 +42,28 @@ class SaleOrderLine(models.Model):
         # controlled by FIN_GROUP on the fields that carry the result.
         masters = self.env['product.master'].sudo().search(
             [('product_id', 'in', codes)], order='id desc')
-        cost_by_code = {}
+        master_by_code = {}
         # A few SKUs have several master records: stable sort keeps the
         # newest one first, active records ahead of inactive ones.
         for master in masters.sorted(lambda m: m.status != 'active'):
-            cost_by_code.setdefault(master.product_id, master.unit_cost_sar)
+            master_by_code.setdefault(master.product_id, master)
+        return {
+            line: master_by_code[line.product_id.default_code]
+            for line in lines if line.product_id.default_code in master_by_code
+        }
 
+    def _financials_unit_costs(self, masters):
+        """{line: unit cost in the order currency per product UoM}, lines
+        without a known cost are left out.
+
+        Swap point: the cost source is Price Intelligence today
+        (product.master.unit_cost_sar, joined on SKU = default_code). When
+        PLM/FIFO costs are trusted, only this method changes.
+        """
         sar = self.env.ref('base.SAR')
         costs = {}
-        for line in lines:
-            cost = cost_by_code.get(line.product_id.default_code)
+        for line, master in masters.items():
+            cost = master.unit_cost_sar
             if not cost:
                 continue
             currency = line.order_id.currency_id
@@ -66,11 +74,26 @@ class SaleOrderLine(models.Model):
             costs[line] = cost
         return costs
 
+    def action_open_pi_master(self):
+        """Open this line's Master Product in Price Intelligence."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'product.master',
+            'res_id': self.fin_pi_master_ref,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     @api.depends('product_id', 'product_uom_qty', 'product_uom', 'price_subtotal',
                  'display_type', 'order_id.currency_id')
     def _compute_financials(self):
-        costs = self._financials_unit_costs()
+        masters = self._financials_pi_masters()
+        costs = self._financials_unit_costs(masters)
         for line in self:
+            # A plain id, not a Many2one: rendering a Many2one would make the
+            # client read product.master, which users without PI access can't.
+            line.fin_pi_master_ref = masters[line].id if line in masters else 0
             cost = costs.get(line)
             line.fin_cost_missing = cost is None and line._financials_counted()
             if cost is None:
