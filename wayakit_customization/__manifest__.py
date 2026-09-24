@@ -17,12 +17,13 @@
     # Check https://github.com/odoo/odoo/blob/16.0/odoo/addons/base/data/ir_module_category_data.xml
     # for the full list
     'category': 'Uncategorized',
-    'version': '1.0.36',
+    'version': '1.0.37',
     # any module necessary for this one to work correctly
     'depends': ['base', 'product', 'appointment', 'website_appointment', 'appointment_account_payment', 'price_intelligence', 'website', 'website_sale', 'sale', 'stock', 'whatsapp', 'rating', 'website_sale_loyalty'],
 
     # always loaded
     'data': [
+        'security/security.xml',
         'security/ir.model.access.csv',
         'data/mail_template_data.xml',
         'data/loyalty_review_coupon_data.xml',
@@ -34,6 +35,7 @@
         'views/ir_cron.xml',
         'views/partner_national_short_code.xml',
         'views/sale_order_national_short_code.xml',
+        'views/sale_order_financials.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

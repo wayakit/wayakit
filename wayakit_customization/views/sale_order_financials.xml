@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Priority 200 + appended at the end of the notebook: lands after the
+             Studio pages (Shipping details, Customer Feedback) without anchoring
+             on a Studio page name that only exists in the DB. -->
+        <record id="view_order_form_quotation_financials" model="ir.ui.view">
+            <field name="name">sale.order.form.quotation.financials</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="priority">200</field>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page name="quotation_financials" string="Financials"
+                          invisible="not is_b2b"
+                          groups="wayakit_customization.group_quotation_financials">
+                        <field name="is_b2b" invisible="1"/>
+                        <div class="alert alert-warning" role="alert" invisible="fin_missing_count == 0">
+                            <field name="fin_missing_count" class="oe_inline"/> line(s) without cost in Price Intelligence
+                            (<field name="fin_missing_amount" class="oe_inline"/> of sales) are left out of the profit and margin.
+                        </div>
+                        <group>
+                            <group string="Order Totals">
+                                <field name="fin_amount_untaxed"/>
+                                <field name="fin_covered_amount" invisible="fin_missing_count == 0"/>
+                                <field name="fin_total_cost"/>
+                                <field name="fin_total_profit"/>
+                                <field name="fin_margin_pct" class="fw-bold"/>
+                            </group>
+                        </group>
+                        <field name="fin_line_ids" readonly="1" nolabel="1">
+                            <tree decoration-warning="fin_cost_missing">
+                                <field name="currency_id" column_invisible="1"/>
+                                <field name="product_id"/>
+                                <field name="product_uom_qty" string="Quantity"/>
+                                <field name="product_uom" string="UoM"/>
+                                <field name="price_subtotal" string="Sales (excl. VAT)"/>
+                                <field name="fin_unit_cost"/>
+                                <field name="fin_total_cost" sum="Total"/>
+                                <field name="fin_profit" sum="Total"/>
+                                <field name="fin_cost_missing"/>
+                            </tree>
+                        </field>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
