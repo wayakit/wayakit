@@ -15,11 +15,13 @@ publicWidget.registry.appointmentForm.include({
         this.originalDurationStr = durationInput ? durationInput.value : "1.0";
         this._updateDurationForDeepCleaning();
         this._updateDurationForCarpet();
+        this._updateKitchen();
     },
 
     _onServiceTypeChange: function (ev) {
         this._updateDurationForDeepCleaning();
         this._updateDurationForCarpet();
+        this._updateKitchen();
     },
 
     _isDeepCleaningSelected: function () {
@@ -76,6 +78,7 @@ publicWidget.registry.appointmentForm.include({
     _onConfirmAppointment: async function (event) {
         this._updateDurationForDeepCleaning();
         this._updateDurationForCarpet();
+        this._updateKitchen();
         return this._super(...arguments);
     },
 
@@ -167,6 +170,69 @@ publicWidget.registry.appointmentForm.include({
         }
 
         return false;
+    },
+
+    _kitchenGroup: function (questionName) {
+        const name = (questionName || '').toLowerCase();
+        if (!name.includes('kitchen')) {
+            return null;
+        }
+        return name.includes('oasis')
+            ? { hours: 1.5, label: '1 h 30 min', areas: ['oasis', 'harbor'] }
+            : { hours: 2.0, label: '2 hours', areas: ['garden', 'island', 'palm', 'nhc'] };
+    },
+
+    _selectedEnglishAnswer: function (select) {
+        const opt = select.selectedOptions ? select.selectedOptions[0] : null;
+        return ((opt && (opt.dataset.wkAnswer || opt.textContent)) || '').trim().toLowerCase();
+    },
+
+    // Kitchen Steam Deep Cleaning: hide the kitchen question that does not
+    // match the chosen Area and show the visit length of the one picked.
+    // Reads the English names from data-wk-* (appointment_kitchen_templates.xml)
+    // so it also works on the Arabic form. The server re-checks both.
+    _updateKitchen: function () {
+        const rows = this.el.querySelectorAll('[data-wk-question]');
+        let area = '';
+        for (const row of rows) {
+            const select = row.querySelector('select');
+            if (select && row.dataset.wkQuestion.trim().toLowerCase() === 'area') {
+                area = this._selectedEnglishAnswer(select);
+            }
+        }
+        let picked = null;
+        for (const row of rows) {
+            const group = this._kitchenGroup(row.dataset.wkQuestion);
+            const select = row.querySelector('select');
+            if (!group || !select) {
+                continue;
+            }
+            const allowed = !area || group.areas.includes(area);
+            row.classList.toggle('d-none', !allowed);
+            if (!allowed) {
+                const zero = [...select.options].find((opt) => opt.textContent.trim() === '0');
+                if (zero) {
+                    select.value = zero.value;
+                }
+            }
+            if (allowed && parseInt(this._selectedEnglishAnswer(select), 10) > 0 &&
+                    (!picked || group.hours > picked.hours)) {
+                picked = group;
+            }
+        }
+        if (!picked) {
+            return;
+        }
+        const durationInput = this.el.querySelector('input[name="duration_str"]') || document.querySelector('input[name="duration_str"]');
+        if (durationInput) {
+            durationInput.value = String(picked.hours);
+        }
+        const detailsCol = document.querySelector('.o_appointment_details_column');
+        const clockIcon = detailsCol ? detailsCol.querySelector('.fa-clock-o') : null;
+        const span = clockIcon && clockIcon.parentElement ? clockIcon.parentElement.querySelector('span') : null;
+        if (span) {
+            span.textContent = picked.label;
+        }
     },
 
     _updateDurationForCarpet: function () {

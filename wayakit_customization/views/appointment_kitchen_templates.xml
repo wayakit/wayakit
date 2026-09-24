@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- English question/answer names as data attributes, so appointment_form.js
+         can find the kitchen questions and the Area even on the Arabic form -->
+    <template id="appointment_form_kitchen" inherit_id="appointment.appointment_form">
+        <xpath expr="//t[@t-foreach='appointment_type.question_ids']/div" position="attributes">
+            <attribute name="t-att-data-wk-question">question.with_context(lang='en_US').name</attribute>
+        </xpath>
+        <xpath expr="//select[@t-attf-name='question_#{question.id}']//option" position="attributes">
+            <attribute name="t-att-data-wk-answer">answer.with_context(lang='en_US').name</attribute>
+        </xpath>
+    </template>
+
+    <template id="appointment_info_kitchen" inherit_id="appointment.appointment_info">
+        <xpath expr="//div[@t-if=&quot;state == 'failed-partner'&quot;]" position="after">
+            <div t-if="state == 'failed-kitchen-area'" class="alert alert-danger" role="alert">
+                <p class="mb-0">
+                    <strong>Appointment failed!</strong>
+                    The Kitchen Steam Deep Cleaning option you picked does not match your house area.
+                    Please book again and choose the kitchen option for your area.
+                </p>
+            </div>
+        </xpath>
+    </template>
+</odoo>
