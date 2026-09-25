@@ -12,11 +12,9 @@
             <field name="arch" type="xml">
                 <xpath expr="//notebook" position="inside">
                     <page name="quotation_financials" string="Financials"
-                          invisible="not is_b2b"
                           groups="wayakit_customization.group_quotation_financials">
-                        <field name="is_b2b" invisible="1"/>
                         <div class="alert alert-warning" role="alert" invisible="fin_missing_count == 0">
-                            <field name="fin_missing_count" class="oe_inline"/> line(s) without cost in Price Intelligence
+                            <field name="fin_missing_count" class="oe_inline"/> line(s) without cost (not in Price Intelligence, or not frozen when the order was confirmed)
                             (<field name="fin_missing_amount" class="oe_inline"/> of sales) are left out of the profit and margin.
                         </div>
                         <group>

@@ -18,6 +18,11 @@ class SaleOrderLine(models.Model):
     fin_cost_missing = fields.Boolean(
         string="No PI Cost", compute='_compute_financials', groups=FIN_GROUP)
     fin_pi_master_ref = fields.Integer(compute='_compute_financials', groups=FIN_GROUP)
+    # PI cost captured when the order is confirmed, so a later change in PI
+    # never alters the margin of a sale already made. 0 = nothing captured
+    # (no PI cost at the time, or an SO confirmed before this field existed).
+    fin_frozen_unit_cost = fields.Monetary(
+        string="Frozen Unit Cost", copy=False, groups=FIN_GROUP)
 
     def _financials_counted(self):
         """Product lines only: sections/notes, down payments and shipping
@@ -74,6 +79,22 @@ class SaleOrderLine(models.Model):
             costs[line] = cost
         return costs
 
+    def _financials_freeze_cost(self):
+        """Capture today's PI cost on the lines of confirmed orders."""
+        costs = self._financials_unit_costs(self._financials_pi_masters())
+        for line in self:
+            # sudo: the confirming salesperson usually lacks FIN_GROUP, and
+            # writing a group-gated field would raise AccessError.
+            line.sudo().fin_frozen_unit_cost = costs.get(line, 0.0)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        # Upsell on an already confirmed order: freeze now, or the new line
+        # would keep following PI.
+        lines.filtered(lambda l: l.order_id.state == 'sale')._financials_freeze_cost()
+        return lines
+
     def action_open_pi_master(self):
         """Open this line's Master Product in Price Intelligence."""
         self.ensure_one()
@@ -86,7 +107,8 @@ class SaleOrderLine(models.Model):
         }
 
     @api.depends('product_id', 'product_uom_qty', 'product_uom', 'price_subtotal',
-                 'display_type', 'order_id.currency_id')
+                 'display_type', 'order_id.currency_id', 'order_id.state',
+                 'fin_frozen_unit_cost')
     def _compute_financials(self):
         masters = self._financials_pi_masters()
         costs = self._financials_unit_costs(masters)
@@ -94,7 +116,12 @@ class SaleOrderLine(models.Model):
             # A plain id, not a Many2one: rendering a Many2one would make the
             # client read product.master, which users without PI access can't.
             line.fin_pi_master_ref = masters[line].id if line in masters else 0
-            cost = costs.get(line)
+            if line.order_id.state == 'sale':
+                # Confirmed: only the frozen cost counts, never live PI. No
+                # fallback on purpose, old SOs stay without cost (ticket call).
+                cost = line.sudo().fin_frozen_unit_cost or None
+            else:
+                cost = costs.get(line)
             line.fin_cost_missing = cost is None and line._financials_counted()
             if cost is None:
                 line.fin_unit_cost = line.fin_total_cost = line.fin_profit = 0.0
@@ -108,8 +135,6 @@ class SaleOrderLine(models.Model):
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
-
-    is_b2b = fields.Boolean(compute='_compute_is_b2b')
 
     fin_line_ids = fields.Many2many(
         'sale.order.line', string="Financials Lines",
@@ -129,13 +154,11 @@ class SaleOrder(models.Model):
     fin_missing_amount = fields.Monetary(
         string="Sales without PI Cost", compute='_compute_financials', groups=FIN_GROUP)
 
-    @api.depends(lambda self: ['x_studio_channel'] if 'x_studio_channel' in self._fields else [])
-    def _compute_is_b2b(self):
-        # x_studio_channel is a Studio field (DB only, never in git), hence
-        # the guard: see _get_confirmation_template in sale_order_inherit.py.
-        has_channel = 'x_studio_channel' in self._fields
-        for order in self:
-            order.is_b2b = has_channel and order.x_studio_channel == 'B2B'
+    def _action_confirm(self):
+        res = super()._action_confirm()
+        # Re-confirming (cancel > draft > confirm) refreshes the frozen cost.
+        self.order_line._financials_freeze_cost()
+        return res
 
     @api.depends('amount_untaxed', 'order_line.price_subtotal', 'order_line.fin_total_cost',
                  'order_line.fin_cost_missing', 'order_line.display_type')
