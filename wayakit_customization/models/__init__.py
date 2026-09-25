@@ -13,6 +13,7 @@ from . import appointment_question
 from . import res_partner_phone
 from . import whatsapp_message_inherit
 from . import sale_order_inherit
+from . import sale_order_financials
 from . import loyalty_card
 from . import rating_rating
 from . import stock_move_inherit
