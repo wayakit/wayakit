@@ -35,8 +35,10 @@
         'views/appointment_kitchen_templates.xml',
         'views/ir_cron.xml',
         'views/partner_national_short_code.xml',
-        'views/sale_order_national_short_code.xml',
+        # Financials first: its view must be rewritten before any other
+        # sale.order form view triggers validation of the combined form.
         'views/sale_order_financials.xml',
+        'views/sale_order_national_short_code.xml',
     ],
     # only loaded in demonstration mode
     'demo': [

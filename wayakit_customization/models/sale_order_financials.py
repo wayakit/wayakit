@@ -148,7 +148,7 @@ class SaleOrder(models.Model):
     fin_total_profit = fields.Monetary(
         string="Total Profit", compute='_compute_financials', groups=FIN_GROUP)
     fin_margin_pct = fields.Float(
-        string="Margin (%)", digits=(16, 2), compute='_compute_financials', groups=FIN_GROUP)
+        string="Margin % (PI)", digits=(16, 2), compute='_compute_financials', groups=FIN_GROUP)
     fin_missing_count = fields.Integer(
         string="Lines without PI Cost", compute='_compute_financials', groups=FIN_GROUP)
     fin_missing_amount = fields.Monetary(
