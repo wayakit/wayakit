@@ -1,6 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
+        <!-- Method 1: Using CSS to hide the fields completely -->
+        <template id="custom_css_hide_fields" inherit_id="website.layout">
+            <xpath expr="//head" position="inside">
+                <style>
+                    /* Hide company name field and its container */
+                    div:has(> input[name="company_name"]),
+                    div:has(> div > input[name="company_name"]),
+                    .form-group:has(input[name="company_name"]),
+                    [class*="col"]:has(input[name="company_name"]) {
+                        display: none !important;
+                    }
+
+                    /* Hide VAT field and its container */
+                    div:has(> input[name="vat"]),
+                    div:has(> div > input[name="vat"]),
+                    .form-group:has(input[name="vat"]),
+                    [class*="col"]:has(input[name="vat"]) {
+                        display: none !important;
+                    }
+
+                    /* Alternative selectors if :has is not supported */
+                    input[name="company_name"],
+                    input[name="vat"],
+                    label[for="company_name"],
+                    label[for="vat"] {
+                        display: none !important;
+                    }
+
+                    /* Hide parent containers by targeting common patterns */
+                    .checkout_autoformat input[name="company_name"],
+                    .checkout_autoformat input[name="vat"] {
+                        display: none !important;
+                    }
+
+                    /* Hide the entire row if it only contains these fields */
+                    .row:has(> [class*="col"]:only-child input[name="company_name"]),
+                    .row:has(> [class*="col"]:only-child input[name="vat"]) {
+                        display: none !important;
+                    }
+                </style>
+            </xpath>
+        </template>
+
         <!-- Method 2: JavaScript solution for complete removal -->
         <template id="custom_js_hide_fields" inherit_id="website_sale.address">
             <xpath expr="//form" position="inside">
@@ -52,22 +95,15 @@
                 </script>
             </xpath>
         </template>
-
-        <template id="custom_css_hide_fields" inherit_id="website.layout">
-            <xpath expr="//head" position="inside">
-                <style>
-                    /* Hide company name and VAT */
-                    .checkout_autoformat input[name="company_name"],
-                    .checkout_autoformat input[name="vat"],
-                    .checkout_autoformat label[for="company_name"],
-                    .checkout_autoformat label[for="vat"] {
-                        display: none !important;
-                    }
-                    .checkout_autoformat div:has(> input[name="company_name"]),
-                    .checkout_autoformat div:has(> input[name="vat"]) {
-                        display: none !important;
-                    }
-                </style>
+        <!-- Native language selector in the Hamburger header's top bar (left of the cart, so the
+             profile stays last): that template only ships it inside the off-canvas menu. -->
+        <template id="header_hamburger_lang_selector" inherit_id="website.template_header_hamburger">
+            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]/t[@t-call='website_sale.header_cart_link']" position="before">
+                <t t-call="website.placeholder_header_language_selector">
+                    <t t-set="_btn_class" t-valuef="btn-outline-secondary border-0"/>
+                    <t t-set="_txt_class" t-valuef="small"/>
+                    <t t-set="_dropdown_menu_class" t-valuef="dropdown-menu-end"/>
+                </t>
             </xpath>
         </template>
     </data>
