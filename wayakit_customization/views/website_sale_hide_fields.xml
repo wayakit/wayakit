@@ -95,10 +95,10 @@
                 </script>
             </xpath>
         </template>
-        <!-- Native language selector in the Hamburger header's top bar: that template only
-             ships it inside the off-canvas menu, so the editor toggle seemed to do nothing. -->
+        <!-- Native language selector in the Hamburger header's top bar (left of the cart, so the
+             profile stays last): that template only ships it inside the off-canvas menu. -->
         <template id="header_hamburger_lang_selector" inherit_id="website.template_header_hamburger">
-            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]" position="inside">
+            <xpath expr="//ul[hasclass('o_header_hamburger_right_col')]/t[@t-call='website_sale.header_cart_link']" position="before">
                 <t t-call="website.placeholder_header_language_selector">
                     <t t-set="_btn_class" t-valuef="btn-outline-secondary border-0"/>
                     <t t-set="_txt_class" t-valuef="small"/>
