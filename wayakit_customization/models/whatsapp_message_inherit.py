@@ -85,11 +85,15 @@ class WhatsappMessage(models.Model):
         channel = self.env['discuss.channel'].browse(mail_msg.res_id).exists()
         if not channel or channel.channel_type != 'whatsapp':
             return
+        # Arabic first, then English (text reviewed by Customer Relations).
         body = Markup(
-            "✅ We saved your National Address short code: <b>%s</b>.<br/><br/>"
+            "✅ تم حفظ الرمز المختصر لعنوانك الوطني: <b>%(code)s</b>.<br/><br/>"
+            "إذا كان صحيحاً فلا داعي للرد. وإذا كان خاطئاً، فقط أرسل الرمز الصحيح مرة أخرى "
+            "(4 أحرف + 4 أرقام، مثال: RRRD2929).<br/><br/>—<br/><br/>"
+            "✅ We saved your National Address short code: <b>%(code)s</b>.<br/><br/>"
             "If this is correct, no need to reply. If it is wrong, just send the "
             "correct code again (4 letters + 4 numbers, e.g. RRRD2929)."
-        ) % short_code
+        ) % {'code': short_code}
         try:
             channel.sudo().message_post(body=body, message_type='whatsapp_message')
         except Exception:  # noqa: BLE001
