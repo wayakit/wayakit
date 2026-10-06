@@ -3,6 +3,8 @@
 import publicWidget from "@web/legacy/js/public/public_widget";
 import "@appointment/js/appointment_form";
 
+const HOME_DEEP_CLEANING_TYPE_ID = 3;
+
 publicWidget.registry.appointmentForm.include({
     events: Object.assign({}, publicWidget.registry.appointmentForm.prototype.events, {
         'change select': '_onServiceTypeChange',
@@ -82,13 +84,24 @@ publicWidget.registry.appointmentForm.include({
         return this._super(...arguments);
     },
 
+    // HOME Deep Cleaning Care (formerly Curtain and Furniture Care).
+    // Matched by appointment type ID first, same as the server
+    // (HOME_DEEP_CLEANING_TYPE_ID in controllers.py): the name was renamed
+    // once already and the header is translated on the Arabic site.
     _isCurtainFurnitureAppointment: function () {
+        const form = document.querySelector('form[action*="/appointment/"]');
+        const path = (form ? form.getAttribute('action') : '') + ' ' + window.location.pathname;
+        const idMatch = path.match(/\/appointment\/(\d+)(?:[/?#\s]|$)/);
+        if (idMatch && parseInt(idMatch[1], 10) === HOME_DEEP_CLEANING_TYPE_ID) {
+            return true;
+        }
         const detailsHeader = document.querySelector('.o_appointment_details_type h5') ||
                               document.querySelector('.o_appointment_details_column h5') ||
                               document.querySelector('.o_appointment_details_type');
         if (detailsHeader) {
             const headerText = detailsHeader.textContent.toLowerCase();
-            if (headerText.includes('curtain') && headerText.includes('furniture')) {
+            if (headerText.includes('home deep cleaning') ||
+                    (headerText.includes('curtain') && headerText.includes('furniture'))) {
                 return true;
             }
         }

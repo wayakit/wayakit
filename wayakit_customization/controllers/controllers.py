@@ -47,6 +47,22 @@ import re
 
 _logger = logging.getLogger(__name__)
 
+# HOME Deep Cleaning Care (formerly Curtain and Furniture Care). Matched by
+# ID first: the name was renamed once already and is translatable (Arabic site).
+HOME_DEEP_CLEANING_TYPE_ID = 3
+HOME_DEEP_CLEANING_NAMES = {"home deep cleaning care", "curtain and furniture care"}
+
+
+def _is_home_deep_cleaning(appointment_type):
+    """True for the HOME Deep Cleaning Care appointment type"""
+    if not appointment_type:
+        return False
+    if appointment_type.id == HOME_DEEP_CLEANING_TYPE_ID:
+        return True
+    name = (appointment_type.with_context(lang='en_US').name or '').lower()
+    return name in HOME_DEEP_CLEANING_NAMES
+
+
 # Kitchen Steam Deep Cleaning: one appointment question per house group,
 # each with its own price and duration. Matched by SKU, not by name: the
 # product names carry brackets and "kitchen" also hits FP-RES chemicals.
@@ -72,7 +88,7 @@ class CustomAppointmentController(AppointmentController):
                                 guest_emails_str=None, **kwargs):
         kwargs.pop('duration_str', None)
         appointment_type = request.env['appointment.type'].sudo().browse(appointment_type_id)
-        if appointment_type and appointment_type.name.lower() == "curtain and furniture care":
+        if appointment_type and _is_home_deep_cleaning(appointment_type):
             # Kitchen keeps the full 2 h slot so availability is checked for
             # the longest possible visit; the real duration is set later
             if self._is_carpet_in_kwargs(kwargs) and not self._is_kitchen_in_kwargs(kwargs):
@@ -196,7 +212,7 @@ class CustomAppointmentController(AppointmentController):
 
         if customer_partner:
             # Check appointment type and handle accordingly
-            if appointment_type.name.lower() == "curtain and furniture care":
+            if _is_home_deep_cleaning(appointment_type):
                 sale_order = self._create_curtain_furniture_sale_order(
                     appointment_type,
                     customer_partner,
@@ -219,8 +235,8 @@ class CustomAppointmentController(AppointmentController):
             duration = 2
             date_end = date_start + timedelta(hours=2)
 
-        # In Curtain and Furniture Care appointment, if customer selected any service type includes carpet, duration should be 30 min (0.5 hour)
-        if appointment_type and appointment_type.name.lower() == "curtain and furniture care":
+        # In HOME Deep Cleaning Care (formerly Curtain and Furniture Care) appointment, if customer selected any service type includes carpet, duration should be 30 min (0.5 hour)
+        if appointment_type and _is_home_deep_cleaning(appointment_type):
             if self._is_carpet_selected(answer_input_values):
                 duration = 0.5
                 date_end = date_start + timedelta(minutes=30)
@@ -284,7 +300,7 @@ class CustomAppointmentController(AppointmentController):
 
     def _is_carpet_selected(self, answer_input_values):
         """True if the customer picked any service type that includes carpet
-        in Curtain and Furniture Care."""
+        in HOME Deep Cleaning Care (formerly Curtain and Furniture Care)."""
         if not answer_input_values:
             return False
         try:
@@ -416,9 +432,9 @@ class CustomAppointmentController(AppointmentController):
         return request.env['sale.order'].sudo().create(order_vals)
 
     def _create_curtain_furniture_sale_order(self, appointment_type, customer_partner, answer_input_values):
-        """Create a sale order for Curtain and Furniture Care appointment type"""
-        # Only process if this is a Curtain and Furniture Care appointment
-        if appointment_type.name.lower() != "curtain and furniture care":
+        """Create a sale order for HOME Deep Cleaning Care (formerly Curtain and Furniture Care) appointment type"""
+        # Only process if this is a HOME Deep Cleaning Care (formerly Curtain and Furniture Care) appointment
+        if not _is_home_deep_cleaning(appointment_type):
             return False
 
         # Extract product quantities from the answers
@@ -460,7 +476,7 @@ class CustomAppointmentController(AppointmentController):
         return request.env['sale.order'].sudo().create(order_vals)
 
     def _extract_curtain_furniture_quantities(self, answer_input_values):
-        """Extract product quantities from Curtain and Furniture Care appointment answers"""
+        """Extract product quantities from HOME Deep Cleaning Care (formerly Curtain and Furniture Care) appointment answers"""
         product_quantities = {}
 
         for answer in answer_input_values:
@@ -490,7 +506,7 @@ class CustomAppointmentController(AppointmentController):
         return product_quantities
 
     def _find_curtain_furniture_product(self, question_text):
-        """Find matching product for Curtain and Furniture Care items based on question text"""
+        """Find matching product for HOME Deep Cleaning Care (formerly Curtain and Furniture Care) items based on question text"""
         kitchen = _kitchen_service(question_text)
         if kitchen:
             return request.env['product.product'].sudo().search([('default_code', '=', kitchen['sku'])], limit=1)
