@@ -1,0 +1,83 @@
+<odoo>
+    <data>
+        <record id="salla_backend_form" model="ir.ui.view">
+            <field name="name">salla.backend.form</field>
+            <field name="model">salla.backend</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <button name="action_test_connection" type="object" string="Test Connection" class="btn-primary"/>
+                        <button name="action_check_products" type="object" string="Check Product SKUs"/>
+                        <!-- System only: it spends the single-use refresh token. -->
+                        <button name="action_refresh_token" type="object" string="Refresh Token Now"
+                                groups="base.group_system"
+                                confirm="Refresh the Salla token now? Only needed if the daily cron is failing."/>
+                    </header>
+                    <sheet>
+                        <widget name="web_ribbon" title="Archived" bg_color="bg-danger" invisible="active"/>
+                        <div class="oe_title">
+                            <label for="name"/>
+                            <h1><field name="name"/></h1>
+                        </div>
+                        <group>
+                            <group string="Salla App">
+                                <!-- Rebinding store/app is admin-only (enforced in write()
+                                     too); the sales team sees them read-only. -->
+                                <field name="store_id" groups="base.group_system"/>
+                                <field name="store_id" groups="!base.group_system" readonly="1"/>
+                                <field name="client_id" groups="base.group_system"/>
+                                <field name="client_id" groups="!base.group_system" readonly="1"/>
+                                <field name="client_secret" password="True" groups="base.group_system"/>
+                                <!-- System-only: these hosts receive the credentials. -->
+                                <field name="base_url" groups="base.group_system"/>
+                                <field name="token_url" groups="base.group_system"/>
+                            </group>
+                            <group string="Odoo Mapping">
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="warehouse_id"/>
+                                <field name="active" invisible="1"/>
+                            </group>
+                            <group string="Authorization (filled by app.store.authorize)">
+                                <field name="access_token" password="True" groups="base.group_system"/>
+                                <field name="refresh_token" password="True" groups="base.group_system"/>
+                                <field name="token_expires_at" groups="base.group_system"/>
+                                <field name="token_expires_at" groups="!base.group_system" readonly="1"/>
+                                <field name="token_scope"/>
+                            </group>
+                            <group string="Webhook">
+                                <field name="webhook_url" placeholder="https://…/sl/webhook" widget="CopyClipboardChar"/>
+                                <field name="webhook_secret" password="True" groups="base.group_system"/>
+                                <field name="log_payloads" groups="base.group_system"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="salla_backend_tree" model="ir.ui.view">
+            <field name="name">salla.backend.tree</field>
+            <field name="model">salla.backend</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="store_id"/>
+                    <field name="company_id" groups="base.group_multi_company"/>
+                    <field name="token_expires_at"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="salla_backend_action" model="ir.actions.act_window">
+            <field name="name">Salla Backends</field>
+            <field name="res_model">salla.backend</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem id="menu_salla_backend"
+                  name="Salla"
+                  parent="sale.menu_sale_config"
+                  action="salla_backend_action"
+                  sequence="91"/>
+    </data>
+</odoo>
