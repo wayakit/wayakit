@@ -34,6 +34,9 @@
                             </group>
                             <group string="Odoo Mapping">
                                 <field name="company_id" groups="base.group_multi_company"/>
+                                <!-- warehouse_id's domain reads company_id: Odoo 17 rejects the
+                                     view unless every user also gets it, so a hidden copy. -->
+                                <field name="company_id" invisible="1"/>
                                 <field name="warehouse_id"/>
                                 <field name="active" invisible="1"/>
                             </group>
