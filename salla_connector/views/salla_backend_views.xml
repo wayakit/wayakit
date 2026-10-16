@@ -41,8 +41,12 @@
                                 <field name="active" invisible="1"/>
                             </group>
                             <group string="Authorization (filled by app.store.authorize)">
-                                <field name="access_token" password="True" groups="base.group_system"/>
-                                <field name="refresh_token" password="True" groups="base.group_system"/>
+                                <!-- Read-only even for admins: only the authorize webhook and
+                                     the refresh write these (raw SQL). An editable form can save
+                                     a stale, already-spent refresh token back over the live one,
+                                     which kills the app installation (seen on maintest). -->
+                                <field name="access_token" password="True" readonly="1" groups="base.group_system"/>
+                                <field name="refresh_token" password="True" readonly="1" groups="base.group_system"/>
                                 <field name="token_expires_at" groups="base.group_system"/>
                                 <field name="token_expires_at" groups="!base.group_system" readonly="1"/>
                                 <field name="token_scope"/>

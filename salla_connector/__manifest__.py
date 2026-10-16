@@ -3,7 +3,7 @@
     "summary": "Direct Salla (KSA) integration for Wayakit, no middleware: OAuth app "
                "authorization, signed webhooks, connection test and SKU reconciliation.",
     "category": "Sales",
-    "version": "17.0.1.0.0",
+    "version": "17.0.1.0.1",
     "author": "Wayakit",
     "website": "https://wayakit.com",
     "license": "LGPL-3",

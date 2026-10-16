@@ -130,8 +130,8 @@ class SallaBackend(models.Model):
             for fname in ("base_url", "token_url"):
                 if not mapping.is_allowed_salla_url(backend[fname]):
                     raise ValidationError(_(
-                        "%s must be an https URL on a Salla host (accounts.salla.sa or "
-                        "*.salla.dev).") % self._fields[fname].string)
+                        "%s must be an https URL on a Salla host (api.salla.dev or "
+                        "accounts.salla.sa).") % self._fields[fname].string)
 
     def _check_system_write(self, vals):
         if self.env.is_superuser() or self.env.user.has_group(SECRET_GROUP):

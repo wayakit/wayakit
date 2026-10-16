@@ -13,8 +13,12 @@ export STORE_ID="<Salla Store ID shown on the backend after step 7>"
 export UA="Mozilla/5.0 (X11; Linux x86_64) SallaStagingCheck"    # curl's own UA is blocked by Cloudflare on the prod zone
 sig() { printf '%s' "$1" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | sed 's/^.* //'; }
 post() {  # post '<body>' [signature]  -> prints the answer body + HTTP code
+  # Explicit array, not ${2:+-H "..."}: zsh (macOS default) does not word-split that,
+  # curl gets one mangled argument and every signed request falsely answers 401.
+  local h=(-H 'Content-Type: application/json')
+  [ -n "$2" ] && h+=(-H "X-Salla-Signature: $2")
   curl -sS -w ' | HTTP %{http_code} in %{time_total}s\n' -A "$UA" -X POST "$WEBHOOK_URL" \
-    -H 'Content-Type: application/json' ${2:+-H "X-Salla-Signature: $2"} --data-binary "$1"
+    "${h[@]}" --data-binary "$1"
 }
 ```
 Always `--data-binary` (plain `-d` strips newlines and changes the bytes you signed).
